@@ -64,7 +64,6 @@ export class Signatures {
 
 			this.sigconfig = signatureconfigurations[this.sheets];
 		}
-        console.log(this.sigconfig);
 		this.pagelist = [];
 		this.signaturepagelists = [];
 
