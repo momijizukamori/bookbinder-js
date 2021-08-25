@@ -1,6 +1,4 @@
 import { PDFDocument, degrees } from 'pdf-lib';
-// const fs = require('fs');
-// const path = require('path');
 import { saveAs } from 'file-saver';
 import { Signatures } from './signatures.js';
 import { Booklet } from './booklet.js';
@@ -31,7 +29,7 @@ export class Book {
         this.password = null;    //  if necessary
         this.outputdir = null;
 
-        this.duplex = true; //FIXME
+        this.duplex = false; //FIXME
         this.duplexrotate = true;
         this.papersize = pagesizes.A4;   //  default for europe
 
@@ -65,7 +63,7 @@ export class Book {
         this.flyleaf = form.has('flyleaf');
         this.format = form.get('sig_format');
         this.outputdir = form.get('output_folder');
-        let siglength = parseInt(form.get('sig_length'),10);
+        let siglength = parseInt(form.get('sig_length'), 10);
         if (!isNaN(siglength)) {
             this.sigsize = siglength;
         }
@@ -79,12 +77,12 @@ export class Book {
                     this.signatureconfig.push(num);
                 }
             });
-            
+
         }
 
         let customx = form.get('custom_width') || 0;
         let customy = form.get('custom_height') || 0;
-        this.setbooksize(form.get('book_size'), customx, customy);        
+        this.setbooksize(form.get('book_size'), customx, customy);
 
     }
 
@@ -122,7 +120,7 @@ export class Book {
         let pagetotal = this.orderedpages.length;
 
         //     calculate how many sheets of paper the output document needs
-       let  sheets = Math.floor(pagetotal / 4);
+        let sheets = Math.floor(pagetotal / 4);
 
         //      pad out end of document if necessary
         if (pagetotal % 4 > 0) {
@@ -160,12 +158,7 @@ export class Book {
         this.zip = new JSZip();
 
         this.filename = this.inputpdf.replace(/\s|,|\.pdf/, '');
-        // this.filename = path.basename(this.inputpdf, '.pdf').replace(/\s|,/, '');
-        // this.directoryname = this.filename + '-files';
-        // if (!this.outputdir) {
-        //     this.outputdir = path.dirname(this.inputpdf);
-        // }
-        // this.outputpath = path.join(this.outputdir, this.directoryname);
+
 
         if (this.format == 'booklet') {
             await this.createsignatures(this.rearrangedpages, 'booklet');
@@ -174,77 +167,63 @@ export class Book {
         } else if (this.format == 'standard' || this.format == 'custom') {
             const forLoop = async _ => {
                 for (let i = 0; i < this.rearrangedpages.length; i++) {
-                let page = this.rearrangedpages[i];
-                await this.createsignatures(page, `signature${i}`);
-            }
-           
-        };
-        forLoop().then( _ => this.saveZip());
+                    let page = this.rearrangedpages[i];
+                    await this.createsignatures(page, `signature${i}`);
+                }
+
+            };
+            forLoop().then(_ => this.saveZip());
         }
     }
 
 
     async writepages(outname, pagelist, side2flag) {
-        console.log("writing " + outname);
 
         let side = 'front';
         let imposedpage = 'left';
 
         const outPDF = await PDFDocument.create();
         let currPage = null;
-        this.ch_chain = Promise.resolve();
+        const embeddedPages = await outPDF.embedPdf(this.currentdoc, pagelist);
 
-        const forLoop = async _ => {
-            for (let i = 0; i < pagelist.length; i++) {
-                let pagenumber = pagelist[i];
+        for (let i = 0; i < pagelist.length; i++) {
+            let pagenumber = pagelist[i];
+            let embeddedPage = embeddedPages[i];
 
+            if (i % 2 == 0) {
+                currPage = outPDF.addPage([this.papersize[0], this.papersize[1]]);
+            }
+            ////	scaling code here
+            if (pagenumber == 'b') {
+                // blank page, move on.
+            } else {
                 if (i % 2 == 0) {
-                    currPage = outPDF.addPage([this.papersize[0], this.papersize[1]]);
-                }
-                ////	scaling code here
-                if (pagenumber == 'b') {
-                    // blank page, move on.
-                } else {
-                    if (i % 2 == 0) {
-                        imposedpage = 'left';
-    
-                        if (side2flag || ((i + 2) % 4 == 0 && this.duplex)) {
-                            side = 'back';
-                        } else {
-                            side = 'front';
-                        }
-                    } else {
-                        imposedpage = 'right';
-                    }
-                    //print 'adding page'
-                    const [baseline, leftstart, scale1, scale2, rotate] =  this.calculateposition(pagenumber, imposedpage, side);
+                    imposedpage = 'left';
 
-                    // let pageTransform = buildTransform(scale1, scale2, leftstart, baseline, 90, 0, 0)
-                    const [embeddedPage] = await outPDF.embedPdf(this.currentdoc, [pagenumber]);
-                        currPage.drawPage(embeddedPage, {y: leftstart, x: baseline, xScale: scale1, yScale: scale2, rotate: degrees(rotate)});
-    
+                    if (side2flag || ((i + 2) % 4 == 0 && this.duplex)) {
+                        side = 'back';
+                    } else {
+                        side = 'front';
+                    }
+                } else {
+                    imposedpage = 'right';
+                }
+                //print 'adding page'
+                const [baseline, leftstart, scale1, scale2, rotate] = this.calculateposition(pagenumber, imposedpage, side);
+
+                // let pageTransform = buildTransform(scale1, scale2, leftstart, baseline, 90, 0, 0)
+                // const [embeddedPage] = await outPDF.embedPdf(this.currentdoc, [pagenumber]);
+                currPage.drawPage(embeddedPage, { y: leftstart, x: baseline, xScale: scale1, yScale: scale2, rotate: degrees(rotate) });
+
             }
         }
-    };
 
 
-        return forLoop().then( _ => {
-            return outPDF.save().then( pdfBytes => {
-                 this.zip.file(outname, pdfBytes);
-                 console.log(this.zip.files.length);
-            //    console.log(this.outputpath);
-            //    fs.mkdir(this.outputpath, { recursive: true }, (err) => {
-            //     if (err) throw err;
-            //     fs.writeFile(outname, pdfBytes, (err) => {
-            //       if (err) throw err;
-            //       console.log('The file has been saved!');
-            //     });
-            //   });
+        return outPDF.save().then(pdfBytes => {
+            this.zip.file(outname, pdfBytes);
 
-            }
-
-            );
-        });
+        }
+        );
 
     }
 
@@ -256,8 +235,8 @@ export class Book {
         let pagex = cropbox.width;
         let pagey = cropbox.height;
 
-        let targetratio = this.booksize[1] / this.booksize[0]  ;         //       targetpage ratio
-        let inputratio = pagey / pagex   ;                               //       inputpage ratio
+        let targetratio = this.booksize[1] / this.booksize[0];         //       targetpage ratio
+        let inputratio = pagey / pagex;                               //       inputpage ratio
         let sx = 1;
         let sy = 1;
         let rotate = -90;
@@ -288,7 +267,7 @@ export class Book {
 
         let centreline = sheetheight * 0.5;              //       centreline of page
         let xpad = (sheetwidth - bookheight) / 2.0;        //       gap above and below imposed page
-        let ypad = centreline - bookwidth ;              //       gap to side of imposed page
+        let ypad = centreline - bookwidth;              //       gap to side of imposed page
         let baseline = null;
         let leftstart = null;
         let xoffset = cropbox.x * sx;
@@ -311,10 +290,10 @@ export class Book {
         } else if (side == 'back') {
             //print side,pagenumber
             rotate = 90;
-            baseline = sheetwidth - xpad ;                 	// x translation for 2up 
+            baseline = sheetwidth - xpad;                 	// x translation for 2up 
 
             if (imposedpage == 'left') {
-                leftstart = ypad + this.spineoffset	;	// y translation for top page
+                leftstart = ypad + this.spineoffset;	// y translation for top page
             } else if (imposedpage == 'right') {
                 leftstart = centreline - this.spineoffset;	// y translation for bottom page
             }
@@ -339,8 +318,8 @@ export class Book {
             //      the sheets over, then print the second. damned inconvenient
             // let outname1 = this.outputpath + '/' + id + 'side1.pdf';
             // let outname2 = this.outputpath + '/' + id + 'side2.pdf';
-            let outname1 =  id + 'side1.pdf';
-            let outname2 =  id + 'side2.pdf';
+            let outname1 = id + 'side1.pdf';
+            let outname2 = id + 'side2.pdf';
 
             await this.writepages(outname1, pages[0], 0);
             await this.writepages(outname2, pages[1], 1);
@@ -353,9 +332,8 @@ export class Book {
     }
 
     saveZip() {
-        return this.zip.generateAsync({type: "blob"})
+        return this.zip.generateAsync({ type: "blob" })
             .then(blob => {
-                console.log("saving");
                 saveAs(blob, this.filename + ".zip");
             });
     }
