@@ -2,6 +2,7 @@ import { Book, pagesizes } from './book.js';
 window.addEventListener('DOMContentLoaded', () => {
 
   const paperlist = document.getElementById('paper_size');
+  const generate = document.getElementById("generate");
   Object.keys(pagesizes).forEach(key => {
     let opt = document.createElement('option');
     opt.setAttribute('value', key);
@@ -29,20 +30,24 @@ window.addEventListener('DOMContentLoaded', () => {
     document.querySelector('#input_file').addEventListener('change', function(e) {
       let filelist = e.target.files;
       if (filelist.length > 0) {
-        // let path = filelist[0].path;
         let updated = book.openpdf(filelist[0]);
         updated.then(_ => updateForm());
       }
     });
 
-    document.getElementById("generate").addEventListener('click', (e) => {
-      e.target.setAttribute('disabled', true);
-      e.target.innerText = "Generating, this may take a little while...";
+    generate.addEventListener('click', (e) => {
+      generate.setAttribute('disabled', true);
+      generate.innerText = "Generating, this may take a little while...";
       let result = book.createoutputfiles();
+      result.then(_ => {
+        generate.removeAttribute('disabled');
+        generate.innerText = "Generate Output";
+      })
 
     });
 
     function updateForm() {
+      generate.removeAttribute('disabled');
       book.createpages();
       document.getElementById("page_count").innerText = book.pagecount;
 
