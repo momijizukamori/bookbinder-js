@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8"> <!-- https://developer.mozilla.org/en-US/docs/Web/HTTP/CSP -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'">
+    <meta http-equiv="X-Content-Security-Policy" content="default-src 'self'; script-src 'self'">
+    <title>Bookbinder</title>
+    <link rel="stylesheet" type="text/css" href="./styles.css">
+    <script  type="text/javascript" src="./preload.js"></script>
+</head>
+
+<body>
+    <form id="bookbinder" name="bookbinder">
+        <div class="section" id="input">
+            <h2>File Info</h2>
+            <span class="row"><label>Input File: <input type="file" name="input_file" accept=".pdf" id="input_file"></label></span>
+            <!-- <span class="row"><label>Page Size: <span id="page_size"></span></span> -->
+            <span class="row">No of Pages: <span id="page_count"></span></span>
+            <!-- <span class="row">Page Ratio: <span id="input_ratio"></span></span> -->
+            <label>Output Folder: <input type="text" name="output_folder"></label>
+        </div>
+
+        <!-- <div class="section" id="units">
+            <h2>Units</h2>
+            <span class="row"><input type="radio" id="inch" name="units" value="inch">
+                <label for="inch">Inches</label></span>
+            <span class="row"><input type="radio" id="mm" name="units" value="mm" checked>
+                <label for="mm">Millimeters</label></span>
+            <span class="row"><input type="radio" id="pt" name="units" value="pt">
+                <label for="pt">Points</label></span>
+        </div> -->
+
+        <div class="section" id="printer_info">
+            <h2>Printer</h2>
+            <span class="row"><label for="paper_size">Paper size</label>
+                <select name="paper_size" id="paper_size">
+                </select></span>
+
+            <span class="row"><label for="printer_type">Printer type</label>
+                <select name="printer_type" id="printer_type">
+                <option value="single" selected>Single-Sided</option>
+                    <option value="duplex">Duplex</option>
+                </select></span>
+
+            <span class="row"> <label>Alternate Page Rotation <input type="checkbox" name="rotate_page" checked></label></span>
+            <!-- <span class="row"> <label>Double pages per sheet <input type="checkbox" name="double_page"></label></span> -->
+
+        </div>
+
+        <div class="section" id="book_size">
+            <h2>Book Size</h2>
+            <span class="row"><input type="radio" id="standard" name="book_size" value="standard">
+                <label for="standard">Standard Paperback</label></span>
+            <span class="row"><input type="radio" id="large" name="book_size" value="large">
+                <label for="large">Large format paperback</label></span>
+            <span class="row"><input type="radio" id="full" name="book_size" value="full" checked>
+                <label for="full">Full paper size</label></span>
+            <span class="row"><input type="radio" id="custom" name="book_size" value="custom">
+                <label for="custom">Custom</label></span>
+            <div id="custom_size">
+                <label>Width <input type="text" name="custom_width"></label>
+                <label>Height <input type="text" name="custom_height"></label>
+            </div>
+
+            <span class="row"> <label for="page_scaling">Page scaling</label>
+                <select name="page_scaling" id="page_scaling">
+                    <option value="lockratio" selected>Keep proportional</option>
+                    <option value="stretch">Stretch to fit</option>
+                </select>
+
+        </div>
+
+        <div class="section" id="flyleaf_info">
+            <h2>Flyleaf</h2>
+            <span class="row"> <label>Add flyleaf <input type="checkbox" name="flyleaf"></label></span>
+
+        </div>
+
+        <div class="section" id="sig_format">
+            <h2>Signature Format</h2>
+
+            <span class="row"><label>Default signature length: </label><input type="text" placeholder="8" name="sig_length"></label></span>
+            <!-- <span class="row"> <input type="radio" id="booklet" name="sig_format" value="booklet">
+                <label for="booklet">Booklet</label></span> -->
+            <span class="row"> <input type="radio" id="perfect" name="sig_format" value="perfect">
+                <label for="perfect">Perfectbound</label></span>
+            <span class="row"> <input type="radio" id="standard" name="sig_format" value="standard" checked>
+                <label for="standard">Standard signatures</label></span>
+            <span class="row"> <input type="radio" id="custom" name="sig_format" value="custom">
+                <label for="custom">Custom signatures</label> <input type="text" name="custom_sig">
+            <!-- <div id="custom_sig">
+                <input type="text" name="custom_sig">
+            </div> -->
+            </span>
+        </div>
+
+        <div class="section" id="sig_info">
+            <h2>Signature Info</h2>
+            <span class="row">Total Pages: <span id="total_pages"></span></span>
+            <span class="row">Total Sheets: <span id="total_sheets"></span></span>
+            <span class="row">No of Signatures: <span id="sig_count"></span></span>
+            <span class="row">Signature Arrangement: <span id="sig_arrange"></span></span>
+        </div>
+        <center><button type="Button" name="generate" id="generate">Generate Output</button></center>
+    </form>
+</body>
+
+</html>

@@ -1,0 +1,20 @@
+{
+  "name": "bookbinder",
+  "version": "1.0.0",
+  "description": "An app to rearrange PDF pages for printing for bookbinding",
+  "main": "main.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "momijizukamori@gmail.com",
+  "license": "MPL",
+  "devDependencies": {
+    "webpack": "^5.50.0",
+    "webpack-cli": "^4.8.0"
+  },
+  "dependencies": {
+    "file-saver": "^2.0.5",
+    "jszip": "^3.7.1",
+    "pdf-lib": "^1.16.0"
+  }
+}
