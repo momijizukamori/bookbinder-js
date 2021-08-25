@@ -171,9 +171,11 @@ export class Book {
                     await this.createsignatures(page, `signature${i}`);
                 }
 
-            };
-            forLoop().then(_ => this.saveZip());
+            }
+            await forLoop();
+           //return forLoop().then(_ => this.saveZip());
         }
+        return this.saveZip();
     }
 
 

@@ -1,12 +1,13 @@
-html {font-family: Helvetica, Arial, sans-serif}
+html {font-family: Helvetica, Arial, sans-serif;}
 
 .section {border: 1px solid black;
     padding: 0.5em;
-    margin: 0.5em;
+    margin: 0.5em auto;
+    width: 45%;
 }
 
 h2 {margin-top: 0;}
 
 .row{display: block}
 
-button {font-size: 1.5em;}
+button {font-size: 1.5em; clear: both;}
