@@ -95,11 +95,13 @@ export class Book {
 
         //FIXME: dumb hack because you can't embed blank pdf pages without errors.
         pages.forEach(page => {
+            if (!page.node.Contents()){
             page.drawLine({
                 start: { x: 25, y: 75 },
                 end: { x: 125, y: 175 },
                 opacity: 0.0,
               });
+            }
         })
 
     }
