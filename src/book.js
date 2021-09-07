@@ -1,4 +1,4 @@
-import { PDFDocument, degrees } from 'pdf-lib';
+import { PDFDocument, degrees, rgb } from 'pdf-lib';
 import { saveAs } from 'file-saver';
 import { Signatures } from './signatures.js';
 import { Booklet } from './booklet.js';
@@ -91,6 +91,17 @@ export class Book {
         this.input = await file.arrayBuffer(); //fs.readFileSync(filepath);
         this.currentdoc = await PDFDocument.load(this.input);
         //TODO: handle pw-protected PDFs
+        const pages = this.currentdoc.getPages();
+
+        //FIXME: dumb hack because you can't embed blank pdf pages without errors.
+        pages.forEach(page => {
+            page.drawLine({
+                start: { x: 25, y: 75 },
+                end: { x: 125, y: 175 },
+                opacity: 0.0,
+              });
+        })
+
     }
 
     setbooksize(targetsize, customx, customy) {
@@ -186,7 +197,18 @@ export class Book {
 
         const outPDF = await PDFDocument.create();
         let currPage = null;
-        const embeddedPages = await outPDF.embedPdf(this.currentdoc, pagelist);
+        let filteredList = [];
+        let blankIndices = [];
+        pagelist.forEach((page, i) => {
+            if (page != 'b') {
+                filteredList.push(page);
+            } else {
+                blankIndices.push(i);
+            }
+        });
+
+        let embeddedPages = await outPDF.embedPdf(this.currentdoc, filteredList);
+        blankIndices.forEach(i => embeddedPages.splice(i, 0, 'b'));
 
         for (let i = 0; i < pagelist.length; i++) {
             let pagenumber = pagelist[i];

@@ -56,7 +56,7 @@ export class Signatures {
 		// Calculate signatures and points to split text into chunks
 
 		//      if document is longer than 192 pages, calculate number and length of signatures
-		if (this.sheets > 48) {
+		if (this.sheets > 12) {
 			this.sigconfig = this.generatesignatureindex();
 
 			//      if document is less than 192 pages use lookup table
