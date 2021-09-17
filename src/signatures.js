@@ -1,16 +1,5 @@
 import {Booklet} from './booklet.js';
 
-//      preset configurations for documents less than 192 pages
-const signatureconfigurations = [
-	[1], [1], [2], [3], [4], [5], [6], [7], [8], [9], [10], [11],
-	[12], [13], [14], [15], [16], [9, 8], [9, 9], [10, 9], [10, 10],
-	[7, 7, 7], [8, 7, 7], [8, 8, 7], [8, 8, 8], [9, 8, 8], [9, 9, 8], [9, 9, 9],
-	[7, 7, 7, 7], [8, 7, 7, 7], [8, 8, 7, 7], [8, 8, 8, 7], [8, 8, 8, 8], [9, 8, 8, 8],
-	[9, 9, 8, 8], [7, 7, 7, 7, 7], [8, 7, 7, 7, 7], [8, 8, 7, 7, 7], [8, 8, 8, 7, 7],
-	[8, 8, 8, 8, 7], [8, 8, 8, 8, 8], [9, 8, 8, 8, 8], [7, 7, 7, 7, 7, 7], [8, 7, 7, 7, 7, 7],
-	[8, 8, 7, 7, 7, 7], [8, 8, 8, 7, 7, 7], [8, 8, 8, 8, 7, 7], [8, 8, 8, 8, 8, 7], [8, 8, 8, 8, 8, 8]
-];
-
 export class Signatures {
 
 	// Takes a list of pagenumbers, splits them evenly, then rearranges the pages in each chunk.
@@ -53,17 +42,7 @@ export class Signatures {
 	}
 	createsigconfig() {
 
-		// Calculate signatures and points to split text into chunks
-
-		//      if document is longer than 192 pages, calculate number and length of signatures
-		if (this.sheets > 12) {
-			this.sigconfig = this.generatesignatureindex();
-
-			//      if document is less than 192 pages use lookup table
-		} else {
-
-			this.sigconfig = signatureconfigurations[this.sheets];
-		}
+		this.sigconfig = signatureconfigurations[this.sheets];
 		this.pagelist = [];
 		this.signaturepagelists = [];
 
