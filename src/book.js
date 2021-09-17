@@ -27,7 +27,6 @@ export class Book {
 
         this.inputpdf = null;    //  string with pdf filepath
         this.password = null;    //  if necessary
-        this.outputdir = null;
 
         this.duplex = false; //FIXME
         this.duplexrotate = true;
@@ -47,7 +46,6 @@ export class Book {
         this.pagecount = null;
         this.cropbox = null;
 
-        this.directoryname = null;
         this.orderedpages = [];      //  ordered list of page numbers (consecutive)
         this.rearrangedpages = [];      //  reordered list of page numbers (signatures etc.)
         this.filelist = [];      //  list of ouput filenames and path
@@ -62,7 +60,6 @@ export class Book {
         this.lockratio = form.get("page_scaling") == 'lockratio';
         this.flyleaf = form.has('flyleaf');
         this.format = form.get('sig_format');
-        this.outputdir = form.get('output_folder');
         let siglength = parseInt(form.get('sig_length'), 10);
         if (!isNaN(siglength)) {
             this.sigsize = siglength;

@@ -3,6 +3,11 @@ window.addEventListener('DOMContentLoaded', () => {
 
   const paperlist = document.getElementById('paper_size');
   const generate = document.getElementById("generate");
+  const settings = window.localStorage;
+  let bookbinderForm = document.getElementById('bookbinder');
+  loadForm();
+
+
   Object.keys(pagesizes).forEach(key => {
     let opt = document.createElement('option');
     opt.setAttribute('value', key);
@@ -17,10 +22,11 @@ window.addEventListener('DOMContentLoaded', () => {
     let inputs = document.querySelectorAll('input, select');
     inputs.forEach(input => {
       input.addEventListener('change', function() {
-        let bookbinderForm = document.getElementById('bookbinder');
         let formData = new FormData(bookbinderForm);
 
        book.update(formData);
+       saveForm(formData);
+
        if (book.inputpdf) {
          updateForm();
        }
@@ -60,5 +66,34 @@ window.addEventListener('DOMContentLoaded', () => {
         list.forEach( sublist => output_pages += sublist.length);
       });
       document.getElementById("total_pages").innerText = output_pages;
+    }
+
+    function saveForm(formData) {
+      let result = (({ duplex, duplexrotate, format, sigsize, lockratio }) => ({ duplex, duplexrotate, format, sigsize, lockratio }))(book);
+      result.papersize = formData.get('paper_size');
+      settings.setItem('bookbinderSettings', JSON.stringify(result));
+    }
+
+    function loadForm(){
+      const bookSettings = JSON.parse(settings.getItem('bookbinderSetings'));
+      console.log(settings.getItem('bookbinderSetings'));
+      if (bookSettings) {
+        if (bookSettings.duplex) {
+          document.querySelector('#printer_type > option[value="duplex"]').setAttribute('selected', "");
+          document.querySelector('#printer_type > option[value="single"]').removeAttribute('selected');
+        } else {
+          document.querySelector('#printer_type > option[value="single"]').setAttribute('selected', "");
+          document.querySelector('#printer_type > option[value="duplex"]').removeAttribute('selected');
+        }
+        if (bookSettings.duplexrotate) {
+          document.querySelector('input[name="rotate_page"').setAttribute('checked', "");
+        } else {
+          document.querySelector('input[name="rotate_page"').removeAttribute('checked');
+        }
+  
+        document.getElementById(bookSettings.format).setAttribute('checked', "");
+        document.querySelector('input[name="sig_length').setAttribute('value', bookSettings.sigsize);
+      }
+
     }
   });
