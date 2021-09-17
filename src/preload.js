@@ -112,6 +112,8 @@ window.addEventListener('DOMContentLoaded', () => {
         document.querySelector('input[name="sig_length').setAttribute('value', bookSettings.sigsize);
       } catch(error) {
         console.log(error);
+        // Clean up potentially bad settings
+        settings.removeItem(storageKey);
       }
     }
     }
