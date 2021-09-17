@@ -35,7 +35,7 @@ export class Book {
         this.lockratio = true;
         this.flyleaf = false;
         this.spineoffset = false;
-        this.format = 'standard';
+        this.format = 'standardsig';
         this.booksize = [null, null];
         this.sigsize = 8;       //  preferred signature size
         this.customsig = null;
@@ -64,7 +64,7 @@ export class Book {
         if (!isNaN(siglength)) {
             this.sigsize = siglength;
         }
-        this.customsig = this.format == 'custom';
+        this.customsig = this.format == 'customsig';
         if (this.customsig) {
             this.signatureconfig = [];
             let format = form.get('custom_sig');
@@ -148,7 +148,7 @@ export class Book {
             this.book = new Booklet(this.orderedpages, this.duplex);
         } else if (this.format == 'perfect') {
             this.book = new PerfectBound(this.orderedpages, this.duplex);
-        } else if (this.format == 'standard' || this.format == 'custom') {
+        } else if (this.format == 'standardsig' || this.format == 'customsig') {
             this.book = new Signatures(this.orderedpages, this.duplex, this.sigsize);
 
             if (this.customsig) {
@@ -174,7 +174,7 @@ export class Book {
             await this.createsignatures(this.rearrangedpages, 'booklet');
         } else if (this.format == 'perfect') {
             await this.createsignatures(this.rearrangedpages, 'perfect');
-        } else if (this.format == 'standard' || this.format == 'custom') {
+        } else if (this.format == 'standardsig' || this.format == 'customsig') {
             const forLoop = async _ => {
                 for (let i = 0; i < this.rearrangedpages.length; i++) {
                     let page = this.rearrangedpages[i];
