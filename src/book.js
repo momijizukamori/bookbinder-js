@@ -22,6 +22,15 @@ const targetbooksize = {
     'large': [368.5, 558.5]
 };
 
+// Pages in these layouts are assumed to be already reordered. Layout should go left to right, top to bottom.
+// Values are the degree of rotation from a portrait offset needed to re-impose this on a portrait-oriented page,
+// and should only need to be specified for one side.
+const page_layouts = {
+    4:[[-90 -90]],
+    8:[[-180, -180], [0, 0]], 
+    16:[[-90, 90], [-90, 90], [-90, 90], [-90, 90]]
+}
+
 export class Book {
     constructor() {
 
@@ -50,6 +59,7 @@ export class Book {
         this.rearrangedpages = [];      //  reordered list of page numbers (signatures etc.)
         this.filelist = [];      //  list of ouput filenames and path
         this.zip = null;
+        this.per_sheet = 4; //number of pages to print per sheet.
     }
 
     update(form) {
@@ -208,6 +218,18 @@ export class Book {
 
         let embeddedPages = await outPDF.embedPdf(this.currentdoc, filteredList);
         blankIndices.forEach(i => embeddedPages.splice(i, 0, 'b'));
+
+        let block_start = 0;
+        const offset = this.per_sheet / 2;
+        let block_end = offset;
+    
+        while (block_end < pagelist.length) {
+            let block = pagelist.slice(block_start, block_end);
+
+
+            block_start += offset;
+            block_end += offset;
+        }
 
         for (let i = 0; i < pagelist.length; i++) {
             let pagenumber = pagelist[i];
