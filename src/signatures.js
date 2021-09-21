@@ -40,6 +40,14 @@ export class Signatures {
 
 		this.splitpagelist();
 	}
+	createsigconfig() {
+
+		this.sigconfig = this.generatesignatureindex();
+		this.pagelist = [];
+		this.signaturepagelists = [];
+
+		this.splitpagelist();
+	}
 
 	splitpagelist() {
 		let point = 0;
