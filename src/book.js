@@ -26,9 +26,9 @@ const targetbooksize = {
 // Values are the degree of rotation from a portrait offset needed to re-impose this on a portrait-oriented page,
 // and should only need to be specified for one side.
 const page_layouts = {
-    4:[[-90 -90]],
-    8:[[-180, -180], [0, 0]], 
-    16:[[-90, 90], [-90, 90], [-90, 90], [-90, 90]]
+    4:{rotations:[[-90], [-90]], landscape: true, rows: 2, cols: 1},
+    8:{rotations: [[-180, -180], [0, 0]], landscape: false, rows: 2, cols: 2}, 
+    16:{rotations: [[-90, 90], [-90, 90], [-90, 90], [-90, 90]], landscape: true, rows: 4, cols: 2}
 }
 
 export class Book {
@@ -59,7 +59,7 @@ export class Book {
         this.rearrangedpages = [];      //  reordered list of page numbers (signatures etc.)
         this.filelist = [];      //  list of ouput filenames and path
         this.zip = null;
-        this.per_sheet = 4; //number of pages to print per sheet.
+        this.per_sheet = 16; //number of pages to print per sheet.
     }
 
     update(form) {
@@ -108,6 +108,10 @@ export class Book {
                 end: { x: 125, y: 175 },
                 opacity: 0.0,
               });
+            } else {
+                if (!this.cropbox) {
+                    this.cropbox = page.getCropBox();
+                }
             }
         })
 
@@ -140,12 +144,12 @@ export class Book {
         let pagetotal = this.orderedpages.length;
 
         //     calculate how many sheets of paper the output document needs
-        let sheets = Math.floor(pagetotal / 4);
+        let sheets = Math.floor(pagetotal / this.per_sheet);
 
         //      pad out end of document if necessary
-        if (pagetotal % 4 > 0) {
+        if (pagetotal % this.per_sheet > 0) {
             sheets += 1;
-            let padding = (sheets * 4) - pagetotal;
+            let padding = (sheets * this.per_sheet) - pagetotal;
             for (let i = 0; i < padding; i++) {
                 this.orderedpages.push('b');
             }
@@ -222,46 +226,59 @@ export class Book {
         let block_start = 0;
         const offset = this.per_sheet / 2;
         let block_end = offset;
+
+        let positions = this.calculatelayout();
+        console.log(positions);
     
         while (block_end < pagelist.length) {
-            let block = pagelist.slice(block_start, block_end);
+            let block = embeddedPages.slice(block_start, block_end);
+            currPage = outPDF.addPage([this.papersize[0], this.papersize[1]]);
+
+            block.forEach((page, i) => {
+                if (page == 'b') {
+                    // blank page, move on.
+                } else {
+                    let pos = positions[i];
+                    currPage.drawPage(page, { y: pos.y, x: pos.x, xScale: pos.sx, yScale: pos.sy, rotate: degrees(pos.rotation) });
+                }
+            })
 
 
             block_start += offset;
             block_end += offset;
         }
 
-        for (let i = 0; i < pagelist.length; i++) {
-            let pagenumber = pagelist[i];
-            let embeddedPage = embeddedPages[i];
+        // for (let i = 0; i < pagelist.length; i++) {
+        //     let pagenumber = pagelist[i];
+        //     let embeddedPage = embeddedPages[i];
 
-            if (i % 2 == 0) {
-                currPage = outPDF.addPage([this.papersize[0], this.papersize[1]]);
-            }
-            ////	scaling code here
-            if (pagenumber == 'b') {
-                // blank page, move on.
-            } else {
-                if (i % 2 == 0) {
-                    imposedpage = 'left';
+        //     if (i % 2 == 0) {
+        //         currPage = outPDF.addPage([this.papersize[0], this.papersize[1]]);
+        //     }
+        //     ////	scaling code here
+        //     if (pagenumber == 'b') {
+        //         // blank page, move on.
+        //     } else {
+        //         if (i % 2 == 0) {
+        //             imposedpage = 'left';
 
-                    if (side2flag || ((i + 2) % 4 == 0 && this.duplex)) {
-                        side = 'back';
-                    } else {
-                        side = 'front';
-                    }
-                } else {
-                    imposedpage = 'right';
-                }
-                //print 'adding page'
-                const [baseline, leftstart, scale1, scale2, rotate] = this.calculateposition(pagenumber, imposedpage, side);
+        //             if (side2flag || ((i + 2) % 4 == 0 && this.duplex)) {
+        //                 side = 'back';
+        //             } else {
+        //                 side = 'front';
+        //             }
+        //         } else {
+        //             imposedpage = 'right';
+        //         }
+        //         //print 'adding page'
+        //         const [baseline, leftstart, scale1, scale2, rotate] = this.calculateposition(pagenumber, imposedpage, side);
 
-                // let pageTransform = buildTransform(scale1, scale2, leftstart, baseline, 90, 0, 0)
-                // const [embeddedPage] = await outPDF.embedPdf(this.currentdoc, [pagenumber]);
-                currPage.drawPage(embeddedPage, { y: leftstart, x: baseline, xScale: scale1, yScale: scale2, rotate: degrees(rotate) });
+        //         // let pageTransform = buildTransform(scale1, scale2, leftstart, baseline, 90, 0, 0)
+        //         // const [embeddedPage] = await outPDF.embedPdf(this.currentdoc, [pagenumber]);
+        //         currPage.drawPage(embeddedPage, { y: leftstart, x: baseline, xScale: scale1, yScale: scale2, rotate: degrees(rotate) });
 
-            }
-        }
+        //     }
+        // }
 
 
         return outPDF.save().then(pdfBytes => {
@@ -272,6 +289,79 @@ export class Book {
 
     }
 
+    calculatelayout(){
+        let pagex = this.cropbox.width;
+        let pagey = this.cropbox.height;
+
+
+        let sheetwidth = this.papersize[0];
+        let sheetheight = this.papersize[1];
+
+        let layout = page_layouts[this.per_sheet];   
+
+        // Calculate the size of each page box on the sheet
+        let finalx = sheetwidth / layout.cols;
+        let finaly = sheetheight / layout.rows;
+       
+        // if pages are rotated a quarter-turn in this layout, we need to swap the width and height measurements
+        if (layout.landscape) {
+            pagex = this.cropbox.height;
+            pagey = this.cropbox.width;
+        }
+
+        let targetratio = finaly / finalx;
+        let inputratio = pagey / pagex;                               //       inputpage ratio
+        let sx = 1;
+        let sy = 1;
+
+        //      Keep the page proportions (lockratio=1) or stretch to fit target page (lockratio=0)
+        if (this.lockratio) {
+            let scale = 1;
+            if (targetratio > inputratio) {
+                //       input page is fatter than target page - scale with width
+                scale = finalx / pagex;
+            } else {
+                //       input page is thinner than target page - scale with height
+                scale = finaly / pagey;
+            }
+            sx = scale;
+            sy = scale;
+
+        } else {
+            sx = finalx / pagex;
+            sy = finaly / pagey;
+        }
+
+        let bookheight = pagey * sy;            //       height of imposed page
+        let bookwidth = pagex * sx;             //       width of imposed page
+
+        let xpad = (finalx - bookwidth) / 2.0;        //       gap above and below imposed page
+        let ypad = (finaly - bookheight) / 2.0;            //       gap to side of imposed page
+
+        let xoffset = this.cropbox.x * sx;
+        let yoffset = this.cropbox.y * sy;
+
+        let positions = []
+
+        layout.rotations.forEach((row, i) => {
+            row.forEach((col, j) => {
+                let x = j * finalx + xpad + xoffset;
+                let y = ((i * finaly) + ypad + yoffset);
+                if ([-90, -180].includes(col)) {
+                    y += finaly;
+                }
+
+                if ([-180, 90].includes(col)) {
+                    x += finalx;
+                }
+
+                positions.push({rotation: col, sx: sx, sy: sy, x: x, y: y})
+
+            })
+        })
+        return positions;
+    }
+
     calculateposition(pagenumber, imposedpage, side) {
         //     calculate scaling, and the x and y translation values for the 2up output
         let page = this.currentdoc.getPage(pagenumber);
@@ -280,7 +370,9 @@ export class Book {
         let pagex = cropbox.width;
         let pagey = cropbox.height;
 
-        let targetratio = this.booksize[1] / this.booksize[0];         //       targetpage ratio
+
+
+        let targetratio = this.booksize[1] / this.booksize[0];        //       targetpage ratio
         let inputratio = pagey / pagex;                               //       inputpage ratio
         let sx = 1;
         let sy = 1;
