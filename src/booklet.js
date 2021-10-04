@@ -35,6 +35,7 @@ export class Booklet{
 			let front_block = pages.slice(front_start, front_end)
 			let back_block = pages.slice(back_start, back_end)
 			let block = [...front_block, ...back_block];
+			console.log(block);
 
 			front_config.forEach(pnum => {
 				let page = block[pnum - 1]; //page layouts are 1-indexed, not 0-index
