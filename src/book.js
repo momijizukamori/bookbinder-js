@@ -163,7 +163,7 @@ export class Book {
         } else if (this.format == 'perfect') {
             this.book = new PerfectBound(this.orderedpages, this.duplex);
         } else if (this.format == 'standardsig' || this.format == 'customsig') {
-            this.book = new Signatures(this.orderedpages, this.duplex, this.sigsize);
+            this.book = new Signatures(this.orderedpages, this.duplex, this.sigsize, this.per_sheet);
 
             if (this.customsig) {
                 this.book.setsigconfig(this.signatureconfig);
@@ -229,9 +229,11 @@ export class Book {
 
         let positions = this.calculatelayout();
         console.log(positions);
+        console.log(embeddedPages);
     
-        while (block_end < pagelist.length) {
+        while (block_end <= pagelist.length) {
             let block = embeddedPages.slice(block_start, block_end);
+            console.log(block);
             currPage = outPDF.addPage([this.papersize[0], this.papersize[1]]);
 
             block.forEach((page, i) => {
