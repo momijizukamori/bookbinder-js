@@ -44,9 +44,9 @@ const targetbooksize = {
 // Values are the degree of rotation from a portrait offset needed to re-impose this on a portrait-oriented page,
 // and should only need to be specified for one side.
 const page_layouts = {
-    4:{rotations:[[-90], [-90]], landscape: true, rows: 2, cols: 1},
-    8:{rotations: [[-180, -180], [0, 0]], landscape: false, rows: 2, cols: 2}, 
-    16:{rotations: [[-90, 90], [-90, 90], [-90, 90], [-90, 90]], landscape: true, rows: 4, cols: 2}
+    folio:{rotations:[[-90], [-90]], landscape: true, rows: 2, cols: 1, per_sheet: 4},
+    quarto:{rotations: [[-180, -180], [0, 0]], landscape: false, rows: 2, cols: 2, per_sheet: 8}, 
+    octavo:{rotations: [[-90, 90], [-90, 90], [-90, 90], [-90, 90]], landscape: true, rows: 4, cols: 2, per_sheet: 16}
 }
 
 class Book {
@@ -77,7 +77,8 @@ class Book {
         this.rearrangedpages = [];      //  reordered list of page numbers (signatures etc.)
         this.filelist = [];      //  list of ouput filenames and path
         this.zip = null;
-        this.per_sheet = 16; //number of pages to print per sheet.
+        this.page_layout = page_layouts.folio;
+        this.per_sheet = 4; //number of pages to print per sheet.
     }
 
     update(form) {
@@ -105,9 +106,9 @@ class Book {
 
         }
 
-        let customx = form.get('custom_width') || 0;
-        let customy = form.get('custom_height') || 0;
-        this.setbooksize(form.get('book_size'), customx, customy);
+        this.booksize = [this.papersize[1] * 0.5, this.papersize[0]];
+        this.page_layout = page_layouts[form.get('pagelayout')];
+        this.per_sheet = this.page_layout.per_sheet;
 
     }
 
@@ -317,7 +318,7 @@ class Book {
         let sheetwidth = this.papersize[0];
         let sheetheight = this.papersize[1];
 
-        let layout = page_layouts[this.per_sheet];   
+        let layout = this.page_layout;   
 
         // Calculate the size of each page box on the sheet
         let finalx = sheetwidth / layout.cols;
@@ -30263,8 +30264,9 @@ __webpack_require__.r(__webpack_exports__);
 
 const page_layouts = {
 	4: {front: [2, 3], back: [4, 1]},
-	8: {front: [1, 8, 4, 5], back: [7, 2, 6, 3 ]},
-	16: {front:[12, 13, 5, 11, 8, 1, 9, 16], back: [14, 11, 3, 6, 2, 7, 15, 10]}
+	8: {front: [8, 1, 5, 4], back: [7, 2, 6, 3 ]},
+	// 16: {front:[12, 13, 5, 11, 8, 1, 9, 16], back: [14, 11, 3, 6, 2, 7, 15, 10]}
+	16: {front:[13, 12, 11, 5, 1, 8, 16, 9], back: [14, 11, 3, 6, 2, 7, 15, 10]}
 }
 
 class Booklet{
@@ -30566,7 +30568,7 @@ window.addEventListener('DOMContentLoaded', () => {
     function saveForm(formData) {
       let result = (({ duplex, duplexrotate, format, sigsize, lockratio }) => ({ duplex, duplexrotate, format, sigsize, lockratio }))(book);
       result.papersize = formData.get('paper_size');
-      result.booksize = formData.get('book_size');
+      result.pagelayout = formData.get('pagelayout');
       settings.setItem(storageKey, JSON.stringify(result));
     }
 
@@ -30600,7 +30602,7 @@ window.addEventListener('DOMContentLoaded', () => {
        document.querySelector('option[value="'+ bookSettings.papersize + '"]').setAttribute('selected', "");
   
         document.getElementById(bookSettings.format).setAttribute('checked', "");
-        document.getElementById(bookSettings.booksize).setAttribute('checked', "");
+        document.getElementById(bookSettings.pagelayout).setAttribute('checked', "");
         document.querySelector('input[name="sig_length').setAttribute('value', bookSettings.sigsize);
       } catch(error) {
         console.log(error);
