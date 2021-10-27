@@ -74,7 +74,7 @@ window.addEventListener('DOMContentLoaded', () => {
     function saveForm(formData) {
       let result = (({ duplex, duplexrotate, format, sigsize, lockratio }) => ({ duplex, duplexrotate, format, sigsize, lockratio }))(book);
       result.papersize = formData.get('paper_size');
-      result.booksize = formData.get('book_size');
+      result.pagelayout = formData.get('pagelayout');
       settings.setItem(storageKey, JSON.stringify(result));
     }
 
@@ -108,7 +108,7 @@ window.addEventListener('DOMContentLoaded', () => {
        document.querySelector('option[value="'+ bookSettings.papersize + '"]').setAttribute('selected', "");
   
         document.getElementById(bookSettings.format).setAttribute('checked', "");
-        document.getElementById(bookSettings.booksize).setAttribute('checked', "");
+        document.getElementById(bookSettings.pagelayout).setAttribute('checked', "");
         document.querySelector('input[name="sig_length').setAttribute('value', bookSettings.sigsize);
       } catch(error) {
         console.log(error);

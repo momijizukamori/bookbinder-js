@@ -54,22 +54,28 @@
         </div>
 
         <div class="section" id="book_size">
-            <h2>Book Size</h2>
-            <span class="row"><input type="radio" id="standard" name="book_size" value="standard">
-                <label for="standard">Standard Paperback</label></span>
-            <span class="row"><input type="radio" id="large" name="book_size" value="large">
-                <label for="large">Large format paperback</label></span>
-            <span class="row"><input type="radio" id="full" name="book_size" value="full" checked>
-                <label for="full">Full paper size</label></span>
-            <span class="row"><input type="radio" id="custom" name="book_size" value="custom">
-                <label for="custom">Custom</label> - <label>Width <input type="number" name="custom_width"></label> x
-                <label>Height <input type="number" name="custom_height"></label></span>
+            <h2>Page Layout</h2>
+            <span class="row"><input type="radio" id="folio" name="pagelayout" value="folio" checked>
+                <label for="standard">Folio (two pages per side of sheet)</label></span>
+            <span class="row"><input type="radio" id="quarto" name="pagelayout" value="quarto">
+                <label for="large">Quarto (four pages per side of sheet)</label></span>
+            <span class="row"><input type="radio" id="octavo" name="pagelayout" value="octavo">
+                <label for="full">Octavo (eight pages per side of sheet)</label></span>
 
             <span class="row"> <label for="page_scaling">Page scaling</label>
                 <select name="page_scaling" id="page_scaling">
                     <option value="lockratio" selected>Keep proportional</option>
                     <option value="stretch">Stretch to fit</option>
                 </select>
+            </span>
+
+            <span class="row"> <label for="center_margins">Margins</label>
+                <select name="center_margins" id="center_margins">
+                    <option value="spine" selected>Preserve spine fold margin</option>
+                    <option value="center">Center</option>
+                </select>
+                <span data-balloon-length="medium" aria-label="If you have designed your input pdf with the intention of trimming printed pages down, you may wish to preserve the spine margin." data-balloon-pos="up">🛈</span>
+            </span>
 
         </div>
 
