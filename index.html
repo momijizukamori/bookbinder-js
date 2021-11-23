@@ -48,7 +48,7 @@
                 <span data-balloon-length="medium" aria-label="Duplex will alternate front and backs of sheets in a single file; Single-sided will split fronts and backs into seperate files." data-balloon-pos="up">🛈</span></span>
 
             <span class="row"> <label>Alternate Page Rotation <input type="checkbox" name="rotate_page"
-                        checked></label></span>
+                        disabled></label></span>
             <!-- <span class="row"> <label>Double pages per sheet <input type="checkbox" name="double_page"></label></span> -->
 
         </div>
@@ -61,6 +61,22 @@
                 <label for="large">Quarto (four pages per side of sheet)</label></span>
             <span class="row"><input type="radio" id="octavo" name="pagelayout" value="octavo">
                 <label for="full">Octavo (eight pages per side of sheet)</label></span>
+            
+            <span class="row">
+                <details>
+                    <summary>Folding instructions for quarto/octavo</summary>
+                    <p>
+                    Folding these two layouts is slightly more complex than the simple single-fold folio. 
+                    Both of these have been designed so that the first fold is parallel to the short edge of the paper - eg, if you hold the page in portrait orientation, you will be folding the top edge to the bottom.
+                    One side of the page will have consecutive numbers across this fold (ie, 3 and 30 on the top row, 2 and 31). Fold inward across this line (so that 3 has been folded to lay against 2, and 30 against 31).
+                    The next fold is along the other paper axis (parallel to the original long edge). For quarto, you want to find the side with the numbers closest together, and fold inwards to match them (this will be consecutive on the innermost sheet).
+                    For octavo, look at the bottom-most row and find the consecutive pair, then fold inward. Octavo has one last fold, for which you want to find the pair remaning that are closest, and fold them together.
+                </p><p>
+                    Or, if you want to just memorize the order, once you find the first fold side, the order is:<br>
+                    <b>quarto</b> - top to bottom, fold points away from you, left to right, fold points towards you.<br>
+                    <b>octavo</b> - top to bottom, fold points away from you, left to right, fold points away from you, top to bottom, fold points towards you.
+                </p>
+                </details></span>
 
             <span class="row"> <label for="page_scaling">Page scaling</label>
                 <select name="page_scaling" id="page_scaling">
@@ -70,7 +86,7 @@
             </span>
 
             <span class="row"> <label for="center_margins">Margins</label>
-                <select name="center_margins" id="center_margins">
+                <select name="center_margins" id="center_margins" disabled>
                     <option value="spine" selected>Preserve spine fold margin</option>
                     <option value="center">Center</option>
                 </select>

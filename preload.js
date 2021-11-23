@@ -78,7 +78,7 @@ class Book {
         this.filelist = [];      //  list of ouput filenames and path
         this.zip = null;
         this.page_layout = page_layouts.folio;
-        this.per_sheet = 4; //number of pages to print per sheet.
+        this.per_sheet = 8; //number of pages to print per sheet.
     }
 
     update(form) {
@@ -30202,7 +30202,7 @@ class Signatures {
 			let start = splitpoints[i];
 			let end = splitpoints[i + 1];
 
-			let pagerange = this.inputpagelist.slice(start, end);
+			let pagerange = this.inputpagelist.slice(start, end).reverse();
 			this.signaturepagelists.push(pagerange);
 		}
 
@@ -30264,9 +30264,9 @@ __webpack_require__.r(__webpack_exports__);
 
 const page_layouts = {
 	4: {front: [2, 3], back: [4, 1]},
-	8: {front: [8, 1, 5, 4], back: [7, 2, 6, 3 ]},
-	// 16: {front:[12, 13, 5, 11, 8, 1, 9, 16], back: [14, 11, 3, 6, 2, 7, 15, 10]}
-	16: {front:[13, 12, 11, 5, 1, 8, 16, 9], back: [14, 11, 3, 6, 2, 7, 15, 10]}
+	8: {front: [8, 1, 5, 4], back: [2, 7, 3, 6 ]},
+	 16: {front:[12, 13, 5, 4, 8, 1, 9, 16], back: [14, 11, 3, 6, 2, 7, 15, 10]}
+	//16: {front:[13, 12, 4, 5, 1, 8, 16, 9], back: [11, 14, 6, 3, 7, 2, 10, 15]}
 }
 
 class Booklet{
