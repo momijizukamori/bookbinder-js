@@ -65,7 +65,7 @@ export class Signatures {
 			let start = splitpoints[i];
 			let end = splitpoints[i + 1];
 
-			let pagerange = this.inputpagelist.slice(start, end);
+			let pagerange = this.inputpagelist.slice(start, end).reverse();
 			this.signaturepagelists.push(pagerange);
 		}
 

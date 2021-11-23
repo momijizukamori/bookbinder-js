@@ -46,7 +46,7 @@ export class Book {
         this.spineoffset = false;
         this.format = 'standardsig';
         this.booksize = [null, null];
-        this.sigsize = 8;       //  preferred signature size
+        this.sigsize = 4;       //  preferred signature size
         this.customsig = null;
         this.signatureconfig = [];	//  signature configuration
 
@@ -60,7 +60,7 @@ export class Book {
         this.filelist = [];      //  list of ouput filenames and path
         this.zip = null;
         this.page_layout = page_layouts.folio;
-        this.per_sheet = 4; //number of pages to print per sheet.
+        this.per_sheet = 8; //number of pages to print per sheet.
     }
 
     update(form) {
