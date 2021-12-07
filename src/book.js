@@ -26,9 +26,9 @@ const targetbooksize = {
 // Values are the degree of rotation from a portrait offset needed to re-impose this on a portrait-oriented page,
 // and should only need to be specified for one side.
 const page_layouts = {
-    folio:{rotations:[[-90], [-90]], landscape: true, rows: 2, cols: 1, per_sheet: 4},
-    quarto:{rotations: [[-180, -180], [0, 0]], landscape: false, rows: 2, cols: 2, per_sheet: 8}, 
-    octavo:{rotations: [[-90, 90], [-90, 90], [-90, 90], [-90, 90]], landscape: true, rows: 4, cols: 2, per_sheet: 16}
+    folio:{rotations:[[-90], [-90]], landscape: true, rows: 2, cols: 1, per_sheet: 4, h_crop: [], v_crop:[]},
+    quarto:{rotations: [[-180, -180], [0, 0]], landscape: false, rows: 2, cols: 2, per_sheet: 8, h_crop: [[[0.5, 0], [0.5, 0.05]], [[0.5, 0.95], [0.5, 1]]]}, 
+    octavo:{rotations: [[-90, 90], [-90, 90], [-90, 90], [-90, 90]], landscape: true, rows: 4, cols: 2, per_sheet: 16, h_crop:[]}
 }
 
 export class Book {
@@ -61,6 +61,7 @@ export class Book {
         this.zip = null;
         this.page_layout = page_layouts.folio;
         this.per_sheet = 8; //number of pages to print per sheet.
+        this.cropmarks = false;
     }
 
     update(form) {
@@ -70,6 +71,7 @@ export class Book {
         this.papersize = pagesizes[form.get('paper_size')];
         this.lockratio = form.get("page_scaling") == 'lockratio';
         this.flyleaf = form.has('flyleaf');
+        this.cropmarks = this.flyleaf = form.has('cropmarks');
         this.format = form.get('sig_format');
         let siglength = parseInt(form.get('sig_length'), 10);
         if (!isNaN(siglength)) {
