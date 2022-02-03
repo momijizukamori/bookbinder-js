@@ -109,7 +109,7 @@ class Book {
         }
 
         this.booksize = [this.papersize[1] * 0.5, this.papersize[0]];
-        this.page_layout = page_layouts[form.get('pagelayout')];
+        this.page_layout = form.get('pagelayout') == null ? 'folio' : page_layouts[form.get('pagelayout')];
         this.per_sheet = this.page_layout.per_sheet;
 
     }
@@ -194,8 +194,8 @@ class Book {
             }
 
             this.rearrangedpages = this.book.pagelist;
-        } else if (this.format == 'a9_3_3_4' || this.format == 'a10_6_10s') {
-            this.book = new _wacky_imposition_js__WEBPACK_IMPORTED_MODULE_5__.WackyImposition(this.orderedpages, this.duplex)
+        } else if (this.format == 'a9_3_3_4' || this.format == 'a10_6_10s' || this.format == 'A7_32' || this.format == 'A7_2_16s') {
+            this.book = new _wacky_imposition_js__WEBPACK_IMPORTED_MODULE_5__.WackyImposition(this.orderedpages, this.duplex, this.format)
         }
         console.log("Created pages for : ",this.book)
     }
@@ -226,8 +226,11 @@ class Book {
         } else if (this.format == 'a9_3_3_4') {
             await this.buildSheets(this.filename, this.book.a9_3_3_4_builder());
         } else if (this.format == 'a10_6_10s') {
-            //  THIS ONE NEEDS TO BE PRINTED LANDSCAPE LIKE!
             await this.buildSheets(this.filename, this.book.a10_6_10s_builder());
+        } else if (this.format == 'A7_32') {
+            await this.buildSheets(this.filename, this.book.a7_32_builder());
+        } else if (this.format == 'A7_2_16s') {
+            await this.buildSheets(this.filename, this.book.a7_2_16s_builder());
         }
         return this.saveZip();
     }
@@ -30494,8 +30497,13 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   "WackyImposition": () => (/* binding */ WackyImposition)
 /* harmony export */ });
+/**
+ * Dumping grounds for weird foldy single-sheet imposition. Different flow from how the other books work.
+ * 
+ * The builder functions are the entry points to the different layouts. 
+ */
 class WackyImposition{
-    constructor(pages, duplex) {
+    constructor(pages, duplex,format) {
       this.duplex=duplex;
       this.sigconfig=[]  // sig_count looks at the length of this array, sig_arrange joins them together with a ,;
       this.pagelist = [[]];
@@ -30503,6 +30511,19 @@ class WackyImposition{
       // for UI estimates
       this.sheets = Math.ceil(pages.length / 20.0); 
       console.log("... spits out pageList ", this.pagelist)
+      if (format == "a9_3_3_4") {
+        this.sheets = Math.ceil(pages.length/40.0);
+        this.sigconfig = Array(Math.ceil(pages.length/40.0) * 3)
+      } else if (format == "a10_6_10s") {
+        this.sheets = Math.ceil(pages.length/120.0);
+        this.sigconfig = Array(Math.ceil(pages.length/20.0) * 2)
+      } else if (format == "A7_32") {
+        this.sheets = Math.ceil(pages.length/32.0);
+        this.sigconfig = Array(Math.ceil(pages.length/32.0))
+      } else if (format == "A7_2_16s") {
+        this.sheets = Math.ceil(pages.length/32.0);
+        this.sigconfig = Array(this.sheets * 2)
+      }
     }
 
     a9_3_3_4_builder() {
@@ -30519,6 +30540,23 @@ class WackyImposition{
             lineMaker: this.build_6_10s_lineFunction.bind(this),
             isLandscape: true,
             fileNameMod: "mini"
+        }
+    }
+    a7_32_builder() {
+        return {
+            sheetMaker: this.build_32_sheetList.bind(this),
+            lineMaker: this.build_32_lineFunction.bind(this),
+            isLandscape: false,
+            fileNameMod: "4_by_4_single_signature"
+        }
+    }
+
+    a7_2_16s_builder() {
+        return {
+            sheetMaker: this.build_2_16s_sheetList.bind(this),
+            lineMaker: this.build_2_16s_lineFunction.bind(this),
+            isLandscape: false,
+            fileNameMod: "4_by_4_two_signatures"
         }
     }
 
@@ -30732,6 +30770,121 @@ class WackyImposition{
     }
 
     /**
+     * @return a FUNCTION. The function takes as it's parameter:
+     *       Object definition: {
+     *           gap: [leftGap, topGap],
+     *           renderPageSize: [width, height],
+     *           paperSize: [width, height],
+     *           isFront: boolean,
+     *       }
+     *       and returns: a list of lines, as described by PDF-lib.js's `PDFPageDrawLineOptions` object
+     */
+    build_32_lineFunction() {
+        return info => {
+            let foldMarks = [];
+            [0,1,2,3,4].forEach( row => {
+                [0,2,4].forEach( page => {
+                    foldMarks = foldMarks.concat(this.crosshairMark(
+                        info.gap[0] + info.renderPageSize[0] * page,
+                        info.gap[1] + info.renderPageSize[1] * row,
+                        5
+                        ));
+                });
+            });
+            return foldMarks
+        };
+    }
+    /**
+     * @param pageCount - total pages in document
+     * @return an array of sheets. Assumes 1st is "front", 2nd is "back", 3rd is "front", etc. 
+     *      Each sheet is an array of rows, containing a list of page objects
+     */
+    build_32_sheetList(pageCount) {
+        let p = this.page;
+        let sheets = [];
+        let sheetCount = Math.ceil(pageCount / 32.0);
+        console.log("Building the 32 pages. Given ",pageCount," page count, there will be ",sheetCount," sheets...");
+        for (let sheet=0; sheet < sheetCount; ++sheet ) {
+            let i = sheet * 32 - 1;
+            let front = [
+                this.auditForBlanks([p(i+20), p(i+13),   p(i+18), p(i+15)], pageCount),
+                this.auditForBlanks([p(i+24), p(i+9),   p(i+22), p(i+11)], pageCount),
+                this.auditForBlanks([p(i+28), p(i+5),    p(i+26), p(i+7)], pageCount),
+                this.auditForBlanks([p(i+32), p(i+1),   p(i+30), p(i+3)], pageCount),
+            ];
+            let back = [
+                this.auditForBlanks([p(i+16), p(i+17),  p(i+14), p(i+19)], pageCount),
+                this.auditForBlanks([p(i+12), p(i+21),  p(i+10), p(i+23)], pageCount),
+                this.auditForBlanks([p(i+8), p(i+25),  p(i+6), p(i+27)], pageCount),
+                this.auditForBlanks([p(i+4), p(i+29),  p(i+2), p(i+31)], pageCount),
+            ]
+            sheets.push(front);
+            sheets.push(back);
+        }
+        return sheets
+    }
+
+    /**
+     * @param pageCount - total pages in document
+     * @return an array of sheets. Assumes 1st is "front", 2nd is "back", 3rd is "front", etc. 
+     *      Each sheet is an array of rows, containing a list of page objects
+     */
+    build_2_16s_sheetList(pageCount) {
+        let p = this.page;
+        let f = this.flipPage;
+        let sheets = [];
+        let sheetCount = Math.ceil(pageCount / 32.0);
+        console.log("Building the 32 pages. Given ",pageCount," page count, there will be ",sheetCount," sheets...");
+        for (let sheet=0; sheet < sheetCount; ++sheet ) {
+            let i = sheet * 32 - 1;
+            let front = [
+                this.auditForBlanks([p(i+8), p(i+9),   p(i+24), p(i+25)], pageCount),
+                this.auditForBlanks([f(i+1), f(i+16),   f(i+17), f(i+32)], pageCount),
+                this.auditForBlanks([p(i+4), p(i+13),    p(i+20), p(i+29)], pageCount),
+                this.auditForBlanks([f(i+5), f(i+12),   f(i+21), f(i+28)], pageCount),
+            ];
+            let back = [
+                this.auditForBlanks([p(i+26), p(i+23),  p(i+10), p(i+7)], pageCount),
+                this.auditForBlanks([f(i+31), f(i+18),  f(i+15), f(i+2)], pageCount),
+                this.auditForBlanks([p(i+30), p(i+19),  p(i+14), p(i+3)], pageCount),
+                this.auditForBlanks([f(i+27), f(i+22),  f(i+11), f(i+6)], pageCount),
+            ]
+            sheets.push(front);
+            sheets.push(back);
+        }
+        return sheets
+    }
+
+    /**
+     * @return a FUNCTION. The function takes as it's parameter:
+     *       Object definition: {
+     *           gap: [leftGap, topGap],
+     *           renderPageSize: [width, height],
+     *           paperSize: [width, height],
+     *           isFront: boolean,
+     *       }
+     *       and returns: a list of lines, as described by PDF-lib.js's `PDFPageDrawLineOptions` object
+     */
+    build_2_16s_lineFunction() {
+        return info => {
+            let foldMarks = [];
+            [0,1,2,3,4].forEach( row => {
+                [0,1,2,3,4].forEach( page => {
+                    foldMarks = foldMarks.concat(this.crosshairMark(
+                        info.gap[0] + info.renderPageSize[0] * page,
+                        info.gap[1] + info.renderPageSize[1] * row,
+                        5
+                        ));
+                });
+            });
+            return [
+                this.cutHorizontal(info.paperSize[0], info.paperSize[1]/2),
+                this.cutVertical(info.paperSize[1], info.paperSize[0]/2),
+            ].concat(foldMarks);
+        };
+    }
+
+    /**
      * @param page - page object, will have it's `isBlank` modified if it exceeds bounds
      * @param pageCount - total pages in document
      * 
@@ -30934,6 +31087,12 @@ window.addEventListener('DOMContentLoaded', () => {
         list.forEach( sublist => output_pages += sublist.length);
       });
       document.getElementById("total_pages").innerText = output_pages;
+
+      let isWacky = document.getElementById("a9_3_3_4").checked || document.getElementById("a10_6_10s").checked
+          || document.getElementById("A7_2_16s").checked || document.getElementById("A7_32").checked;
+      console.log("Is a wacky layout? ",isWacky)
+      document.getElementById("book_size").querySelectorAll("input").forEach(x => {x.disabled = isWacky})
+      document.getElementById("book_size").style.opacity = isWacky ? 0.3 : 1.0;
     }
 
     function saveForm(formData) {
