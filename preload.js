@@ -194,7 +194,7 @@ class Book {
             }
 
             this.rearrangedpages = this.book.pagelist;
-        } else if (this.format == 'a9_3_3_4') {
+        } else if (this.format == 'a9_3_3_4' || this.format == 'a10_6_10s') {
             this.book = new _wacky_imposition_js__WEBPACK_IMPORTED_MODULE_5__.WackyImposition(this.orderedpages, this.duplex)
         }
         console.log("Created pages for : ",this.book)
@@ -224,77 +224,12 @@ class Book {
             await forLoop();
            //return forLoop().then(_ => this.saveZip());
         } else if (this.format == 'a9_3_3_4') {
-            await this.buildSheets('fakeIdThing');
+            await this.buildSheets(this.filename, this.book.a9_3_3_4_builder());
+        } else if (this.format == 'a10_6_10s') {
+            //  THIS ONE NEEDS TO BE PRINTED LANDSCAPE LIKE!
+            await this.buildSheets(this.filename, this.book.a10_6_10s_builder());
         }
         return this.saveZip();
-    }
-
-
-    async buildSheets(id) {
-        //  THIS ONE NEEDS TO BE PRINTED LANDSCAPE LIKE!
-        // let sheets = this.book.build_6_10s_sheetList(this.pagecount);
-        let sheets = this.book.build_3_3_4_sheetList(this.pagecount);
-        console.log("Working from the sheet list: ", sheets)
-        let fileName = id + 'duplex' + '.pdf';
-        const outPDF = await pdf_lib__WEBPACK_IMPORTED_MODULE_0__.PDFDocument.create();
-        for (let i=0; i < sheets.length; ++i ) {
-            console.log("Trying to write ", sheets[i])
-             await this.write_single_page(outPDF, sheets[i]);
-        }
-        await outPDF.save().then(pdfBytes => { this.zip.file(fileName, pdfBytes); });
-        this.filelist.push(fileName);
-    }
-
-    /**
-     * Spits out a document of specificed `papersize` dimensions.
-     * The 2 dimensional pagelist determines the size of the rendered pages. 
-     * The height of each rendered page is `papersize[1] / pagelist.length`. 
-     * The width of each rendered page is `papersize[0] / pagelist[x].length`.
-     * 
-     * @param outPDF - the PDFDocument document we're appending a page to
-     * @param pagelist - a 2 dimensional array. Outer array is rows, nested array page objects. Object definition: { 
-     *      num: page number from original doc, 
-     *      isBlank: true renders it blank-- will override any `num` included,
-     *      vFlip: true if rendered upside down (180 rotation)
-     * }
-     * @return 
-     */
-    async write_single_page(outPDF, pagelist) {
-        let filteredList = [];
-        pagelist.forEach(row => { row.forEach( page => { if (!page.isBlank) filteredList.push(page.num) }) });
-        let embeddedPages = await outPDF.embedPdf(this.currentdoc, filteredList);
-        let curPage = outPDF.addPage([this.papersize[0], this.papersize[1]]);
-        let sourcePage = embeddedPages.slice(0, 1)[0];
-        let pageHeight = this.papersize[1] / pagelist.length;
-        let pageWidth = this.papersize[0] / pagelist[0].length;
-        let heightRatio =  pageHeight / sourcePage.height;
-        let widthRatio =  pageWidth / sourcePage.width;
-        let pageScale = Math.min(heightRatio, widthRatio);
-        let vGap = this.papersize[1] - (sourcePage.height * pageScale * pagelist.length);
-        let topGap = vGap / 2.0;
-        let hGap = this.papersize[0] - (sourcePage.width * pageScale * pagelist[0].length);
-        let leftGap = hGap / 2.0;
-        let printPageWidth = pageScale * sourcePage.width
-        let printPageHeight = pageScale * sourcePage.height
-        for (let row=0; row < pagelist.length; ++row ) {
-            let y = sourcePage.height * pageScale * row;
-            for (let i=0; i < pagelist[row].length; ++i) {
-                let x = sourcePage.width * pageScale * i;
-                let pageInfo = pagelist[row][i]
-                if (pageInfo.isBlank)
-                    continue;
-                let origPage = embeddedPages[filteredList.indexOf(pageInfo.num)]
-                let positioning = { 
-                    x: x + leftGap + (pageInfo.vFlip ? printPageWidth : 0), 
-                    y: y + topGap + (pageInfo.vFlip ? printPageHeight : 0), 
-                    width: printPageWidth , 
-                    height: printPageHeight, 
-                    rotate: pageInfo.vFlip ? (0,pdf_lib__WEBPACK_IMPORTED_MODULE_0__.degrees)(180) : (0,pdf_lib__WEBPACK_IMPORTED_MODULE_0__.degrees)(0)
-                }
-                console.log(" [",row,",",i,"] Given page info ", pageInfo, " now embedding at ", positioning," the ", origPage);
-                curPage.drawPage(origPage, positioning);
-            }
-        }
     }
 
     async writepages(outname, pagelist, side2flag) {
@@ -569,6 +504,94 @@ class Book {
             .then(blob => {
                 (0,file_saver__WEBPACK_IMPORTED_MODULE_1__.saveAs)(blob, this.filename + ".zip");
             });
+    }
+
+    /**
+     * @param id - base for the final PDF name
+     * @param builder - object to help construct this configuration. Object definition: {
+     *      sheetMaker: function that takes the page count as a param and returns an array of sheets,
+     *      lineMaker: function that makes a function that generates trim lines for the PDF,
+     *      isLandscape: true if we need to have largest dimension be width,
+     *      fileNameMod: string to affix to exported file name (contains no buffer begin/end characters)
+     * }
+     */
+    async buildSheets(id, builder) {
+        let sheets = builder.sheetMaker(this.pagecount);
+        let lineMaker = builder.lineMaker();
+        console.log("Working with the sheet descritpion: ", sheets);
+        let fileName = id + "_" + builder.fileNameMod + '.pdf';
+        const outPDF = await pdf_lib__WEBPACK_IMPORTED_MODULE_0__.PDFDocument.create();
+        for (let i=0; i < sheets.length; ++i ) {
+            let isFront = i % 2 == 0
+            console.log("Trying to write ", sheets[i])
+             await this.write_single_page(outPDF, builder.isLandscape, isFront, sheets[i], lineMaker)
+        }
+        await outPDF.save().then(pdfBytes => { this.zip.file(fileName, pdfBytes); });
+        this.filelist.push(fileName);
+    }
+
+    /**
+     * Spits out a document of specificed `papersize` dimensions.
+     * The 2 dimensional pagelist determines the size of the rendered pages. 
+     * The height of each rendered page is `papersize[1] / pagelist.length`. 
+     * The width of each rendered page is `papersize[0] / pagelist[x].length`.
+     * 
+     * @param outPDF - the PDFDocument document we're appending a page to
+     * @param isLandscape - true if we need to have largest dimension be width
+     * @param isFront - true if front of page
+     * @param pagelist - a 2 dimensional array. Outer array is rows, nested array page objects. Object definition: { 
+     *      num: page number from original doc, 
+     *      isBlank: true renders it blank-- will override any `num` included,
+     *      vFlip: true if rendered upside down (180 rotation)
+     * }
+     * @param lineMaker - a function called to generate list of lines as described by PDF-lib.js's `PDFPageDrawLineOptions` object.
+     *      Function takes as parameters: 
+     * @return 
+     */
+    async write_single_page(outPDF, isLandscape, isFront, pagelist, lineMaker) {
+        let filteredList = [];
+        pagelist.forEach(row => { row.forEach( page => { if (!page.isBlank) filteredList.push(page.num) }) });
+        let embeddedPages = await outPDF.embedPdf(this.currentdoc, filteredList);
+        // TODO : make sure the max dimen is correct here...
+        let papersize = isLandscape ? [this.papersize[1], this.papersize[0]] : [this.papersize[0], this.papersize[1]]
+        let curPage = outPDF.addPage(papersize);
+        let sourcePage = embeddedPages.slice(0, 1)[0];
+        let pageHeight = papersize[1] / pagelist.length;
+        let pageWidth = papersize[0] / pagelist[0].length;
+        let heightRatio =  pageHeight / sourcePage.height;
+        let widthRatio =  pageWidth / sourcePage.width;
+        let pageScale = Math.min(heightRatio, widthRatio);
+        let vGap = papersize[1] - (sourcePage.height * pageScale * pagelist.length);
+        let topGap = vGap / 2.0;
+        let hGap = papersize[0] - (sourcePage.width * pageScale * pagelist[0].length);
+        let leftGap = hGap / 2.0;
+        let printPageWidth = pageScale * sourcePage.width
+        let printPageHeight = pageScale * sourcePage.height
+        for (let row=0; row < pagelist.length; ++row ) {
+            let y = sourcePage.height * pageScale * row;
+            for (let i=0; i < pagelist[row].length; ++i) {
+                let x = sourcePage.width * pageScale * i;
+                let pageInfo = pagelist[row][i]
+                if (pageInfo.isBlank)
+                    continue;
+                let origPage = embeddedPages[filteredList.indexOf(pageInfo.num)]
+                let positioning = { 
+                    x: x + leftGap + (pageInfo.vFlip ? printPageWidth : 0), 
+                    y: y + topGap + (pageInfo.vFlip ? printPageHeight : 0), 
+                    width: printPageWidth , 
+                    height: printPageHeight, 
+                    rotate: pageInfo.vFlip ? (0,pdf_lib__WEBPACK_IMPORTED_MODULE_0__.degrees)(180) : (0,pdf_lib__WEBPACK_IMPORTED_MODULE_0__.degrees)(0)
+                }
+                console.log(" [",row,",",i,"] Given page info ", pageInfo, " now embedding at ", positioning," the ", origPage);
+                curPage.drawPage(origPage, positioning);
+            }
+        }
+        lineMaker({
+            isFront: isFront,
+            gap: [leftGap, topGap],
+            renderPageSize: [printPageWidth, printPageHeight],
+            paperSize: papersize,
+        }).forEach( line => { curPage.drawLine(line)});
     }
 
 }
@@ -30479,18 +30502,24 @@ class WackyImposition{
       console.log("Constructor sees ", pages)
       // for UI estimates
       this.sheets = Math.ceil(pages.length / 20.0); 
-
-      // for (let i=0; i < pages.length; i=i+10 ) {
-      //   let index = Math.floor(i/10)
-      //   this.pagelist[index] = []
-      //   for (let j=i; j < pages.length && j < i + 10; ++j ) {
-      //       this.pagelist[index].push([j]);
-      //   }
-      //   this.sigconfig.push([2])
-      //   this.sigconfig.push([i])
-      //   this.sigconfig.push([4])
-      // }
       console.log("... spits out pageList ", this.pagelist)
+    }
+
+    a9_3_3_4_builder() {
+        return {
+            sheetMaker: this.build_3_3_4_sheetList.bind(this),
+            lineMaker: this.build_3_3_4_lineFunction.bind(this),
+            isLandscape: false,
+            fileNameMod: "little"
+        }
+    }
+    a10_6_10s_builder() {
+        return {
+            sheetMaker: this.build_6_10s_sheetList.bind(this),
+            lineMaker: this.build_6_10s_lineFunction.bind(this),
+            isLandscape: true,
+            fileNameMod: "mini"
+        }
     }
 
     /**
@@ -30534,6 +30563,96 @@ class WackyImposition{
     }
 
     /**
+     * @return a FUNCTION. The function takes as it's parameter:
+     *       Object definition: {
+     *           gap: [leftGap, topGap],
+     *           renderPageSize: [width, height],
+     *           paperSize: [width, height],
+     *           isFront: boolean,
+     *       }
+     *       and returns: a list of lines, as described by PDF-lib.js's `PDFPageDrawLineOptions` object
+     */
+    build_3_3_4_lineFunction() {
+        return info => {
+            let cutBetweenTheThrees = {
+                start: { x: info.gap[0] + 2 * info.renderPageSize[0], y: info.renderPageSize[1] * 2 + info.gap[1] },
+                end: { x: info.gap[0] + 2 * info.renderPageSize[0], y: info.paperSize[1] },
+                thickness: 0.25,
+                opacity: 0.4,
+            };
+            let foldBetweenTheFours = {
+                start: { x: info.gap[0] + 2 * info.renderPageSize[0], y: info.renderPageSize[1] * 2 + info.gap[1] },
+                end: { x: info.gap[0] + 2 * info.renderPageSize[0], y: 0 },
+                thickness: 0.5,
+                opacity: 0.2,
+                dashArray: [2, 5]
+            };
+            
+            return [
+                this.foldHorizontal(info.paperSize[0], info.gap[1] + info.renderPageSize[1]),
+                this.cutHorizontal(info.paperSize[0], info.gap[1] + info.renderPageSize[1] * 2),
+                this.foldHorizontal(info.paperSize[0], info.gap[1] + info.renderPageSize[1] * 3),
+                this.foldHorizontal(info.paperSize[0], info.gap[1] + info.renderPageSize[1] * 4),
+                this.cutVertical(info.paperSize[1], info.gap[0]),
+                this.cutVertical(info.paperSize[1], info.gap[0] + info.renderPageSize[0] * 4),
+                cutBetweenTheThrees,
+                foldBetweenTheFours
+            ];
+        };
+    }
+
+    foldHorizontal(paperWidth, y) {
+        return {
+            start: { x: 0, y: y },
+            end: { x: paperWidth, y: y},
+            thickness: 0.25,
+            opacity: 0.2,
+            dashArray: [2, 5]
+        }
+    }
+    foldVertical(paperHeight, x) {
+        return {
+            start: { x: x, y: 0 },
+            end: { x: x, y: paperHeight},
+            thickness: 0.25,
+            opacity: 0.2,
+            dashArray: [2, 5]
+        }
+    }
+    cutHorizontal(paperWidth, y) {
+        return {
+            start: { x: 0, y: y },
+            end: { x: paperWidth, y: y},
+            thickness: 0.5,
+            opacity: 0.4
+        }
+    }
+    cutVertical(paperHeight, x) {
+        return {
+            start: { x: x, y: 0 },
+            end: { x: x, y: paperHeight},
+            thickness: 0.5,
+            opacity: 0.4
+        }
+    }
+    crosshairMark(x, y, size) {
+        return [
+        {
+            start: { x: x - size/2, y: y },
+            end: { x: x + size/2, y: y},
+            thickness: 0.5,
+            opacity: 0.7
+        },
+        {
+            start: { x: x, y: y - size/2 },
+            end: { x: x, y: y + size/2},
+            thickness: 0.5,
+            opacity: 0.4
+        }
+        ];
+    }
+
+    /**
      * @param pageCount - total pages in document
      * @return an array of sheets. Assumes 1st is "front", 2nd is "back", 3rd is "front", etc. 
      *      Each sheet is an array of rows, containing a list of page objects
@@ -30545,7 +30664,7 @@ class WackyImposition{
         let rowCount = Math.ceil(pageCount / 20.0);
         console.log("Building the 6 rows of 10 pages. Given ",pageCount," page count, there will be ",rowCount," rows...");
         for (let row=0; row < rowCount; ++row ) {
-            let i = row * 20;
+            let i = row * 20 - 1;
             let front = [page(i+6),page(i+3),page(i+2),page(i+7),page(i+10),page(i+19),page(i+18),page(i+11),page(i+14),page(i+15)];
             let back = [page(i+16),page(i+13),page(i+12),page(i+17),page(i+20),page(i+9),page(i+8),page(i+1),page(i+4),page(i+5)];
             fronts.push(this.auditForBlanks(front, pageCount));
@@ -30560,11 +30679,56 @@ class WackyImposition{
                 sheets[sheet*2 + 1] = [];
                 console.log(sheets)
             }
-            sheets[sheet*2].push(fronts[row]);
-            sheets[sheet*2 + 1].push(backs[row]);
+            sheets[sheet*2].unshift(fronts[row]);
+            sheets[sheet*2 + 1].unshift(backs[row]);
             console.log(" -> row ",row," => sheet ", sheet, " grabs front ",fronts[row]," and back ",backs[row])
         }
         return sheets;
+    }
+
+    /**
+     * @return a FUNCTION. The function takes as it's parameter:
+     *       Object definition: {
+     *           gap: [leftGap, topGap],
+     *           renderPageSize: [width, height],
+     *           paperSize: [width, height],
+     *           isFront: boolean,
+     *       }
+     *       and returns: a list of lines, as described by PDF-lib.js's `PDFPageDrawLineOptions` object
+     */
+    build_6_10s_lineFunction() {
+        return info => {
+            let cutOffset = info.isFront ? 4 : 6
+            let baseCuts = [
+                this.cutHorizontal(info.paperSize[0], info.gap[1]),
+                this.cutHorizontal(info.paperSize[0], info.gap[1] + info.renderPageSize[1]),
+                this.cutHorizontal(info.paperSize[0], info.gap[1] + info.renderPageSize[1] * 1),
+                this.cutHorizontal(info.paperSize[0], info.gap[1] + info.renderPageSize[1] * 2),
+                this.cutHorizontal(info.paperSize[0], info.gap[1] + info.renderPageSize[1] * 3),
+                this.cutHorizontal(info.paperSize[0], info.gap[1] + info.renderPageSize[1] * 4),
+                this.cutHorizontal(info.paperSize[0], info.gap[1] + info.renderPageSize[1] * 5),
+                this.cutHorizontal(info.paperSize[0], info.gap[1] + info.renderPageSize[1] * 6),
+
+                // this.foldVertical(info.paperSize[1], info.gap[0] + info.renderPageSize[0] * 2),
+                this.cutVertical(info.paperSize[1], info.gap[0] + info.renderPageSize[0] * cutOffset),
+                // this.foldVertical(info.paperSize[1], info.gap[0] + info.renderPageSize[0] * 6),
+                // this.foldVertical(info.paperSize[1], info.gap[0] + info.renderPageSize[0] * 8),
+                this.cutVertical(info.paperSize[1], info.gap[0]),
+                this.cutVertical(info.paperSize[1], info.gap[0] + info.renderPageSize[0] * 10),
+            ];
+            let foldMarks = [];
+            [0,1,2,3,4,5,6].forEach( row => {
+                [...Array(10).keys()].forEach( page => {
+                    foldMarks = foldMarks.concat(this.crosshairMark(
+                        info.gap[0] + info.renderPageSize[0] * page,
+                        info.gap[1] + info.renderPageSize[1] * row,
+                        5
+                        ));
+                });
+            });
+            console.log("Providing lines: \nbase cuts: ",baseCuts,"\nfold marks: ",foldMarks,"\ntotal: ",baseCuts.concat(foldMarks))
+            return baseCuts.concat(foldMarks)
+        };
     }
 
     /**
@@ -30591,96 +30755,6 @@ class WackyImposition{
     }
     blankPage() {
         return { num: 0, isBlank: true, vFlip: false}
-    }
-
-
-
-    async createsignatures(pages, id) {
-        //      duplex printers print both sides of the sheet, 
-        if (this.duplex) {
-            // let outduplex = this.outputpath + '/' + id + 'duplex' + '.pdf';
-            let outduplex = id + 'duplex' + '.pdf';
-            await this.writepages(outduplex, pages[0], 0);
-
-            this.filelist.push(outduplex);
-        } else {
-            //      for non-duplex printers we have two files, print the first, flip 
-            //      the sheets over, then print the second. damned inconvenient
-            // let outname1 = this.outputpath + '/' + id + 'side1.pdf';
-            // let outname2 = this.outputpath + '/' + id + 'side2.pdf';
-            let outname1 = id + 'side1.pdf';
-            let outname2 = id + 'side2.pdf';
-
-            await this.writepages(outname1, pages[0], 0);
-            await this.writepages(outname2, pages[1], 1);
-
-            this.filelist.push(outname1);
-            this.filelist.push(outname2);
-        }
-
-
-    }
-
-
-    async writepages(outname, pagelist, side2flag) {
-
-        let side = 'front';
-        let imposedpage = 'left';
-
-        const outPDF = await PDFDocument.create();
-        let currPage = null;
-        let filteredList = [];
-        let blankIndices = [];
-        pagelist.forEach((page, i) => {
-            if (page != 'b') {
-                filteredList.push(page);
-            } else {
-                blankIndices.push(i);
-            }
-        });
-
-        let embeddedPages = await outPDF.embedPdf(this.currentdoc, filteredList);
-        blankIndices.forEach(i => embeddedPages.splice(i, 0, 'b'));
-
-        for (let i = 0; i < pagelist.length; i++) {
-            let pagenumber = pagelist[i];
-            let embeddedPage = embeddedPages[i];
-
-            if (i % 2 == 0) {
-                currPage = outPDF.addPage([this.papersize[0], this.papersize[1]]);
-            }
-            ////  scaling code here
-            if (pagenumber == 'b') {
-                // blank page, move on.
-            } else {
-                if (i % 2 == 0) {
-                    imposedpage = 'left';
-
-                    if (side2flag || ((i + 2) % 4 == 0 && this.duplex)) {
-                        side = 'back';
-                    } else {
-                        side = 'front';
-                    }
-                } else {
-                    imposedpage = 'right';
-                }
-                //print 'adding page'
-                const [baseline, leftstart, scale1, scale2, rotate] = this.calculateposition(pagenumber, imposedpage, side);
-
-                // let pageTransform = buildTransform(scale1, scale2, leftstart, baseline, 90, 0, 0)
-                // const [embeddedPage] = await outPDF.embedPdf(this.currentdoc, [pagenumber]);
-                currPage.drawPage(embeddedPage, { y: leftstart, x: baseline, xScale: scale1, yScale: scale2, rotate: degrees(rotate) });
-
-            }
-        }
-
-
-        return outPDF.save().then(pdfBytes => {
-            this.zip.file(outname, pdfBytes);
-
-        }
-        );
-
     }
 }
 
