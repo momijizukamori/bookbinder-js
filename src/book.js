@@ -90,7 +90,7 @@ export class Book {
         }
 
         this.booksize = [this.papersize[1] * 0.5, this.papersize[0]];
-        this.page_layout = page_layouts[form.get('pagelayout')];
+        this.page_layout = form.get('pagelayout') == null ? 'folio' : page_layouts[form.get('pagelayout')];
         this.per_sheet = this.page_layout.per_sheet;
 
     }
@@ -175,8 +175,8 @@ export class Book {
             }
 
             this.rearrangedpages = this.book.pagelist;
-        } else if (this.format == 'a9_3_3_4' || this.format == 'a10_6_10s') {
-            this.book = new WackyImposition(this.orderedpages, this.duplex)
+        } else if (this.format == 'a9_3_3_4' || this.format == 'a10_6_10s' || this.format == 'A7_32' || this.format == 'A7_2_16s') {
+            this.book = new WackyImposition(this.orderedpages, this.duplex, this.format)
         }
         console.log("Created pages for : ",this.book)
     }
@@ -207,8 +207,11 @@ export class Book {
         } else if (this.format == 'a9_3_3_4') {
             await this.buildSheets(this.filename, this.book.a9_3_3_4_builder());
         } else if (this.format == 'a10_6_10s') {
-            //  THIS ONE NEEDS TO BE PRINTED LANDSCAPE LIKE!
             await this.buildSheets(this.filename, this.book.a10_6_10s_builder());
+        } else if (this.format == 'A7_32') {
+            await this.buildSheets(this.filename, this.book.a7_32_builder());
+        } else if (this.format == 'A7_2_16s') {
+            await this.buildSheets(this.filename, this.book.a7_2_16s_builder());
         }
         return this.saveZip();
     }
