@@ -255,6 +255,8 @@ export class Book {
         let topGap = vGap / 2.0;
         let hGap = this.papersize[0] - (sourcePage.width * pageScale * pagelist[0].length);
         let leftGap = hGap / 2.0;
+        let printPageWidth = pageScale * sourcePage.width
+        let printPageHeight = pageScale * sourcePage.height
         for (let row=0; row < pagelist.length; ++row ) {
             let y = sourcePage.height * pageScale * row;
             for (let i=0; i < pagelist[row].length; ++i) {
@@ -264,10 +266,10 @@ export class Book {
                     continue;
                 let origPage = embeddedPages[filteredList.indexOf(pageInfo.num)]
                 let positioning = { 
-                    x: x + leftGap, 
-                    y: y + topGap, 
-                    xScale: pageScale, 
-                    yScale: pageScale, 
+                    x: x + leftGap + (pageInfo.vFlip ? printPageWidth : 0), 
+                    y: y + topGap + (pageInfo.vFlip ? printPageHeight : 0), 
+                    width: printPageWidth , 
+                    height: printPageHeight, 
                     rotate: pageInfo.vFlip ? degrees(180) : degrees(0)
                 }
                 console.log(" [",row,",",i,"] Given page info ", pageInfo, " now embedding at ", positioning," the ", origPage);

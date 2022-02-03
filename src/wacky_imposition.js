@@ -29,7 +29,7 @@ export class WackyImposition{
      */
     build_3_3_4_sheetList(pageCount) {
         let p = this.page;
-        let f = this.page;//flipPage;
+        let f = this.flipPage;
         let sheets = [];
         let sheetCount = Math.ceil(pageCount / 40.0);
         console.log("Building the 3/3/4 pages. Given ",pageCount," page count, there will be ",sheetCount," sheets...");
