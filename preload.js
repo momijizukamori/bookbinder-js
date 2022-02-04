@@ -30560,6 +30560,8 @@ class WackyImposition{
         }
     }
 
+    // ---------------- the real guts of the layout
+
     /**
      * Produces two 3 folio foldup signatures and a 4 folio foldup signature.
      * 5 rows, 4 pages across. 1-12 / 13-24 / 25 - 40
@@ -30622,7 +30624,7 @@ class WackyImposition{
                 start: { x: info.gap[0] + 2 * info.renderPageSize[0], y: info.renderPageSize[1] * 2 + info.gap[1] },
                 end: { x: info.gap[0] + 2 * info.renderPageSize[0], y: 0 },
                 thickness: 0.5,
-                opacity: 0.2,
+                opacity: 0.4,
                 dashArray: [2, 5]
             };
             
@@ -30637,57 +30639,6 @@ class WackyImposition{
                 foldBetweenTheFours
             ];
         };
-    }
-
-    foldHorizontal(paperWidth, y) {
-        return {
-            start: { x: 0, y: y },
-            end: { x: paperWidth, y: y},
-            thickness: 0.25,
-            opacity: 0.2,
-            dashArray: [2, 5]
-        }
-    }
-    foldVertical(paperHeight, x) {
-        return {
-            start: { x: x, y: 0 },
-            end: { x: x, y: paperHeight},
-            thickness: 0.25,
-            opacity: 0.2,
-            dashArray: [2, 5]
-        }
-    }
-    cutHorizontal(paperWidth, y) {
-        return {
-            start: { x: 0, y: y },
-            end: { x: paperWidth, y: y},
-            thickness: 0.5,
-            opacity: 0.4
-        }
-    }
-    cutVertical(paperHeight, x) {
-        return {
-            start: { x: x, y: 0 },
-            end: { x: x, y: paperHeight},
-            thickness: 0.5,
-            opacity: 0.4
-        }
-    }
-    crosshairMark(x, y, size) {
-        return [
-        {
-            start: { x: x - size/2, y: y },
-            end: { x: x + size/2, y: y},
-            thickness: 0.5,
-            opacity: 0.7
-        },
-        {
-            start: { x: x, y: y - size/2 },
-            end: { x: x, y: y + size/2},
-            thickness: 0.5,
-            opacity: 0.4
-        }
-        ];
     }
 
     /**
@@ -30770,31 +30721,6 @@ class WackyImposition{
     }
 
     /**
-     * @return a FUNCTION. The function takes as it's parameter:
-     *       Object definition: {
-     *           gap: [leftGap, topGap],
-     *           renderPageSize: [width, height],
-     *           paperSize: [width, height],
-     *           isFront: boolean,
-     *       }
-     *       and returns: a list of lines, as described by PDF-lib.js's `PDFPageDrawLineOptions` object
-     */
-    build_32_lineFunction() {
-        return info => {
-            let foldMarks = [];
-            [0,1,2,3,4].forEach( row => {
-                [0,2,4].forEach( page => {
-                    foldMarks = foldMarks.concat(this.crosshairMark(
-                        info.gap[0] + info.renderPageSize[0] * page,
-                        info.gap[1] + info.renderPageSize[1] * row,
-                        5
-                        ));
-                });
-            });
-            return foldMarks
-        };
-    }
-    /**
      * @param pageCount - total pages in document
      * @return an array of sheets. Assumes 1st is "front", 2nd is "back", 3rd is "front", etc. 
      *      Each sheet is an array of rows, containing a list of page objects
@@ -30822,6 +30748,32 @@ class WackyImposition{
             sheets.push(back);
         }
         return sheets
+    }
+
+    /**
+     * @return a FUNCTION. The function takes as it's parameter:
+     *       Object definition: {
+     *           gap: [leftGap, topGap],
+     *           renderPageSize: [width, height],
+     *           paperSize: [width, height],
+     *           isFront: boolean,
+     *       }
+     *       and returns: a list of lines, as described by PDF-lib.js's `PDFPageDrawLineOptions` object
+     */
+    build_32_lineFunction() {
+        return info => {
+            let foldMarks = [];
+            [0,1,2,3,4].forEach( row => {
+                [0,2,4].forEach( page => {
+                    foldMarks = foldMarks.concat(this.crosshairMark(
+                        info.gap[0] + info.renderPageSize[0] * page,
+                        info.gap[1] + info.renderPageSize[1] * row,
+                        5
+                        ));
+                });
+            });
+            return foldMarks
+        };
     }
 
     /**
@@ -30878,12 +30830,73 @@ class WackyImposition{
                 });
             });
             return [
-                this.cutHorizontal(info.paperSize[0], info.paperSize[1]/2),
+                {...(this.foldHorizontal(info.paperSize[0], info.paperSize[1]/2, 0.)), opacity: 0.7},
                 this.cutVertical(info.paperSize[1], info.paperSize[0]/2),
+                this.cutVertical(info.paperSize[1], info.paperSize[0] - info.gap[0]),
+                this.cutVertical(info.paperSize[1], info.gap[0]),
             ].concat(foldMarks);
         };
     }
 
+
+    // ---------------- drawing lines helpers
+
+    foldHorizontal(paperWidth, y) {
+        return {
+            start: { x: 0, y: y },
+            end: { x: paperWidth, y: y},
+            thickness: 0.25,
+            opacity: 0.4,
+            dashArray: [2, 5]
+        }
+    }
+    foldVertical(paperHeight, x) {
+        return {
+            start: { x: x, y: 0 },
+            end: { x: x, y: paperHeight},
+            thickness: 0.25,
+            opacity: 0.4,
+            dashArray: [2, 5]
+        }
+    }
+    cutHorizontal(paperWidth, y) {
+        return {
+            start: { x: 0, y: y },
+            end: { x: paperWidth, y: y},
+            thickness: 0.5,
+            opacity: 0.4
+        }
+    }
+    cutVertical(paperHeight, x) {
+        return {
+            start: { x: x, y: 0 },
+            end: { x: x, y: paperHeight},
+            thickness: 0.5,
+            opacity: 0.4
+        }
+    }
+    crosshairMark(x, y, size) {
+        return [
+        {
+            start: { x: x - size/2, y: y },
+            end: { x: x + size/2, y: y},
+            thickness: 0.5,
+            opacity: 0.7
+        },
+        {
+            start: { x: x, y: y - size/2 },
+            end: { x: x, y: y + size/2},
+            thickness: 0.5,
+            opacity: 0.4
+        }
+        ];
+    }
+
+
+
+
+
+    // ---------------- page layout helpers
     /**
      * @param page - page object, will have it's `isBlank` modified if it exceeds bounds
      * @param pageCount - total pages in document
