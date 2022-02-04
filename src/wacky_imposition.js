@@ -128,7 +128,16 @@ export class WackyImposition{
                 opacity: 0.4,
                 dashArray: [2, 5]
             };
-            
+            let foldMarks = [];
+            [0,1,2,3,4,5].forEach( row => {
+                [0,1,2,3,4].forEach( page => {
+                    foldMarks = foldMarks.concat(this.crosshairMark(
+                        info.gap[0] + info.renderPageSize[0] * page,
+                        info.gap[1] + info.renderPageSize[1] * row,
+                        5
+                        ));
+                });
+            });
             return [
                 this.foldHorizontal(info.paperSize[0], info.gap[1] + info.renderPageSize[1]),
                 this.cutHorizontal(info.paperSize[0], info.gap[1] + info.renderPageSize[1] * 2),
@@ -138,7 +147,7 @@ export class WackyImposition{
                 this.cutVertical(info.paperSize[1], info.gap[0] + info.renderPageSize[0] * 4),
                 cutBetweenTheThrees,
                 foldBetweenTheFours
-            ];
+            ].concat(foldMarks);
         };
     }
 
