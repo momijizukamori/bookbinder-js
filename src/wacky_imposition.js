@@ -84,7 +84,7 @@ export class WackyImposition{
                 this.auditForBlanks([f(i+1), f(i+12),   f(i+13), f(i+24)], pageCount),
             ];
             let frontFour = [
-                this.auditForBlanks([p(i+18), p(i+37),  p(i+36), p(i+29)], pageCount),
+                this.auditForBlanks([p(i+28), p(i+37),  p(i+36), p(i+29)], pageCount),
                 this.auditForBlanks([f(i+25), f(i+40),  f(i+33), f(i+32)], pageCount),
             ]
             let backThrees = [
