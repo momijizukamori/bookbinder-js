@@ -30659,6 +30659,7 @@ class WackyImposition{
         let fronts = []
         let backs = []
         let page = this.page;
+        let blank = this.blankPage;
         let rowCount = Math.ceil(pageCount / 20.0);
         console.log("Building the 6 rows of 10 pages. Given ",pageCount," page count, there will be ",rowCount," rows...");
         for (let row=0; row < rowCount; ++row ) {
@@ -30680,6 +30681,11 @@ class WackyImposition{
             sheets[sheet*2].unshift(fronts[row]);
             sheets[sheet*2 + 1].unshift(backs[row]);
             console.log(" -> row ",row," => sheet ", sheet, " grabs front ",fronts[row]," and back ",backs[row])
+        }
+        for (let filler = 0; filler < 6 - rowCount % 6; ++filler) {
+            let sheet = Math.floor(rowCount/6);
+            sheets[sheet*2].unshift([blank(),blank(),blank(),blank(),blank(),blank(),blank(),blank(),blank(),blank()]);
+            sheets[sheet*2 + 1].unshift([blank(),blank(),blank(),blank(),blank(),blank(),blank(),blank(),blank(),blank()]);
         }
         return sheets;
     }
