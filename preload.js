@@ -30684,8 +30684,13 @@ class WackyImposition{
         }
         for (let filler = 0; filler < 6 - rowCount % 6; ++filler) {
             let sheet = Math.floor(rowCount/6);
-            sheets[sheet*2].unshift([blank(),blank(),blank(),blank(),blank(),blank(),blank(),blank(),blank(),blank()]);
-            sheets[sheet*2 + 1].unshift([blank(),blank(),blank(),blank(),blank(),blank(),blank(),blank(),blank(),blank()]);
+            if (filler % 2 == 0) {
+                sheets[sheet*2].unshift([blank(),blank(),blank(),blank(),blank(),blank(),blank(),blank(),blank(),blank()]);
+                sheets[sheet*2 + 1].unshift([blank(),blank(),blank(),blank(),blank(),blank(),blank(),blank(),blank(),blank()]);
+            } else {
+                sheets[sheet*2].push([blank(),blank(),blank(),blank(),blank(),blank(),blank(),blank(),blank(),blank()]);
+                sheets[sheet*2 + 1].push([blank(),blank(),blank(),blank(),blank(),blank(),blank(),blank(),blank(),blank()]);
+            }
         }
         return sheets;
     }
