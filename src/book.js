@@ -503,15 +503,28 @@ export class Book {
         let sheets = builder.sheetMaker(this.pagecount);
         let lineMaker = builder.lineMaker();
         console.log("Working with the sheet descritpion: ", sheets);
-        let fileName = id + "_" + builder.fileNameMod + '.pdf';
         const outPDF = await PDFDocument.create();
+        const outPDF_back = await PDFDocument.create();
+
         for (let i=0; i < sheets.length; ++i ) {
             let isFront = i % 2 == 0
             console.log("Trying to write ", sheets[i])
-             await this.write_single_page(outPDF, builder.isLandscape, isFront, sheets[i], lineMaker)
+            if (this.duplex) {
+            } else {
+                let targetPDF = (this.duplex || isFront) ? outPDF : outPDF_back;
+                await this.write_single_page(targetPDF, builder.isLandscape, isFront, sheets[i], lineMaker);
+            }
         }
-        await outPDF.save().then(pdfBytes => { this.zip.file(fileName, pdfBytes); });
-        this.filelist.push(fileName);
+        {
+            let fileName = id + "_" + builder.fileNameMod + ( this.duplex ? '' : '_fronts') +'.pdf';
+            await outPDF.save().then(pdfBytes => { this.zip.file(fileName, pdfBytes); });
+            this.filelist.push(fileName);
+        }
+        if (!this.duplex) {
+          let fileName = id + "_" + builder.fileNameMod + '_backs.pdf';
+          await outPDF_back.save().then(pdfBytes => { this.zip.file(fileName, pdfBytes); });
+          this.filelist.push(fileName);
+        }
     }
 
     /**
