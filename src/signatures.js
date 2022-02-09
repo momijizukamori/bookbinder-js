@@ -4,11 +4,12 @@ export class Signatures {
 
 	// Takes a list of pagenumbers, splits them evenly, then rearranges the pages in each chunk.
 
-	constructor(pages, duplex, sigsize, per_sheet) {
+	constructor(pages, duplex, sigsize, per_sheet, duplexrotate) {
 		this.sigsize = sigsize;
 		this.duplex = duplex;
 		this.inputpagelist = pages;
 		this.per_sheet = per_sheet || 4; // pages per sheet - default is 4.
+		this.duplexrotate = duplexrotate || false;
 
 		this.pagelist = [];
 
@@ -65,7 +66,7 @@ export class Signatures {
 			let start = splitpoints[i];
 			let end = splitpoints[i + 1];
 
-			let pagerange = this.inputpagelist.slice(start, end).reverse();
+			let pagerange = this.inputpagelist.slice(start, end); // .reverse();
 			this.signaturepagelists.push(pagerange);
 		}
 
@@ -73,7 +74,7 @@ export class Signatures {
 
 		//      Use the booklet class for each signature
 		this.signaturepagelists.forEach(pagerange => {
-			let newlist = new Booklet(pagerange, this.duplex, this.per_sheet);
+			let newlist = new Booklet(pagerange, this.duplex, this.per_sheet, this.duplexrotate);
 			newsigs.push(newlist.pagelist);
 		});
 

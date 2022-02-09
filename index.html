@@ -47,8 +47,7 @@
                 </select>
                 <span data-balloon-length="medium" aria-label="Duplex will alternate front and backs of sheets in a single file; Single-sided will split fronts and backs into seperate files." data-balloon-pos="up">🛈</span></span>
 
-            <span class="row"> <label>Alternate Page Rotation <input type="checkbox" name="rotate_page"
-                        disabled></label></span>
+            <span class="row"> <label>Alternate Page Rotation (AKA Flip on Long Side)<input type="checkbox" name="rotate_page"></label></span>
             <!-- <span class="row"> <label>Double pages per sheet <input type="checkbox" name="double_page"></label></span> -->
 
         </div>
@@ -56,14 +55,19 @@
         <div class="section" id="book_size">
             <h2>Page Layout</h2>
             <span class="row"><input type="radio" id="folio" name="pagelayout" value="folio" checked>
-                <label for="standard">Folio (two pages per side of sheet)</label></span>
+                <label for="folio">Folio (two pages per side of sheet)</label></span>
             <span class="row"><input type="radio" id="quarto" name="pagelayout" value="quarto">
-                <label for="large">Quarto (four pages per side of sheet)</label></span>
+                <label for="quarto">Quarto (four pages per side of sheet)</label></span>
             <span class="row"><input type="radio" id="octavo" name="pagelayout" value="octavo">
-                <label for="full">Octavo (eight pages per side of sheet)</label></span>
+                <label for="octavo">Octavo (eight pages per side of sheet)</label></span>
+            <span class="row"><input type="radio" id="sextodecimo" name="pagelayout" value="sextodecimo">
+                <label for="sextodecimo">Sextodecimo (sixteen pages per side of sheet)</label></span>
             
-            <span class="row"> <label>Add cropmarks <input type="checkbox" name="cropmarks"></label>
-                <span data-balloon-length="medium" aria-label="Adds cutting guidelines for quarto/octavo" data-balloon-pos="up">🛈</span>
+            <span class="row"> <label>Add Foldlines <input type="checkbox" name="cropmarks"></label>
+                <span data-balloon-length="medium" aria-label="Adds folding guidelines (ordered from thickest to thinnest)" data-balloon-pos="up">🛈</span>
+            </span> 
+            <span class="row"> <label>Add Cutlines <input type="checkbox" name="cutmarks"></label>
+                <span data-balloon-length="medium" aria-label="Adds cutting guidelines" data-balloon-pos="up">🛈</span>
             </span> 
 
             <span class="row">
