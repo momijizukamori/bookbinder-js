@@ -84,8 +84,8 @@ export class WackyImposition{
                 this.auditForBlanks([f(i+1), f(i+12),   f(i+13), f(i+24)], pageCount),
             ];
             let frontFour = [
-                this.auditForBlanks([p(i+28), p(i+37),  p(i+36), p(i+29)], pageCount),
-                this.auditForBlanks([f(i+25), f(i+40),  f(i+33), f(i+32)], pageCount),
+                this.auditForBlanks([p(i+36), p(i+29),  p(i+28), p(i+37)], pageCount),
+                this.auditForBlanks([f(i+33), f(i+32),  f(i+25), f(i+40)], pageCount),
             ]
             let backThrees = [
                 this.auditForBlanks([f(i+19), f(i+18),   f(i+7), f(i+6)], pageCount),
@@ -93,8 +93,8 @@ export class WackyImposition{
                 this.auditForBlanks([f(i+23), f(i+14),   f(i+11), f(i+2)], pageCount),
             ];
             let backFour = [
-                this.auditForBlanks([p(i+30), p(i+35),  p(i+38), p(i+27)], pageCount),
-                this.auditForBlanks([f(i+31), f(i+34),  f(i+39), f(i+26)], pageCount),
+                this.auditForBlanks([p(i+38), p(i+27),  p(i+30), p(i+35)], pageCount),
+                this.auditForBlanks([f(i+39), f(i+26),  f(i+31), f(i+34)], pageCount),
             ]
             console.log("Sheet ",sheet," has front 3s ",frontThrees," and front 4 ", frontFour," w/ back 3s ",backThrees," and back 4", backFour)
             sheets.push(frontFour.concat(frontThrees));
@@ -167,6 +167,10 @@ export class WackyImposition{
             let i = row * 20 - 1;
             let front = [page(i+6),page(i+3),page(i+2),page(i+7),page(i+10),page(i+19),page(i+18),page(i+11),page(i+14),page(i+15)];
             let back = [page(i+16),page(i+13),page(i+12),page(i+17),page(i+20),page(i+9),page(i+8),page(i+1),page(i+4),page(i+5)];
+            if (!this.duplex) {
+                console.log("in duplex mode, reversing")
+                back.reverse();
+            }
             fronts.push(this.auditForBlanks(front, pageCount));
             backs.push(this.auditForBlanks(back, pageCount));
             console.log("   -> adding front ",fronts[fronts.length - 1], " and back ", backs[fronts.length-1])
@@ -208,7 +212,7 @@ export class WackyImposition{
      */
     build_6_10s_lineFunction() {
         return info => {
-            let cutOffset = info.isFront ? 4 : 6
+            let cutOffset = (!this.duplex || info.isFront) ? 4 : 6
             let baseCuts = [
                 this.cutHorizontal(info.paperSize[0], info.gap[1]),
                 this.cutHorizontal(info.paperSize[0], info.gap[1] + info.renderPageSize[1]),
@@ -351,7 +355,7 @@ export class WackyImposition{
                 });
             });
             return [
-                {...(this.foldHorizontal(info.paperSize[0], info.paperSize[1]/2, 0.)), opacity: 0.7},
+                {...(this.foldHorizontal(info.paperSize[0], info.paperSize[1]/2, 0.)), opacity: 0.4},
                 this.cutVertical(info.paperSize[1], info.paperSize[0]/2),
                 this.cutVertical(info.paperSize[1], info.paperSize[0] - info.gap[0]),
                 this.cutVertical(info.paperSize[1], info.gap[0]),
@@ -402,7 +406,7 @@ export class WackyImposition{
             start: { x: x - size/2, y: y },
             end: { x: x + size/2, y: y},
             thickness: 0.5,
-            opacity: 0.7
+            opacity: 0.4
         },
         {
             start: { x: x, y: y - size/2 },
