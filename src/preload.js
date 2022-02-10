@@ -69,12 +69,18 @@ window.addEventListener('DOMContentLoaded', () => {
         list.forEach( sublist => output_pages += sublist.length);
       });
       document.getElementById("total_pages").innerText = output_pages;
+
+      let isWacky = document.getElementById("a9_3_3_4").checked || document.getElementById("a10_6_10s").checked
+          || document.getElementById("A7_2_16s").checked || document.getElementById("A7_32").checked;
+      console.log("Is a wacky layout? ",isWacky)
+      document.getElementById("book_size").querySelectorAll("input").forEach(x => {x.disabled = isWacky})
+      document.getElementById("book_size").style.opacity = isWacky ? 0.3 : 1.0;
     }
 
     function saveForm(formData) {
       let result = (({ duplex, duplexrotate, format, sigsize, lockratio }) => ({ duplex, duplexrotate, format, sigsize, lockratio }))(book);
       result.papersize = formData.get('paper_size');
-      result.booksize = formData.get('book_size');
+      result.pagelayout = formData.get('pagelayout');
       settings.setItem(storageKey, JSON.stringify(result));
     }
 
@@ -108,7 +114,7 @@ window.addEventListener('DOMContentLoaded', () => {
        document.querySelector('option[value="'+ bookSettings.papersize + '"]').setAttribute('selected', "");
   
         document.getElementById(bookSettings.format).setAttribute('checked', "");
-        document.getElementById(bookSettings.booksize).setAttribute('checked', "");
+        document.getElementById(bookSettings.pagelayout).setAttribute('checked', "");
         document.querySelector('input[name="sig_length').setAttribute('value', bookSettings.sigsize);
       } catch(error) {
         console.log(error);

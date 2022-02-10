@@ -4,14 +4,16 @@ export class Signatures {
 
 	// Takes a list of pagenumbers, splits them evenly, then rearranges the pages in each chunk.
 
-	constructor(pages, duplex, sigsize) {
+	constructor(pages, duplex, sigsize, per_sheet, duplexrotate) {
 		this.sigsize = sigsize;
 		this.duplex = duplex;
 		this.inputpagelist = pages;
+		this.per_sheet = per_sheet || 4; // pages per sheet - default is 4.
+		this.duplexrotate = duplexrotate || false;
 
 		this.pagelist = [];
 
-		this.sheets = Math.ceil(pages.length / 4);
+		this.sheets = Math.ceil(pages.length / this.per_sheet);
 
 		this.sigconfig = [];
 		this.signaturepagelists = [];
@@ -23,11 +25,11 @@ export class Signatures {
 
 		let targetlength = this.inputpagelist.length;
 
-		//	calculatelength given by multiplying config values by 4
+		//	calculatelength given by multiplying config values by pages per sheet
 		//	 and ensuring padding if longer than this.inputlist
 		let total = 0;
 
-		this.sigconfig.forEach(num => total += num * 4);
+		this.sigconfig.forEach(num => total += num * this.per_sheet);
 
 		if (total > targetlength) {
 
@@ -55,7 +57,7 @@ export class Signatures {
 
 		//      calculate the points at which to split the document
 		this.sigconfig.forEach(number => {
-			point = point + (number * 4);
+			point = point + (number * this.per_sheet);
 			splitpoints.push(point);
 		});
 
@@ -64,7 +66,7 @@ export class Signatures {
 			let start = splitpoints[i];
 			let end = splitpoints[i + 1];
 
-			let pagerange = this.inputpagelist.slice(start, end);
+			let pagerange = this.inputpagelist.slice(start, end); // .reverse();
 			this.signaturepagelists.push(pagerange);
 		}
 
@@ -72,16 +74,13 @@ export class Signatures {
 
 		//      Use the booklet class for each signature
 		this.signaturepagelists.forEach(pagerange => {
-			let newlist = new Booklet(pagerange, this.duplex);
+			let newlist = new Booklet(pagerange, this.duplex, this.per_sheet, this.duplexrotate);
 			newsigs.push(newlist.pagelist);
 		});
 
 		this.pagelist = newsigs;
 	}
 	generatesignatureindex() {
-		//  Calculate the number and length of the signatures required. 
-		// 	Called if text is longer than 192 pages .
-
 
 		let preliminarytotal = Math.floor(this.sheets / this.sigsize);
 		let modulus = this.sheets % this.sigsize;
