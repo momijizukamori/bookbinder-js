@@ -126,7 +126,56 @@
             <span class="row"> <input type="radio" id="customsig" name="sig_format" value="customsig">
                 <label for="customsig">Custom signatures</label> <input type="text" name="custom_sig">
                 <span data-balloon-length="medium" aria-label="Specify as a set of numbers seperated by commas, such as: 10, 10, 8" data-balloon-pos="up">🛈</span>
+
+            <h3>Wacky Small Layouts</h3>
+            <span class="row"><i>These layouts contain one or more signature per printed page. They do not use many of the other settings </i></span>
+            <span class="row"> <input type="radio" id="A7_32" name="sig_format" value="A7_32">
+                <label for="A7_32">16 per side (16 folio signature)</label></span>
             </span>
+            <span class="row">
+                <details>
+                    <summary>Instructions</summary>
+                    <p>
+                    Cut each folio out. Nestle them into each other. The upper left is the outer folio, and the lower right is the inner folio. They stack left -> right, top -> bottom. 
+                    </p>
+                </details></span>
+            <span class="row"> <input type="radio" id="A7_2_16s" name="sig_format" value="A7_2_16s">
+                <label for="A7_2_16s">16 per side (4 folio signature x 2)</label></span>
+            </span>
+            <span class="row">
+                <details>
+                    <summary>Instructions</summary>
+                    <p>
+                    <center><img src="img/2_sig_4x4_diagram.png" style='height: 100%; width: 100%; object-fit: contain'></center>
+                    Cut the vertical center line. You can also cut the horizontal lines if you like, or just fold it up as detailed above.
+                    </p>
+                </details></span>
+            <span class="row"> <input type="radio" id="a9_3_3_4" name="sig_format" value="a9_3_3_4">
+                <label for="a9_3_3_4">Little (20 per side, 3/3/4 signatures per side)</label></span>
+            <span class="row">
+                <details>
+                    <summary>Instructions</summary>
+                    <p>
+                    <center><img src="img/3_3_4_diagram.png" style='height: 100%; width: 100%; object-fit: contain'></center>
+                    Cut along the cut lines. Fold up the 3 folio signatures, then the 4 folio.
+                    </p>
+                </details></span>
+            <span class="row"> <input type="radio" id="a10_6_10s" name="sig_format" value="a10_6_10s">
+                <label for="a10_6_10s">Mini (60 per side, 2/3 signatures per row, 6 rows per side)</label></span>
+            <span class="row">
+                <details>
+                    <summary>Instructions</summary>
+                    <p>
+                    <b> THIS IS A LANDSCAPE LAYOUT. IT MUST BE PRINTED AND "flipped on the short size" (the non-typical flipping)</b>
+                    <br>
+                    Thankfully most small layouts fit on one page-- easy enough to do a test print and make sure you're duplexing correctly (if that's your route)
+                    </p><p>
+                    <center><img src="img/6_10s_diagram.png" style='height: 100%; width: 100%; object-fit: contain'></center>
+                    Cut out the rows. Fold up the folios like a big zig-zag (two per face). Then fold the first 2 folios into a signature and the last 3 folios into a signature. I often cut them apart only when I'm stitching things together.
+                    </p><p>
+                    Note that when folding, it's important for the <b>center of the folios to line up</b>. That's what I measure against (less so fretting about folding exactly at the edge). Remember! Printer skew is a real thing!
+                    </p>
+                </details></span>
         </div>
 
         <div class="section" id="sig_info">
