@@ -10,7 +10,7 @@ export const pagesizes = {
     'LETTER': [612, 792], 'NOTE': [540, 720], 'LEGAL': [612, 1008], 'TABLOID': [792, 1224], 'EXECUTIVE': [522, 756], 'POSTCARD': [283, 416],
     'A0': [2384, 3370], 'A1': [1684, 2384], 'A3': [842, 1191], 'A4': [595, 842], 'A5': [420, 595], 'A6': [297, 420],
     'A7': [210, 297], 'A8': [148, 210], 'A9': [105, 148], 'B0': [2834, 4008], 'B1': [2004, 2834], 'B2': [1417, 2004],
-    'B3': [1000, 1417], 'B4': [708, 1000], 'B6': [354, 498], 'B7': [249, 354], 'B8': [175, 249], 'B9': [124, 175],
+    'B3': [1000, 1417], 'B4': [708, 1000], 'B5': [500, 708], 'B6': [354, 498], 'B7': [249, 354], 'B8': [175, 249], 'B9': [124, 175],
     'B10': [87, 124], 'ARCH_E': [2592, 3456], 'ARCH_C': [1296, 1728], 'ARCH_B': [864, 1296], 'ARCH_A': [648, 864],
     'FLSA': [612, 936], 'FLSE': [648, 936], 'HALFLETTER': [396, 612], '_11X17': [792, 1224], 'ID_1': [242.65, 153],
     'ID_2': [297, 210], 'ID_3': [354, 249], 'LEDGER': [1224, 792], 'CROWN_QUARTO': [535, 697], 'LARGE_CROWN_QUARTO': [569, 731],
@@ -27,9 +27,10 @@ const targetbooksize = {
 // Values are the degree of rotation from a portrait offset needed to re-impose this on a portrait-oriented page,
 // and should only need to be specified for one side.
 const page_layouts = {
-    folio:{rotations:[[-90], [-90]], landscape: true, rows: 2, cols: 1, per_sheet: 4},
-    quarto:{rotations: [[-180, -180], [0, 0]], landscape: false, rows: 2, cols: 2, per_sheet: 8}, 
-    octavo:{rotations: [[-90, 90], [-90, 90], [-90, 90], [-90, 90]], landscape: true, rows: 4, cols: 2, per_sheet: 16}
+    folio:{rotations:[[-90], [-90]], landscape: true, rows: 2, cols: 1, per_sheet: 4, h_crop: [], v_crop:[]},
+    quarto:{rotations: [[0, 0],[-180, -180]], landscape: false, rows: 2, cols: 2, per_sheet: 8, h_crop: [[[0.5, 0], [0.5, 0.05]], [[0.5, 0.95], [0.5, 1]]]}, 
+    octavo:{rotations: [[-90, 90], [-90, 90], [-90, 90], [-90, 90]], landscape: true, rows: 4, cols: 2, per_sheet: 16, h_crop:[]},
+    sextodecimo:{rotations: [ [0, 0, 0, 0], [-180, -180, -180, -180], [0, 0, 0, 0], [-180, -180, -180, -180],], landscape: false, rows: 4, cols: 4, per_sheet: 32, h_crop:[]}
 }
 
 export class Book {
@@ -62,6 +63,8 @@ export class Book {
         this.zip = null;
         this.page_layout = page_layouts.folio;
         this.per_sheet = 8; //number of pages to print per sheet.
+        this.cropmarks = false;
+        this.cutmarks = false;
     }
 
     update(form) {
@@ -71,6 +74,8 @@ export class Book {
         this.papersize = pagesizes[form.get('paper_size')];
         this.lockratio = form.get("page_scaling") == 'lockratio';
         this.flyleaf = form.has('flyleaf');
+        this.cropmarks = form.has('cropmarks');
+        this.cutmarks = form.has('cutmarks');
         this.format = form.get('sig_format');
         let siglength = parseInt(form.get('sig_length'), 10);
         if (!isNaN(siglength)) {
@@ -166,7 +171,7 @@ export class Book {
         } else if (this.format == 'perfect') {
             this.book = new PerfectBound(this.orderedpages, this.duplex);
         } else if (this.format == 'standardsig' || this.format == 'customsig') {
-            this.book = new Signatures(this.orderedpages, this.duplex, this.sigsize, this.per_sheet);
+            this.book = new Signatures(this.orderedpages, this.duplex, this.sigsize, this.per_sheet, this.duplexrotate);
 
             if (this.customsig) {
                 this.book.setsigconfig(this.signatureconfig);
@@ -216,11 +221,7 @@ export class Book {
         return this.saveZip();
     }
 
-    async writepages(outname, pagelist, side2flag) {
-
-        let side = 'front';
-        let imposedpage = 'left';
-
+    async writepages(outname, pagelist, back, alt) {
         const outPDF = await PDFDocument.create();
         let currPage = null;
         let filteredList = [];
@@ -241,12 +242,12 @@ export class Book {
         let block_end = offset;
 
         let positions = this.calculatelayout();
-        console.log(positions);
-        console.log(embeddedPages);
+
+        let side2flag = back;
     
         while (block_end <= pagelist.length) {
+            
             let block = embeddedPages.slice(block_start, block_end);
-            console.log(block);
             currPage = outPDF.addPage([this.papersize[0], this.papersize[1]]);
 
             block.forEach((page, i) => {
@@ -254,47 +255,32 @@ export class Book {
                     // blank page, move on.
                 } else {
                     let pos = positions[i];
-                    currPage.drawPage(page, { y: pos.y, x: pos.x, xScale: pos.sx, yScale: pos.sy, rotate: degrees(pos.rotation) });
+                    let rot = pos.rotation;
+
+                    // if (this.per_sheet == 4 && this.duplexrotate && side2flag) {
+                    //     rot = rot * -1;
+                    // }
+
+                    currPage.drawPage(page, { y: pos.y, x: pos.x, xScale: pos.sx, yScale: pos.sy, rotate: degrees(rot) });
                 }
+    
             })
 
+            if (this.cropmarks) {
+                this.draw_cropmarks(currPage, side2flag);
+            }
+
+            if (this.cutmarks) {
+                this.draw_cutmarks(currPage)
+            }
+
+            if (alt) {
+                side2flag = !side2flag;
+            }
 
             block_start += offset;
             block_end += offset;
         }
-
-        // for (let i = 0; i < pagelist.length; i++) {
-        //     let pagenumber = pagelist[i];
-        //     let embeddedPage = embeddedPages[i];
-
-        //     if (i % 2 == 0) {
-        //         currPage = outPDF.addPage([this.papersize[0], this.papersize[1]]);
-        //     }
-        //     ////	scaling code here
-        //     if (pagenumber == 'b') {
-        //         // blank page, move on.
-        //     } else {
-        //         if (i % 2 == 0) {
-        //             imposedpage = 'left';
-
-        //             if (side2flag || ((i + 2) % 4 == 0 && this.duplex)) {
-        //                 side = 'back';
-        //             } else {
-        //                 side = 'front';
-        //             }
-        //         } else {
-        //             imposedpage = 'right';
-        //         }
-        //         //print 'adding page'
-        //         const [baseline, leftstart, scale1, scale2, rotate] = this.calculateposition(pagenumber, imposedpage, side);
-
-        //         // let pageTransform = buildTransform(scale1, scale2, leftstart, baseline, 90, 0, 0)
-        //         // const [embeddedPage] = await outPDF.embedPdf(this.currentdoc, [pagenumber]);
-        //         currPage.drawPage(embeddedPage, { y: leftstart, x: baseline, xScale: scale1, yScale: scale2, rotate: degrees(rotate) });
-
-        //     }
-        // }
-
 
         return outPDF.save().then(pdfBytes => {
             this.zip.file(outname, pdfBytes);
@@ -302,6 +288,100 @@ export class Book {
         }
         );
 
+    }
+
+    draw_cropmarks(currPage, side2flag) {
+        switch(this.per_sheet){
+            case 32:
+                if (side2flag) {
+                if (this.duplexrotate){
+                    currPage.drawLine({
+                    start: {x: this.papersize[0] * 0.75,  y: this.papersize[1] * 0.75 },
+                    end: {x: this.papersize[0] * 0.75, y: this.papersize[1] * 0.5 },
+                    opacity: 0.4,
+                    dashArray: [1, 5]
+                });} else {
+                    currPage.drawLine({
+                        start: {x: this.papersize[0] * 0.25,  y: this.papersize[1] * 0.5 },
+                        end: {x: this.papersize[0] * 0.25,  y: this.papersize[1] * 0.25 },
+                        opacity: 0.4,
+                        dashArray: [1, 5]
+                    });
+                }
+            }
+            case 16:
+                if (side2flag) {
+                    if (this.duplexrotate){
+                    currPage.drawLine({
+                    start: {x: 0,  y: this.papersize[1] * 0.75 },
+                    end: {x: this.papersize[0] * 0.5, y: this.papersize[1] * 0.75 },
+                    opacity: 0.4,
+                    dashArray: [3, 5]
+                });} else {
+                    currPage.drawLine({
+                        start: {x: this.papersize[0] * 0.5,  y: this.papersize[1] *.25 },
+                        end: {x: this.papersize[0],  y: this.papersize[1] * 0.25 },
+                        opacity: 0.4,
+                        dashArray: [3, 5]
+                    });
+                }
+            }
+            case 8:
+                if (side2flag) {
+                if (this.duplexrotate){
+                    currPage.drawLine({
+                    start: {x: this.papersize[0] * 0.5,  y: 0 },
+                    end: { y: this.papersize[1] * 0.5, x: this.papersize[0] * 0.5 },
+                    opacity: 0.4,
+                    dashArray: [5, 5]
+                });} else {
+                    currPage.drawLine({
+                        start: {x: this.papersize[0] * 0.5,  y: this.papersize[1] },
+                        end: { y: this.papersize[1] * 0.5, x: this.papersize[0] * 0.5 },
+                        opacity: 0.4,
+                        dashArray: [5, 5]
+                    });
+                }
+            }
+            case 4:
+                if (!side2flag) {
+                currPage.drawLine({
+                    start: { x: 0, y: this.papersize[1] * 0.5 },
+                    end: { x: this.papersize[0], y: this.papersize[1] * 0.5 },
+                    opacity: 0.4,
+                    dashArray: [10, 5]
+                });
+            }
+            }
+    }
+
+    draw_cutmarks(currPage) {
+        switch(this.per_sheet){
+            case 32:
+                currPage.drawLine({
+                    start: {x: 0,  y: this.papersize[1] * 0.75 },
+                    end: {x: this.papersize[0],  y: this.papersize[1] * 0.75 },
+                    opacity: 0.4
+                });
+                currPage.drawLine({
+                    start: {x: 0,  y: this.papersize[1] * 0.25 },
+                    end: {x: this.papersize[0],  y: this.papersize[1] * 0.25 },
+                    opacity: 0.4
+                });
+            case 16:
+                currPage.drawLine({
+                    start: {x: this.papersize[0] * 0.5,  y: 0 },
+                    end: {x: this.papersize[0] * 0.5, y: this.papersize[1]},
+                    opacity: 0.4
+                });
+            case 8:
+                currPage.drawLine({
+                    start: { x: 0, y: this.papersize[1] * 0.5 },
+                    end: { x: this.papersize[0], y: this.papersize[1] * 0.5 },
+                    opacity: 0.4
+                });
+            case 4:
+            }
     }
 
     calculatelayout(){
@@ -362,6 +442,7 @@ export class Book {
             row.forEach((col, j) => {
                 let x = j * finalx + xpad + xoffset;
                 let y = ((i * finaly) + ypad + yoffset);
+
                 if ([-90, -180].includes(col)) {
                     y += finaly;
                 }
@@ -377,92 +458,92 @@ export class Book {
         return positions;
     }
 
-    calculateposition(pagenumber, imposedpage, side) {
-        //     calculate scaling, and the x and y translation values for the 2up output
-        let page = this.currentdoc.getPage(pagenumber);
-        let cropbox = page.getCropBox();
+    // calculateposition(pagenumber, imposedpage, side) {
+    //     //     calculate scaling, and the x and y translation values for the 2up output
+    //     let page = this.currentdoc.getPage(pagenumber);
+    //     let cropbox = page.getCropBox();
 
-        let pagex = cropbox.width;
-        let pagey = cropbox.height;
+    //     let pagex = cropbox.width;
+    //     let pagey = cropbox.height;
 
 
 
-        let targetratio = this.booksize[1] / this.booksize[0];        //       targetpage ratio
-        let inputratio = pagey / pagex;                               //       inputpage ratio
-        let sx = 1;
-        let sy = 1;
-        let rotate = -90;
+    //     let targetratio = this.booksize[1] / this.booksize[0];        //       targetpage ratio
+    //     let inputratio = pagey / pagex;                               //       inputpage ratio
+    //     let sx = 1;
+    //     let sy = 1;
+    //     let rotate = -90;
 
-        //      Keep the page proportions (lockratio=1) or stretch to fit target page (lockratio=0)
-        if (this.lockratio) {
-            let scale = 1;
-            if (targetratio > inputratio) {
-                //       input page is fatter than target page - scale with width
-                scale = this.booksize[0] / pagex;
-            } else {
-                //       input page is thinner than target page - scale with height
-                scale = this.booksize[1] / pagey;
-            }
-            sx = scale;
-            sy = scale;
+    //     //      Keep the page proportions (lockratio=1) or stretch to fit target page (lockratio=0)
+    //     if (this.lockratio) {
+    //         let scale = 1;
+    //         if (targetratio > inputratio) {
+    //             //       input page is fatter than target page - scale with width
+    //             scale = this.booksize[0] / pagex;
+    //         } else {
+    //             //       input page is thinner than target page - scale with height
+    //             scale = this.booksize[1] / pagey;
+    //         }
+    //         sx = scale;
+    //         sy = scale;
 
-        } else {
-            sx = this.booksize[0] / pagex;
-            sy = this.booksize[1] / pagey;
-        }
+    //     } else {
+    //         sx = this.booksize[0] / pagex;
+    //         sy = this.booksize[1] / pagey;
+    //     }
 
-        let sheetwidth = this.papersize[0];
-        let sheetheight = this.papersize[1];
+    //     let sheetwidth = this.papersize[0];
+    //     let sheetheight = this.papersize[1];
 
-        let bookheight = pagey * sy;            //       height of imposed page
-        let bookwidth = pagex * sx;             //       width of imposed page
+    //     let bookheight = pagey * sy;            //       height of imposed page
+    //     let bookwidth = pagex * sx;             //       width of imposed page
 
-        let centreline = sheetheight * 0.5;              //       centreline of page
-        let xpad = (sheetwidth - bookheight) / 2.0;        //       gap above and below imposed page
-        let ypad = centreline - bookwidth;              //       gap to side of imposed page
-        let baseline = null;
-        let leftstart = null;
-        let xoffset = cropbox.x * sx;
-        let yoffset = cropbox.y * sy;
+    //     let centreline = sheetheight * 0.5;              //       centreline of page
+    //     let xpad = (sheetwidth - bookheight) / 2.0;        //       gap above and below imposed page
+    //     let ypad = centreline - bookwidth;              //       gap to side of imposed page
+    //     let baseline = null;
+    //     let leftstart = null;
+    //     let xoffset = cropbox.x * sx;
+    //     let yoffset = cropbox.y * sy;
 
-        //      sheet guidelines: side 1 
-        if (!this.duplexrotate || side == 'front') {
-            //print side,pagenumber
-            baseline = xpad;	//       x translation value for 2up
+    //     //      sheet guidelines: side 1 
+    //     if (!this.duplexrotate || side == 'front') {
+    //         //print side,pagenumber
+    //         baseline = xpad;	//       x translation value for 2up
 
-            if (imposedpage == 'left') {
-                leftstart = (sheetheight - ypad) + this.spineoffset; // y translation for top page
-            } else if (imposedpage == 'right') {
-                leftstart = centreline - this.spineoffset;        // y translation for bottom page
-            }
+    //         if (imposedpage == 'left') {
+    //             leftstart = (sheetheight - ypad) + this.spineoffset; // y translation for top page
+    //         } else if (imposedpage == 'right') {
+    //             leftstart = centreline - this.spineoffset;        // y translation for bottom page
+    //         }
 
-            baseline = baseline - yoffset;
-            leftstart = leftstart + xoffset;
-            //      sheet guidlines: side2
-        } else if (side == 'back') {
-            //print side,pagenumber
-            rotate = 90;
-            baseline = sheetwidth - xpad;                 	// x translation for 2up 
+    //         baseline = baseline - yoffset;
+    //         leftstart = leftstart + xoffset;
+    //         //      sheet guidlines: side2
+    //     } else if (side == 'back') {
+    //         //print side,pagenumber
+    //         rotate = 90;
+    //         baseline = sheetwidth - xpad;                 	// x translation for 2up 
 
-            if (imposedpage == 'left') {
-                leftstart = ypad + this.spineoffset;	// y translation for top page
-            } else if (imposedpage == 'right') {
-                leftstart = centreline - this.spineoffset;	// y translation for bottom page
-            }
+    //         if (imposedpage == 'left') {
+    //             leftstart = ypad + this.spineoffset;	// y translation for top page
+    //         } else if (imposedpage == 'right') {
+    //             leftstart = centreline - this.spineoffset;	// y translation for bottom page
+    //         }
 
-            baseline = baseline + yoffset;
-            leftstart = leftstart - xoffset;
-        }
+    //         baseline = baseline + yoffset;
+    //         leftstart = leftstart - xoffset;
+    //     }
 
-        return [baseline, leftstart, sx, sy, rotate];
-    }
+    //     return [baseline, leftstart, sx, sy, rotate];
+    // }
 
     async createsignatures(pages, id) {
         //      duplex printers print both sides of the sheet, 
         if (this.duplex) {
             // let outduplex = this.outputpath + '/' + id + 'duplex' + '.pdf';
             let outduplex = id + 'duplex' + '.pdf';
-            await this.writepages(outduplex, pages[0], 0);
+            await this.writepages(outduplex, pages[0], false, true);
 
             this.filelist.push(outduplex);
         } else {
@@ -473,8 +554,8 @@ export class Book {
             let outname1 = id + 'side1.pdf';
             let outname2 = id + 'side2.pdf';
 
-            await this.writepages(outname1, pages[0], 0);
-            await this.writepages(outname2, pages[1], 1);
+            await this.writepages(outname1, pages[0], false, false);
+            await this.writepages(outname2, pages[1], true, false);
 
             this.filelist.push(outname1);
             this.filelist.push(outname2);
@@ -591,11 +672,4 @@ export class Book {
         }).forEach( line => { curPage.drawLine(line)});
     }
 
-}
-
-function mm2point(millimetres) {
-    //       millimetres to points = 2.83464567
-    //       points to millimetres = 0.352777778
-
-    return millimetres * 2.83464567;
 }
