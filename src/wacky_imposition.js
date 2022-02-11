@@ -27,6 +27,15 @@ export class WackyImposition{
       }
     }
 
+    page_1_3rd_builder() {
+        return {
+            sheetMaker: this.build_1_3rd_sheetList.bind(this),
+            lineMaker: this.build_1_3rd_lineFunction.bind(this),
+            isLandscape: false,
+            fileNameMod: "one_third"
+        }
+    }
+
     a9_3_3_4_builder() {
         return {
             sheetMaker: this.build_3_3_4_sheetList.bind(this),
@@ -35,6 +44,7 @@ export class WackyImposition{
             fileNameMod: "little"
         }
     }
+
     a10_6_10s_builder() {
         return {
             sheetMaker: this.build_6_10s_sheetList.bind(this),
@@ -62,6 +72,71 @@ export class WackyImposition{
     }
 
     // ---------------- the real guts of the layout
+
+
+    /**
+     * Produces a 3 folio signature per sheet
+     * @param pageCount - total pages in document
+     * @return an array of sheets. Assumes 1st is "front", 2nd is "back", 3rd is "front", etc. 
+     *      Each sheet is an array of rows, containing a list of page objects
+     */
+    build_1_3rd_sheetList(pageCount) {
+        let p = this.page;
+        let f = this.flipPage;
+        let sheets = [];
+        let sheetCount = Math.ceil(pageCount / 12.0);
+        console.log("Building the 1/3rd page layout. Given ",pageCount," page count, there will be ",sheetCount," sheets...");
+        for (let sheet=0; sheet < sheetCount; ++sheet ) {
+            let i = sheet * 12 - 1;
+            let front = [
+                this.auditForBlanks([p(i+8), p(i+5)], pageCount),
+                this.auditForBlanks([f(i+9), f(i+4)], pageCount),
+                this.auditForBlanks([p(i+12), p(i+1)], pageCount),
+            ];
+            let back = [
+                this.auditForBlanks([p(i+6), p(i+7)], pageCount),
+                this.auditForBlanks([f(i+3), f(i+10)], pageCount),
+                this.auditForBlanks([p(i+2), p(i+11)], pageCount),
+            ]
+            sheets.push(front);
+            sheets.push(back);
+        }
+        return sheets;
+    }
+
+    /**
+     * @return a FUNCTION. The function takes as it's parameter:
+     *       Object definition: {
+     *           gap: [leftGap, topGap],
+     *           renderPageSize: [width, height],
+     *           paperSize: [width, height],
+     *           isFront: boolean,
+     *       }
+     *       and returns: a list of lines, as described by PDF-lib.js's `PDFPageDrawLineOptions` object
+     */
+    build_1_3rd_lineFunction() {
+        return info => {
+            let foldMarks = [];
+            [0,1,2,3].forEach( row => {
+                [0,1,2].forEach( page => {
+                    foldMarks = foldMarks.concat(this.crosshairMark(
+                        info.gap[0] + info.renderPageSize[0] * page,
+                        info.gap[1] + info.renderPageSize[1] * row,
+                        5
+                        ));
+                });
+            });
+            return [
+                this.foldHorizontal(info.paperSize[0], info.gap[1] + info.renderPageSize[1]),
+                this.foldHorizontal(info.paperSize[0], info.gap[1] + info.renderPageSize[1] * 2),
+                this.cutHorizontal(info.paperSize[0], info.gap[1] + info.renderPageSize[1] * 3),
+            ]
+            .concat(foldMarks);
+        };
+    }
+
+
+
 
     /**
      * Produces two 3 folio foldup signatures and a 4 folio foldup signature.
@@ -195,6 +270,16 @@ export class WackyImposition{
             } else {
                 sheets[sheet*2].push([blank(),blank(),blank(),blank(),blank(),blank(),blank(),blank(),blank(),blank()]);
                 sheets[sheet*2 + 1].push([blank(),blank(),blank(),blank(),blank(),blank(),blank(),blank(),blank(),blank()]);
+            }
+        }
+        for (let i=0;i < sheets.length; ++i){
+            if (i % 2 == 1 && !this.duplex) {   // stupid "flip on short edge" rotation plans...
+                sheets[i].reverse();
+                sheets[i].forEach( row => {
+                    row.forEach( page => {
+                        this.rotate180(page);
+                    });
+                });
             }
         }
         return sheets;
@@ -446,5 +531,11 @@ export class WackyImposition{
     }
     blankPage() {
         return { num: 0, isBlank: true, vFlip: false}
+    }
+    /**
+     * @param page - the page object, which will be mutated, vertically flipping it
+     */
+    rotate180(page) {
+        page.vFlip = !page.vFlip;
     }
 }
