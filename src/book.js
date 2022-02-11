@@ -183,7 +183,7 @@ export class Book {
             }
 
             this.rearrangedpages = this.book.pagelist;
-        } else if (this.format == 'a9_3_3_4' || this.format == 'a10_6_10s' || this.format == 'A7_32' || this.format == 'A7_2_16s') {
+        } else if (this.format == 'a9_3_3_4' || this.format == 'a10_6_10s' || this.format == 'A7_32' || this.format == 'A7_2_16s' || this.format == '1_3rd') {
             this.book = new WackyImposition(this.orderedpages, this.duplex, this.format)
         }
         console.log("Created pages for : ",this.book)
@@ -220,6 +220,8 @@ export class Book {
             await this.buildSheets(this.filename, this.book.a7_32_builder());
         } else if (this.format == 'A7_2_16s') {
             await this.buildSheets(this.filename, this.book.a7_2_16s_builder());
+        } else if (this.format == '1_3rd') {
+            await this.buildSheets(this.filename, this.book.page_1_3rd_builder());
         }
         return this.saveZip();
     }
@@ -496,8 +498,10 @@ export class Book {
     }
 
     saveZip() {
+        console.log("Saving zip...")
         return this.zip.generateAsync({ type: "blob" })
             .then(blob => {
+                console.log("  calling saveAs on ", this.filename)
                 saveAs(blob, this.filename + ".zip");
             });
     }
@@ -521,22 +525,28 @@ export class Book {
         for (let i=0; i < sheets.length; ++i ) {
             let isFront = i % 2 == 0
             console.log("Trying to write ", sheets[i])
-            if (this.duplex) {
-            } else {
-                let targetPDF = (this.duplex || isFront) ? outPDF : outPDF_back;
-                await this.write_single_page(targetPDF, builder.isLandscape, isFront, sheets[i], lineMaker);
-            }
+            let targetPDF = (this.duplex || isFront) ? outPDF : outPDF_back;
+            await this.write_single_page(targetPDF, builder.isLandscape, isFront, sheets[i], lineMaker);
         }
         {
+            console.log("Trying to save to PDF")
             let fileName = id + "_" + builder.fileNameMod + ( this.duplex ? '' : '_fronts') +'.pdf';
-            await outPDF.save().then(pdfBytes => { this.zip.file(fileName, pdfBytes); });
+            await outPDF.save().then(pdfBytes => { 
+                console.log("Calling zip.file on ", fileName);
+                this.zip.file(fileName, pdfBytes); 
+            });
             this.filelist.push(fileName);
         }
         if (!this.duplex) {
+            console.log("Trying to save to PDF (back pages)")
           let fileName = id + "_" + builder.fileNameMod + '_backs.pdf';
-          await outPDF_back.save().then(pdfBytes => { this.zip.file(fileName, pdfBytes); });
+          await outPDF_back.save().then(pdfBytes => { 
+            console.log("Calling zip.file on ", fileName);
+            this.zip.file(fileName, pdfBytes); 
+          });
           this.filelist.push(fileName);
         }
+        console.log("buildSheets complete");
     }
 
     /**
