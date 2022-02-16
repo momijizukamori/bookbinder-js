@@ -4,7 +4,7 @@
 <head>
     <title>Bookbinder</title>
     <link rel="stylesheet" href="https://unpkg.com/balloon-css/balloon.min.css">
-    <link rel="stylesheet" type="text/css" href="../styles.css">
+    <link rel="stylesheet" type="text/css" href="./styles.css">
     <script type="text/javascript" src="./preload.js"></script>
 </head>
 
@@ -48,50 +48,28 @@
                 <span data-balloon-length="medium" aria-label="Duplex will alternate front and backs of sheets in a single file; Single-sided will split fronts and backs into seperate files." data-balloon-pos="up">🛈</span></span>
 
             <span class="row"> <label>Alternate Page Rotation <input type="checkbox" name="rotate_page"
-                        disabled></label></span>
+                        checked></label></span>
             <!-- <span class="row"> <label>Double pages per sheet <input type="checkbox" name="double_page"></label></span> -->
 
         </div>
 
         <div class="section" id="book_size">
-            <h2>Page Layout</h2>
-            <span class="row"><input type="radio" id="folio" name="pagelayout" value="folio" checked>
-                <label for="standard">Folio (two pages per side of sheet)</label></span>
-            <span class="row"><input type="radio" id="quarto" name="pagelayout" value="quarto">
-                <label for="large">Quarto (four pages per side of sheet)</label></span>
-            <span class="row"><input type="radio" id="octavo" name="pagelayout" value="octavo">
-                <label for="full">Octavo (eight pages per side of sheet)</label></span>
-            
-            <span class="row">
-                <details>
-                    <summary>Folding instructions for quarto/octavo</summary>
-                    <p>
-                    Folding these two layouts is slightly more complex than the simple single-fold folio. 
-                    Both of these have been designed so that the first fold is parallel to the short edge of the paper - eg, if you hold the page in portrait orientation, you will be folding the top edge to the bottom.
-                    One side of the page will have consecutive numbers across this fold (ie, 3 and 30 on the top row, 2 and 31). Fold inward across this line (so that 3 has been folded to lay against 2, and 30 against 31).
-                    The next fold is along the other paper axis (parallel to the original long edge). For quarto, you want to find the side with the numbers closest together, and fold inwards to match them (this will be consecutive on the innermost sheet).
-                    For octavo, look at the bottom-most row and find the consecutive pair, then fold inward. Octavo has one last fold, for which you want to find the pair remaning that are closest, and fold them together.
-                </p><p>
-                    Or, if you want to just memorize the order, once you find the first fold side, the order is:<br>
-                    <b>quarto</b> - top to bottom, fold points away from you, left to right, fold points towards you.<br>
-                    <b>octavo</b> - top to bottom, fold points away from you, left to right, fold points away from you, top to bottom, fold points towards you.
-                </p>
-                </details></span>
+            <h2>Book Size</h2>
+            <span class="row"><input type="radio" id="standard" name="book_size" value="standard">
+                <label for="standard">Standard Paperback</label></span>
+            <span class="row"><input type="radio" id="large" name="book_size" value="large">
+                <label for="large">Large format paperback</label></span>
+            <span class="row"><input type="radio" id="full" name="book_size" value="full" checked>
+                <label for="full">Full paper size</label></span>
+            <span class="row"><input type="radio" id="custom" name="book_size" value="custom">
+                <label for="custom">Custom</label> - <label>Width <input type="number" name="custom_width"></label> x
+                <label>Height <input type="number" name="custom_height"></label></span>
 
             <span class="row"> <label for="page_scaling">Page scaling</label>
                 <select name="page_scaling" id="page_scaling">
                     <option value="lockratio" selected>Keep proportional</option>
                     <option value="stretch">Stretch to fit</option>
                 </select>
-            </span>
-
-            <span class="row"> <label for="center_margins">Margins</label>
-                <select name="center_margins" id="center_margins" disabled>
-                    <option value="spine" selected>Preserve spine fold margin</option>
-                    <option value="center">Center</option>
-                </select>
-                <span data-balloon-length="medium" aria-label="If you have designed your input pdf with the intention of trimming printed pages down, you may wish to preserve the spine margin." data-balloon-pos="up">🛈</span>
-            </span>
 
         </div>
 
