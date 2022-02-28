@@ -43,6 +43,7 @@ window.addEventListener('DOMContentLoaded', () => {
         updated.then(_ => updateForm());
       }
     });
+    
 
     generate.addEventListener('click', (e) => {
       generate.setAttribute('disabled', true);

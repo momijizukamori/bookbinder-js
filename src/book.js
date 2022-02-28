@@ -407,7 +407,8 @@ export class Book {
         let sheetheight = this.papersize[1];
 
         // Folios are the only type with a different set of layout params for the back
-        let layout = alt_folio ? page_layouts['folio_alt'] : this.page_layout;   
+        // let layout = alt_folio ? page_layouts['folio_alt'] : this.page_layout;  
+        let layout = this.page_layout; 
 
         // Calculate the size of each page box on the sheet
         let finalx = sheetwidth / layout.cols;
