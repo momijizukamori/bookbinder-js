@@ -4,6 +4,7 @@
   "description": "An app to rearrange PDF pages for printing for bookbinding",
   "main": "main.js",
   "scripts": {
+    "build": "webpack build",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "momijizukamori@gmail.com",
