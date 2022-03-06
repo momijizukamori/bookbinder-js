@@ -23,7 +23,8 @@ Detailed instructions for tool installation and machine setup are outside the sc
 		- Commit messages should describe your changes succinctly, for example, `git commit -m 'add contributor documentation'`
 1. Push your changes up to the feature branch on your fork as you go with `git push origin [name of branch]`, for example, `git push origin feature/contribution-docs`
 1. When you're ready to make a request for your changes to be merged into the parent repository, [open a pull request]():
-	- first, [make sure your fork is still up-to-date](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/working-with-forks/syncing-a-fork#syncing-a-fork-from-the-command-line) with the latest version of the upstream repository with `git merge upstream/main` - address any conflicts that may arise with upstream updates (currently outside the scope of this guide, but you can read some docs [here](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/addressing-merge-conflicts/about-merge-conflicts)).
+	- first, [make sure your fork is still up-to-date](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/working-with-forks/syncing-a-fork#syncing-a-fork-from-the-command-line) with the latest version of the upstream repository with `git merge upstream/main`
+	- address any conflicts that may arise with upstream updates (currently outside the scope of this guide, but you can read some docs [here](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/addressing-merge-conflicts/about-merge-conflicts)).
 	- push all your latest changes, including any updates merged from upstream, up to your fork's feature branch as described above
-	- open a pull request against the parent repository, as described in the link at the start of this section. See the following screenshot for an example:
-	
+	- open a pull request against the parent repository, as described in the link at the start of this section. Choose the parent repository's main branch as the 'base' and your fork's feature branch as the 'head'. Describe the changes you've made and review the changed files to make sure it's what you intended. See the following screenshot for an example:
+	![pull request example](/docs/PR-example.png)
