@@ -3,12 +3,14 @@
 
 <head>
     <title>Bookbinder</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="https://unpkg.com/balloon-css/balloon.min.css">
     <link rel="stylesheet" type="text/css" href="./styles.css">
     <script type="text/javascript" src="./preload.js"></script>
 </head>
 
 <body>
+    <div class="wrapper">
     <div class="section" id="intro">
         <h1>Bookbinder JS</h1>
         A Javascript-based app for formatting PDFs for bookbinding. For more information, feature requests, or to
@@ -199,8 +201,9 @@
             <span class="row">Number of Signatures: <span id="sig_count"></span></span>
             <span class="row">Signature Arrangement: <span id="sig_arrange"></span></span>
         </div>
-        <center><button type="button" name="generate" id="generate" disabled>Generate Output</button></center>
+        <button type="button" name="generate" id="generate" disabled>Generate Output</button>
     </form>
+    </div>
 </body>
 
 </html>
