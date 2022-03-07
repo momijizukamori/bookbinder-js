@@ -1,14 +1,16 @@
 * {
-    --background: white;
-    --text: black;
+    --background: #e6e6e5;
+    --text: #292929;
     --disabled-text: gray;
+    --link: #1616ad;
 }
 
 @media (prefers-color-scheme:dark) {
     * {
-        --background: black;
-        --text: white;
+        --background: #292929;
+        --text: #e6e6e5;
         --disabled-text: rgba(211, 211, 211, 0.5);
+        --link: skyblue;
     }
 }
 
@@ -21,6 +23,10 @@ body {
     color: var(--text);
 }
 
+a:link, a:visited {
+    color: var(--link);
+}
+
 .section {
     border: 1px solid var(--text);
     padding: 0.5em;
@@ -28,7 +34,7 @@ body {
     width: 45%;
 }
 
-h2 {
+h1, h2 {
     margin-top: 0;
 }
 
