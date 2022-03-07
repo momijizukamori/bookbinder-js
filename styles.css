@@ -1,12 +1,14 @@
 * {
     --background: white;
     --text: black;
+    --disabled-text: gray;
 }
 
 @media (prefers-color-scheme:dark) {
     * {
         --background: black;
         --text: white;
+        --disabled-text: rgba(211, 211, 211, 0.5);
     }
 }
 
@@ -37,4 +39,8 @@ h2 {
 button {
     font-size: 1.5em;
     clear: both;
+}
+
+select:disabled, button:disabled {
+    color: var(--disabled-text);
 }
