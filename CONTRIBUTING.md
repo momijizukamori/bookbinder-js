@@ -13,7 +13,7 @@ If you require more detailed instructions on any of these steps, please see the 
 
 ## Branching and Committing
 1. Create a feature branch with `git checkout -b` for whatever you're working on, such as `feature/contribution-docs` or `bugfix/page-layout-issues`
-1. Commit your changes as you go with meantingul commit messages
+1. Commit your changes as you go with meaningful commit messages
 1. Push your changes up to the feature branch on your fork as you go with `git push origin [name of branch]`, for example, `git push origin feature/contribution-docs`
 
 ## Pull Requests
