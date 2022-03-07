@@ -1,13 +1,40 @@
-html {font-family: Helvetica, Arial, sans-serif;}
+* {
+    --background: white;
+    --text: black;
+}
 
-.section {border: 1px solid black;
+@media (prefers-color-scheme:dark) {
+    * {
+        --background: black;
+        --text: white;
+    }
+}
+
+html {
+    font-family: Helvetica, Arial, sans-serif;
+}
+
+body {
+    background-color: var(--background);
+    color: var(--text);
+}
+
+.section {
+    border: 1px solid var(--text);
     padding: 0.5em;
     margin: 0.5em auto;
     width: 45%;
 }
 
-h2 {margin-top: 0;}
+h2 {
+    margin-top: 0;
+}
 
-.row{display: block}
+.row{
+    display: block;
+}
 
-button {font-size: 1.5em; clear: both;}
+button {
+    font-size: 1.5em;
+    clear: both;
+}
