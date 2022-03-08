@@ -16837,7 +16837,7 @@ var PDFPageEmbedder = /** @class */ (function () {
                     throw new _errors__WEBPACK_IMPORTED_MODULE_0__.MissingPageContentsEmbeddingError();
                 decodedContents = this.decodeContents(Contents);
                 _b = this.boundingBox, left = _b.left, bottom = _b.bottom, right = _b.right, top = _b.top;
-                xObject = context.flateStream(decodedContents, {
+                xObject = context.stream(decodedContents, {
                     Type: 'XObject',
                     Subtype: 'Form',
                     FormType: 1,
