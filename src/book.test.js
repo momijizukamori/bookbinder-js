@@ -42,4 +42,5 @@ describe('Book model', () => {
     // TODO test update
     // TODO test openPDF
     // TODO test createoutputfiles
+    // TODO test createPages
 });
