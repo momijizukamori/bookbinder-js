@@ -1,4 +1,4 @@
-import { Book, pagesizes } from './book.js';
+import { Book } from './book.js';
 import { loadForm } from './utils/formUtils.js';
 import { handleFileChange, handleInputChange } from './utils/changeHandlers.js';
 import { handleGenerateClick } from './utils/clickHandlers.js';

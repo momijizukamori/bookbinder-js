@@ -31083,24 +31083,9 @@ __webpack_require__.r(__webpack_exports__);
 
 function updateForm(book) {
     book.createpages();
-
     (0,_renderUtils__WEBPACK_IMPORTED_MODULE_1__.renderPageCount)(book);
     (0,_renderUtils__WEBPACK_IMPORTED_MODULE_1__.renderInfoBox)(book);
-
-    let isWacky =
-        document.getElementById('a9_3_3_4').checked ||
-        document.getElementById('a10_6_10s').checked ||
-        document.getElementById('A7_2_16s').checked ||
-        document.getElementById('A7_32').checked ||
-        document.getElementById('1_3rd').checked;
-    console.log('Is a wacky layout? ', isWacky);
-    document
-        .getElementById('book_size')
-        .querySelectorAll('input')
-        .forEach((x) => {
-            x.disabled = isWacky;
-        });
-    document.getElementById('book_size').style.opacity = isWacky ? 0.3 : 1.0;
+    (0,_renderUtils__WEBPACK_IMPORTED_MODULE_1__.renderWacky)();
 }
 
 function saveForm(formData, book) {
@@ -31181,7 +31166,7 @@ function loadForm() {
         } catch (error) {
             console.log(error);
             // Clean up potentially bad settings
-            (0,_localStorageUtils__WEBPACK_IMPORTED_MODULE_0__.clearLocalSettings)()
+            (0,_localStorageUtils__WEBPACK_IMPORTED_MODULE_0__.clearLocalSettings)();
         }
     }
 }
@@ -31223,7 +31208,8 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   "renderPageCount": () => (/* binding */ renderPageCount),
 /* harmony export */   "renderInfoBox": () => (/* binding */ renderInfoBox),
-/* harmony export */   "renderPaperSelectOptions": () => (/* binding */ renderPaperSelectOptions)
+/* harmony export */   "renderPaperSelectOptions": () => (/* binding */ renderPaperSelectOptions),
+/* harmony export */   "renderWacky": () => (/* binding */ renderWacky)
 /* harmony export */ });
 /* harmony import */ var _book__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(1);
 
@@ -31260,6 +31246,23 @@ function renderPaperSelectOptions() {
         opt.innerText = key;
         paperList.appendChild(opt);
     });
+}
+
+function renderWacky() {
+    const isWacky =
+        document.getElementById('a9_3_3_4').checked ||
+        document.getElementById('a10_6_10s').checked ||
+        document.getElementById('A7_2_16s').checked ||
+        document.getElementById('A7_32').checked ||
+        document.getElementById('1_3rd').checked;
+    console.log('Is a wacky layout? ', isWacky);
+    document
+        .getElementById('book_size')
+        .querySelectorAll('input')
+        .forEach((x) => {
+            x.disabled = isWacky;
+        });
+    document.getElementById('book_size').style.opacity = isWacky ? 0.3 : 1.0;
 }
 
 

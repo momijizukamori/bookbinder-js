@@ -1,26 +1,15 @@
-import { clearLocalSettings, getLocalSettings, setLocalSettings } from './localStorageUtils';
-import { renderInfoBox, renderPageCount } from './renderUtils';
+import {
+    clearLocalSettings,
+    getLocalSettings,
+    setLocalSettings,
+} from './localStorageUtils';
+import { renderInfoBox, renderPageCount, renderWacky } from './renderUtils';
 
 export function updateForm(book) {
     book.createpages();
-
     renderPageCount(book);
     renderInfoBox(book);
-
-    let isWacky =
-        document.getElementById('a9_3_3_4').checked ||
-        document.getElementById('a10_6_10s').checked ||
-        document.getElementById('A7_2_16s').checked ||
-        document.getElementById('A7_32').checked ||
-        document.getElementById('1_3rd').checked;
-    console.log('Is a wacky layout? ', isWacky);
-    document
-        .getElementById('book_size')
-        .querySelectorAll('input')
-        .forEach((x) => {
-            x.disabled = isWacky;
-        });
-    document.getElementById('book_size').style.opacity = isWacky ? 0.3 : 1.0;
+    renderWacky();
 }
 
 export function saveForm(formData, book) {
@@ -101,7 +90,7 @@ export function loadForm() {
         } catch (error) {
             console.log(error);
             // Clean up potentially bad settings
-            clearLocalSettings()
+            clearLocalSettings();
         }
     }
 }
