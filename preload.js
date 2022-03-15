@@ -31422,24 +31422,26 @@ __webpack_require__.r(__webpack_exports__);
 
 
 window.addEventListener('DOMContentLoaded', () => {
+    // render dynamic content
+    (0,_utils_renderUtils_js__WEBPACK_IMPORTED_MODULE_4__.renderPaperSelectOptions)();
+    (0,_utils_formUtils_js__WEBPACK_IMPORTED_MODULE_1__.loadForm)();
+
+    // grab DOM elements
     const generate = document.getElementById('generate');
     const bookbinderForm = document.getElementById('bookbinder');
     const fileInput = document.getElementById('input_file');
     const inputs = document.querySelectorAll('input, select');
 
-    (0,_utils_renderUtils_js__WEBPACK_IMPORTED_MODULE_4__.renderPaperSelectOptions)();
-    (0,_utils_formUtils_js__WEBPACK_IMPORTED_MODULE_1__.loadForm)();
-
+    // spin up a book to pass to listeners
     const book = new _book_js__WEBPACK_IMPORTED_MODULE_0__.Book();
-    
+
+    // add event listeners to grabbed elements
     inputs.forEach((input) => {
         input.addEventListener('change', () =>
             (0,_utils_changeHandlers_js__WEBPACK_IMPORTED_MODULE_2__.handleInputChange)(book, bookbinderForm)
         );
     });
-
     fileInput.addEventListener('change', (e) => (0,_utils_changeHandlers_js__WEBPACK_IMPORTED_MODULE_2__.handleFileChange)(e, book));
-
     generate.addEventListener('click', () =>
         (0,_utils_clickHandlers_js__WEBPACK_IMPORTED_MODULE_3__.handleGenerateClick)(generate, book)
     );
