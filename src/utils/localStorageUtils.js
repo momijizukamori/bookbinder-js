@@ -1,7 +1,14 @@
 const STORAGE_KEY = 'bookbinderSettings';
 
 export function getLocalSettings() {
-	return JSON.parse(localStorage.getItem(STORAGE_KEY));
+	try {
+		const localSettings = JSON.parse(localStorage.getItem(STORAGE_KEY));
+		return localSettings;
+	} catch (error) {
+		const emptySettings = {};
+		setLocalSettings(emptySettings);
+		return emptySettings;
+	}
 }
 
 export function setLocalSettings(newSettings) {
