@@ -31129,7 +31129,14 @@ __webpack_require__.r(__webpack_exports__);
 const STORAGE_KEY = 'bookbinderSettings';
 
 function getLocalSettings() {
-	return JSON.parse(localStorage.getItem(STORAGE_KEY));
+	try {
+		const localSettings = JSON.parse(localStorage.getItem(STORAGE_KEY));
+		return localSettings;
+	} catch (error) {
+		const emptySettings = {};
+		setLocalSettings(emptySettings);
+		return emptySettings;
+	}
 }
 
 function setLocalSettings(newSettings) {
