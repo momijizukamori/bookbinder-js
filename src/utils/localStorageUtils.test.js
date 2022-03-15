@@ -5,13 +5,13 @@ import {
 } from './localStorageUtils';
 
 const mockSettings = {
-	duplex: false,
+    duplex: false,
     format: 'standardsig',
     sigsize: 8,
     lockratio: true,
     papersize: 'A4',
     pagelayout: 'quarto',
-}
+};
 const mockStoredSettings = JSON.stringify(mockSettings);
 
 const defaultLocalStorageMock = {
@@ -42,10 +42,28 @@ describe('local storage utils', () => {
             ...defaultLocalStorageMock,
             getItem: jest.fn().mockReturnValue(mockStoredSettings),
         };
-		global.localStorage = mockStorageWithSettings;
-		try {
+        global.localStorage = mockStorageWithSettings;
+        try {
             const actual = getLocalSettings();
             expect(actual).toEqual(mockSettings);
+        } catch (error) {
+            expect(error).toBeFalsy();
+        }
+    });
+
+    it('sets local settings', () => {
+        try {
+            setLocalSettings(mockSettings);
+            expect(defaultLocalStorageMock.setItem).toHaveBeenCalled();
+        } catch (error) {
+            expect(error).toBeFalsy();
+        }
+    });
+
+    it('removes local settings', () => {
+        try {
+            clearLocalSettings();
+            expect(defaultLocalStorageMock.removeItem).toHaveBeenCalled();
         } catch (error) {
             expect(error).toBeFalsy();
         }
