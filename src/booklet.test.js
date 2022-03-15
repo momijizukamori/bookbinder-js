@@ -1,7 +1,7 @@
-import { Booklet } from "./booklet";
+import { Booklet } from './booklet';
 
-describe("Booklet model", () => {
-    it("returns a new booklet based on the provided params (default book values)", () => {
+describe('Booklet model', () => {
+    it('returns a new booklet based on the provided params (default book values)', () => {
         const testPages = [];
         const testDuplex = false;
         const testPerSheet = 8;
@@ -24,7 +24,7 @@ describe("Booklet model", () => {
         expect(actual).toEqual(expected);
     });
 
-	it("returns a new booklet based on the provided params (duplex, no rotate, 4 per sheet)", () => {
+    it('returns a new booklet based on the provided params (duplex, no rotate, 4 per sheet)', () => {
         const testPages = [];
         const testDuplex = true;
         const testPerSheet = 4;
@@ -46,6 +46,6 @@ describe("Booklet model", () => {
 
         expect(actual).toEqual(expected);
     });
-    
+
     // TODO add tests with actual pages
 });

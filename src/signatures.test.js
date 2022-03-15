@@ -1,7 +1,7 @@
-import { Signatures } from "./signatures";
+import { Signatures } from './signatures';
 
-describe("Signatures model", () => {
-    it("returns a new Signatures instance", () => {
+describe('Signatures model', () => {
+    it('returns a new Signatures instance', () => {
         const testPages = [];
         const testDuplex = false;
         const testSigSize = 4;

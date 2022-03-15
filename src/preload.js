@@ -47,7 +47,7 @@ window.addEventListener('DOMContentLoaded', () => {
 
     generate.addEventListener('click', (e) => {
       generate.setAttribute('disabled', true);
-      generate.innerText = "Generating, this may take a little while...";
+      generate.innerText = 'Generating, this may take a little while...';
       let result = book.createoutputfiles();
       result
         .then(_ => {
@@ -58,7 +58,7 @@ window.addEventListener('DOMContentLoaded', () => {
         })
         .finally(_ => {
           generate.removeAttribute('disabled');
-          generate.innerText = "Generate Output";
+          generate.innerText = 'Generate Output';
         });
     });
 
