@@ -49,11 +49,17 @@ window.addEventListener('DOMContentLoaded', () => {
       generate.setAttribute('disabled', true);
       generate.innerText = "Generating, this may take a little while...";
       let result = book.createoutputfiles();
-      result.then(_ => {
-        generate.removeAttribute('disabled');
-        generate.innerText = "Generate Output";
-      })
-
+      result
+        .then(_ => {
+          console.log('Generated result!');
+        })
+        .catch(error => {
+          console.error(error);
+        })
+        .finally(_ => {
+          generate.removeAttribute('disabled');
+          generate.innerText = "Generate Output";
+        });
     });
 
     function updateForm() {
