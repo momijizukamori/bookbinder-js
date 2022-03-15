@@ -31076,28 +31076,16 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony export */   "saveForm": () => (/* binding */ saveForm),
 /* harmony export */   "loadForm": () => (/* binding */ loadForm)
 /* harmony export */ });
-/* harmony import */ var _renderUtils__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(181);
+/* harmony import */ var _localStorageUtils__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(181);
+/* harmony import */ var _renderUtils__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(182);
 
 
-const storageKey = 'bookbinderSettings';
-const settings = window.localStorage;
 
 function updateForm(book) {
     book.createpages();
-    // document.getElementById('page_count').innerText = book.pagecount;
-    (0,_renderUtils__WEBPACK_IMPORTED_MODULE_0__.renderPageCount)(book);
-    // Sig infobox
-    // document.getElementById('total_sheets').innerText = book.book.sheets;
-    // document.getElementById('sig_count').innerText = book.book.sigconfig.length;
-    // document.getElementById('sig_arrange').innerText =
-    //     book.book.sigconfig.join(', ');
 
-    // let output_pages = 0;
-    // book.book.pagelist.forEach((list) => {
-    //     list.forEach((sublist) => (output_pages += sublist.length));
-    // });
-    // document.getElementById('total_pages').innerText = output_pages;
-    (0,_renderUtils__WEBPACK_IMPORTED_MODULE_0__.renderInfoBox)(book);
+    (0,_renderUtils__WEBPACK_IMPORTED_MODULE_1__.renderPageCount)(book);
+    (0,_renderUtils__WEBPACK_IMPORTED_MODULE_1__.renderInfoBox)(book);
 
     let isWacky =
         document.getElementById('a9_3_3_4').checked ||
@@ -31116,7 +31104,7 @@ function updateForm(book) {
 }
 
 function saveForm(formData, book) {
-    const result = {
+    const bookSettings = {
         duplex: book.duplex,
         duplexrotate: book.duplexRotate,
         format: book.format,
@@ -31125,11 +31113,11 @@ function saveForm(formData, book) {
         papersize: formData.get('paper_size'),
         pagelayout: formData.get('pagelayout'),
     };
-    settings.setItem(storageKey, JSON.stringify(result));
+    (0,_localStorageUtils__WEBPACK_IMPORTED_MODULE_0__.setLocalSettings)(bookSettings);
 }
 
 function loadForm() {
-    const bookSettings = JSON.parse(settings.getItem(storageKey));
+    const bookSettings = (0,_localStorageUtils__WEBPACK_IMPORTED_MODULE_0__.getLocalSettings)();
     if (bookSettings) {
         try {
             if (bookSettings.duplex) {
@@ -31193,7 +31181,7 @@ function loadForm() {
         } catch (error) {
             console.log(error);
             // Clean up potentially bad settings
-            settings.removeItem(storageKey);
+            (0,_localStorageUtils__WEBPACK_IMPORTED_MODULE_0__.clearLocalSettings)()
         }
     }
 }
@@ -31201,6 +31189,33 @@ function loadForm() {
 
 /***/ }),
 /* 181 */
+/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   "getLocalSettings": () => (/* binding */ getLocalSettings),
+/* harmony export */   "setLocalSettings": () => (/* binding */ setLocalSettings),
+/* harmony export */   "clearLocalSettings": () => (/* binding */ clearLocalSettings)
+/* harmony export */ });
+const STORAGE_KEY = 'bookbinderSettings';
+
+function getLocalSettings() {
+	return JSON.parse(localStorage.getItem(STORAGE_KEY));
+}
+
+function setLocalSettings(newSettings) {
+	localStorage.setItem(STORAGE_KEY, JSON.stringify(newSettings));
+}
+
+function clearLocalSettings() {
+	localStorage.removeItem(STORAGE_KEY);
+}
+
+
+
+/***/ }),
+/* 182 */
 /***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
 
 "use strict";
@@ -31232,7 +31247,7 @@ function renderInfoBox(book) {
 
 
 /***/ }),
-/* 182 */
+/* 183 */
 /***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
 
 "use strict";
@@ -31263,7 +31278,7 @@ function handleFileChange(e, book) {
 
 
 /***/ }),
-/* 183 */
+/* 184 */
 /***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
 
 "use strict";
@@ -31376,8 +31391,8 @@ var __webpack_exports__ = {};
 __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var _book_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(1);
 /* harmony import */ var _utils_formUtils_js__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(180);
-/* harmony import */ var _utils_changeHandlers_js__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(182);
-/* harmony import */ var _utils_clickHandlers_js__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(183);
+/* harmony import */ var _utils_changeHandlers_js__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(183);
+/* harmony import */ var _utils_clickHandlers_js__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(184);
 
 
 

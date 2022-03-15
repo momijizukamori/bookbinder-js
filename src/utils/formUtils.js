@@ -1,11 +1,9 @@
+import { clearLocalSettings, getLocalSettings, setLocalSettings } from './localStorageUtils';
 import { renderInfoBox, renderPageCount } from './renderUtils';
-
-const storageKey = 'bookbinderSettings';
-const settings = window.localStorage;
 
 export function updateForm(book) {
     book.createpages();
-    
+
     renderPageCount(book);
     renderInfoBox(book);
 
@@ -26,7 +24,7 @@ export function updateForm(book) {
 }
 
 export function saveForm(formData, book) {
-    const result = {
+    const bookSettings = {
         duplex: book.duplex,
         duplexrotate: book.duplexRotate,
         format: book.format,
@@ -35,11 +33,11 @@ export function saveForm(formData, book) {
         papersize: formData.get('paper_size'),
         pagelayout: formData.get('pagelayout'),
     };
-    settings.setItem(storageKey, JSON.stringify(result));
+    setLocalSettings(bookSettings);
 }
 
 export function loadForm() {
-    const bookSettings = JSON.parse(settings.getItem(storageKey));
+    const bookSettings = getLocalSettings();
     if (bookSettings) {
         try {
             if (bookSettings.duplex) {
@@ -103,7 +101,7 @@ export function loadForm() {
         } catch (error) {
             console.log(error);
             // Clean up potentially bad settings
-            settings.removeItem(storageKey);
+            clearLocalSettings()
         }
     }
 }
