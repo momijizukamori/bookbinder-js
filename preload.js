@@ -31076,23 +31076,28 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony export */   "saveForm": () => (/* binding */ saveForm),
 /* harmony export */   "loadForm": () => (/* binding */ loadForm)
 /* harmony export */ });
+/* harmony import */ var _renderUtils__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(181);
+
+
 const storageKey = 'bookbinderSettings';
 const settings = window.localStorage;
 
 function updateForm(book) {
     book.createpages();
-    document.getElementById('page_count').innerText = book.pagecount;
-
+    // document.getElementById('page_count').innerText = book.pagecount;
+    (0,_renderUtils__WEBPACK_IMPORTED_MODULE_0__.renderPageCount)(book);
     // Sig infobox
-    document.getElementById('total_sheets').innerText = book.book.sheets;
-    document.getElementById('sig_count').innerText = book.book.sigconfig.length;
-    document.getElementById('sig_arrange').innerText =
-        book.book.sigconfig.join(', ');
-    let output_pages = 0;
-    book.book.pagelist.forEach((list) => {
-        list.forEach((sublist) => (output_pages += sublist.length));
-    });
-    document.getElementById('total_pages').innerText = output_pages;
+    // document.getElementById('total_sheets').innerText = book.book.sheets;
+    // document.getElementById('sig_count').innerText = book.book.sigconfig.length;
+    // document.getElementById('sig_arrange').innerText =
+    //     book.book.sigconfig.join(', ');
+
+    // let output_pages = 0;
+    // book.book.pagelist.forEach((list) => {
+    //     list.forEach((sublist) => (output_pages += sublist.length));
+    // });
+    // document.getElementById('total_pages').innerText = output_pages;
+    (0,_renderUtils__WEBPACK_IMPORTED_MODULE_0__.renderInfoBox)(book);
 
     let isWacky =
         document.getElementById('a9_3_3_4').checked ||
@@ -31201,6 +31206,38 @@ function loadForm() {
 "use strict";
 __webpack_require__.r(__webpack_exports__);
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   "renderPageCount": () => (/* binding */ renderPageCount),
+/* harmony export */   "renderInfoBox": () => (/* binding */ renderInfoBox)
+/* harmony export */ });
+function renderPageCount(book) {
+    document.getElementById('page_count').innerText = book.pagecount;
+}
+
+function renderInfoBox(book) {
+    const totalSheets = document.getElementById('total_sheets');
+    const sigCount = document.getElementById('sig_count');
+    const sigArrange = document.getElementById('sig_arrange');
+    const totalPages = document.getElementById('total_pages');
+
+    const outputPages = book.book.pagelist.reduce((acc, list) => {
+        list.forEach((sublist) => (acc += sublist.length));
+		return acc;
+    }, 0);
+
+    totalSheets.innerText = book.book.sheets;
+    sigCount.innerText = book.book.sigconfig.length;
+    sigArrange.innerText = book.book.sigconfig.join(', ');
+    totalPages.innerText = outputPages;
+}
+
+
+/***/ }),
+/* 182 */
+/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   "handleInputChange": () => (/* binding */ handleInputChange),
 /* harmony export */   "handleFileChange": () => (/* binding */ handleFileChange)
 /* harmony export */ });
@@ -31226,7 +31263,7 @@ function handleFileChange(e, book) {
 
 
 /***/ }),
-/* 182 */
+/* 183 */
 /***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
 
 "use strict";
@@ -31339,8 +31376,8 @@ var __webpack_exports__ = {};
 __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var _book_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(1);
 /* harmony import */ var _utils_formUtils_js__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(180);
-/* harmony import */ var _utils_changeHandlers_js__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(181);
-/* harmony import */ var _utils_clickHandlers_js__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(182);
+/* harmony import */ var _utils_changeHandlers_js__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(182);
+/* harmony import */ var _utils_clickHandlers_js__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(183);
 
 
 

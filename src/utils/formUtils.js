@@ -1,20 +1,13 @@
+import { renderInfoBox, renderPageCount } from './renderUtils';
+
 const storageKey = 'bookbinderSettings';
 const settings = window.localStorage;
 
 export function updateForm(book) {
     book.createpages();
-    document.getElementById('page_count').innerText = book.pagecount;
-
-    // Sig infobox
-    document.getElementById('total_sheets').innerText = book.book.sheets;
-    document.getElementById('sig_count').innerText = book.book.sigconfig.length;
-    document.getElementById('sig_arrange').innerText =
-        book.book.sigconfig.join(', ');
-    let output_pages = 0;
-    book.book.pagelist.forEach((list) => {
-        list.forEach((sublist) => (output_pages += sublist.length));
-    });
-    document.getElementById('total_pages').innerText = output_pages;
+    
+    renderPageCount(book);
+    renderInfoBox(book);
 
     let isWacky =
         document.getElementById('a9_3_3_4').checked ||
