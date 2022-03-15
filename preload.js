@@ -31222,8 +31222,12 @@ function clearLocalSettings() {
 __webpack_require__.r(__webpack_exports__);
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   "renderPageCount": () => (/* binding */ renderPageCount),
-/* harmony export */   "renderInfoBox": () => (/* binding */ renderInfoBox)
+/* harmony export */   "renderInfoBox": () => (/* binding */ renderInfoBox),
+/* harmony export */   "renderPaperSelectOptions": () => (/* binding */ renderPaperSelectOptions)
 /* harmony export */ });
+/* harmony import */ var _book__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(1);
+
+
 function renderPageCount(book) {
     document.getElementById('page_count').innerText = book.pagecount;
 }
@@ -31236,13 +31240,26 @@ function renderInfoBox(book) {
 
     const outputPages = book.book.pagelist.reduce((acc, list) => {
         list.forEach((sublist) => (acc += sublist.length));
-		return acc;
+        return acc;
     }, 0);
 
     totalSheets.innerText = book.book.sheets;
     sigCount.innerText = book.book.sigconfig.length;
     sigArrange.innerText = book.book.sigconfig.join(', ');
     totalPages.innerText = outputPages;
+}
+
+function renderPaperSelectOptions() {
+    const paperList = document.getElementById('paper_size');
+    Object.keys(_book__WEBPACK_IMPORTED_MODULE_0__.pagesizes).forEach((key) => {
+        let opt = document.createElement('option');
+        opt.setAttribute('value', key);
+        if (key == 'A4') {
+            opt.setAttribute('selected', true);
+        }
+        opt.innerText = key;
+        paperList.appendChild(opt);
+    });
 }
 
 
@@ -31393,40 +31410,31 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var _utils_formUtils_js__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(180);
 /* harmony import */ var _utils_changeHandlers_js__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(183);
 /* harmony import */ var _utils_clickHandlers_js__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(184);
+/* harmony import */ var _utils_renderUtils_js__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(182);
+
 
 
 
 
 
 window.addEventListener('DOMContentLoaded', () => {
-    const paperlist = document.getElementById('paper_size');
     const generate = document.getElementById('generate');
+    const bookbinderForm = document.getElementById('bookbinder');
+    const fileInput = document.getElementById('input_file');
+    const inputs = document.querySelectorAll('input, select');
 
-    let bookbinderForm = document.getElementById('bookbinder');
-
-    Object.keys(_book_js__WEBPACK_IMPORTED_MODULE_0__.pagesizes).forEach((key) => {
-        let opt = document.createElement('option');
-        opt.setAttribute('value', key);
-        if (key == 'A4') {
-            opt.setAttribute('selected', true);
-        }
-        opt.innerText = key;
-        paperlist.appendChild(opt);
-    });
-
+    (0,_utils_renderUtils_js__WEBPACK_IMPORTED_MODULE_4__.renderPaperSelectOptions)();
     (0,_utils_formUtils_js__WEBPACK_IMPORTED_MODULE_1__.loadForm)();
 
-    let book = new _book_js__WEBPACK_IMPORTED_MODULE_0__.Book();
-    let inputs = document.querySelectorAll('input, select');
+    const book = new _book_js__WEBPACK_IMPORTED_MODULE_0__.Book();
+    
     inputs.forEach((input) => {
         input.addEventListener('change', () =>
             (0,_utils_changeHandlers_js__WEBPACK_IMPORTED_MODULE_2__.handleInputChange)(book, bookbinderForm)
         );
     });
 
-    document
-        .querySelector('#input_file')
-        .addEventListener('change', (e) => (0,_utils_changeHandlers_js__WEBPACK_IMPORTED_MODULE_2__.handleFileChange)(e, book));
+    fileInput.addEventListener('change', (e) => (0,_utils_changeHandlers_js__WEBPACK_IMPORTED_MODULE_2__.handleFileChange)(e, book));
 
     generate.addEventListener('click', () =>
         (0,_utils_clickHandlers_js__WEBPACK_IMPORTED_MODULE_3__.handleGenerateClick)(generate, book)
