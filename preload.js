@@ -31209,11 +31209,10 @@ __webpack_require__.r(__webpack_exports__);
 
 function handleInputChange(book, bookbinderForm) {
     const formData = new FormData(bookbinderForm);
-    console.log('FORM DATA', formData);
     book.update(formData);
     (0,_formUtils__WEBPACK_IMPORTED_MODULE_0__.saveForm)(formData, book);
     if (book.inputpdf) {
-        (0,_formUtils__WEBPACK_IMPORTED_MODULE_0__.updateForm)();
+        (0,_formUtils__WEBPACK_IMPORTED_MODULE_0__.updateForm)(book);
     }
 }
 

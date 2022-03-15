@@ -2,11 +2,10 @@ import { saveForm, updateForm } from './formUtils';
 
 export function handleInputChange(book, bookbinderForm) {
     const formData = new FormData(bookbinderForm);
-    console.log('FORM DATA', formData);
     book.update(formData);
     saveForm(formData, book);
     if (book.inputpdf) {
-        updateForm();
+        updateForm(book);
     }
 }
 
