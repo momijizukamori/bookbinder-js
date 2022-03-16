@@ -1,7 +1,8 @@
-import { pagesizes } from '../book';
+import { PAGE_SIZES } from '../constants';
 
 export function renderPageCount(book) {
-    document.getElementById('page_count').innerText = book.pagecount;
+    const pageCount = document.getElementById('page_count');
+    pageCount.innerText = book.pagecount;
 }
 
 export function renderInfoBox(book) {
@@ -23,7 +24,7 @@ export function renderInfoBox(book) {
 
 export function renderPaperSelectOptions() {
     const paperList = document.getElementById('paper_size');
-    Object.keys(pagesizes).forEach((key) => {
+    Object.keys(PAGE_SIZES).forEach((key) => {
         let opt = document.createElement('option');
         opt.setAttribute('value', key);
         if (key == 'A4') {

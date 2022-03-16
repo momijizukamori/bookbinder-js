@@ -4,38 +4,8 @@ import { Signatures } from './signatures.js';
 import { Booklet } from './booklet.js';
 import { PerfectBound } from './perfectbound.js';
 import { WackyImposition } from './wacky_imposition.js';
+import { PAGE_LAYOUTS, PAGE_SIZES, TARGET_BOOK_SIZE, LINE_LEN } from './constants.js';
 var JSZip = require("jszip");
-
-export const pagesizes = {
-    'LETTER': [612, 792], 'NOTE': [540, 720], 'LEGAL': [612, 1008], 'TABLOID': [792, 1224], 'EXECUTIVE': [522, 756], 'POSTCARD': [283, 416],
-    'A0': [2384, 3370], 'A1': [1684, 2384], 'A3': [842, 1191], 'A4': [595, 842], 'A5': [420, 595], 'A6': [297, 420],
-    'A7': [210, 297], 'A8': [148, 210], 'A9': [105, 148], 'B0': [2834, 4008], 'B1': [2004, 2834], 'B2': [1417, 2004],
-    'B3': [1000, 1417], 'B4': [708, 1000], 'B5': [498, 708], 'B6': [354, 498], 'B7': [249, 354], 'B8': [175, 249], 'B9': [124, 175],
-    'B10': [87, 124], 'ARCH_E': [2592, 3456], 'ARCH_C': [1296, 1728], 'ARCH_B': [864, 1296], 'ARCH_A': [648, 864],
-    'FLSA': [612, 936], 'FLSE': [648, 936], 'HALFLETTER': [396, 612], '_11X17': [792, 1224], 'ID_1': [242.65, 153],
-    'ID_2': [297, 210], 'ID_3': [354, 249], 'LEDGER': [1224, 792], 'CROWN_QUARTO': [535, 697], 'LARGE_CROWN_QUARTO': [569, 731],
-    'DEMY_QUARTO': [620, 782], 'ROYAL_QUARTO': [671, 884], 'CROWN_OCTAVO': [348, 527], 'LARGE_CROWN_OCTAVO': [365, 561],
-    'DEMY_OCTAVO': [391, 612], 'ROYAL_OCTAVO': [442, 663], 'SMALL_PAPERBACK': [314, 504],
-    'PENGUIN_SMALL_PAPERBACK': [314, 513], 'PENGUIN_LARGE_PAPERBACK': [365, 561]
-};
-const targetbooksize = {
-    'standard': [314.5, 502.0],
-    'large': [368.5, 558.5]
-};
-
-const line_len = 18;
-
-// Pages in these layouts are assumed to be already reordered. Layout should go left to right, top to bottom.
-// Values are the degree of rotation from a portrait offset needed to re-impose this on a portrait-oriented page,
-// and should only need to be specified for one side.
-const page_layouts = {
-    folio:{rotations:[[-90], [-90]], landscape: true, rows: 2, cols: 1, per_sheet: 4},
-    folio_alt:{rotations:[[90], [90]], landscape: true, rows: 2, cols: 1, per_sheet: 4},
-    quarto:{rotations: [[0, 0],[-180, -180]], landscape: false, rows: 2, cols: 2, per_sheet: 8}, 
-    octavo:{rotations: [[-90, 90], [-90, 90], [-90, 90], [-90, 90]], landscape: true, rows: 4, cols: 2, per_sheet: 16},
-    sextodecimo:{rotations: [ [0, 0, 0, 0], [-180, -180, -180, -180], [0, 0, 0, 0], [-180, -180, -180, -180],], landscape: false, rows: 4, cols: 4, per_sheet: 32}
-}
-
 export class Book {
     constructor() {
 
@@ -44,7 +14,7 @@ export class Book {
 
         this.duplex = false; //FIXME
         this.duplexrotate = true;
-        this.papersize = pagesizes.A4;   //  default for europe
+        this.papersize = PAGE_SIZES.A4;   //  default for europe
 
         this.lockratio = true;
         this.flyleaf = false;
@@ -64,7 +34,7 @@ export class Book {
         this.rearrangedpages = [];      //  reordered list of page numbers (signatures etc.)
         this.filelist = [];      //  list of ouput filenames and path
         this.zip = null;
-        this.page_layout = page_layouts.folio;
+        this.page_layout = PAGE_LAYOUTS.folio;
         this.per_sheet = 8; //number of pages to print per sheet.
         this.cropmarks = false;
         this.cutmarks = false;
@@ -74,7 +44,7 @@ export class Book {
 
         this.duplex = form.get('printer_type') == 'duplex';
         this.duplexrotate = form.has('rotate_page');
-        this.papersize = pagesizes[form.get('paper_size')];
+        this.papersize = PAGE_SIZES[form.get('paper_size')];
         this.lockratio = form.get("page_scaling") == 'lockratio';
         this.flyleaf = form.has('flyleaf');
         this.cropmarks = form.has('cropmarks');
@@ -98,7 +68,7 @@ export class Book {
         }
 
         this.booksize = [this.papersize[1] * 0.5, this.papersize[0]];
-        this.page_layout = form.get('pagelayout') == null ? 'folio' : page_layouts[form.get('pagelayout')];
+        this.page_layout = form.get('pagelayout') == null ? 'folio' : PAGE_LAYOUTS[form.get('pagelayout')];
         this.per_sheet = this.page_layout.per_sheet;
 
     }
@@ -133,7 +103,7 @@ export class Book {
         } else if (targetsize == 'custom') {
             this.booksize = [customx, customy];
         } else {
-            this.booksize = targetbooksize[targetsize];
+            this.booksize = TARGET_BOOK_SIZE[targetsize];
         }
 
     }
@@ -386,15 +356,15 @@ export class Book {
     }
 
     draw_vline(x, ystart, yend){
-        return [{start: {x: x, y: ystart}, end: {x: x, y: ystart + line_len}}, {start: {x: x, y: yend - line_len}, end: {x: x, y: yend}}]
+        return [{start: {x: x, y: ystart}, end: {x: x, y: ystart + LINE_LEN}}, {start: {x: x, y: yend - LINE_LEN}, end: {x: x, y: yend}}]
     }
 
     draw_hline(y, xstart, xend){
-        return [{start: {x: xstart, y: y}, end: {x: xstart + line_len, y: y}}, {start: {x: xend - line_len, y: y}, end: {x: xend, y: y}}]
+        return [{start: {x: xstart, y: y}, end: {x: xstart + LINE_LEN, y: y}}, {start: {x: xend - LINE_LEN, y: y}, end: {x: xend, y: y}}]
     }
 
     draw_cross(x, y) {
-        return [{start: {x: x - line_len, y: y}, end: {x: x + line_len, y: y}}, {start: {x: x, y: y - line_len}, end: {x: x, y: y + line_len}}]
+        return [{start: {x: x - LINE_LEN, y: y}, end: {x: x + LINE_LEN, y: y}}, {start: {x: x, y: y - LINE_LEN}, end: {x: x, y: y + LINE_LEN}}]
     }
 
 
@@ -407,7 +377,7 @@ export class Book {
         let sheetheight = this.papersize[1];
 
         // Folios are the only type with a different set of layout params for the back
-        // let layout = alt_folio ? page_layouts['folio_alt'] : this.page_layout;  
+        // let layout = alt_folio ? PAGE_LAYOUTS['folio_alt'] : this.page_layout;  
         let layout = this.page_layout; 
 
         // Calculate the size of each page box on the sheet

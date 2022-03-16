@@ -113,3 +113,33 @@ export const PAGE_LAYOUTS = {
         per_sheet: 32,
     },
 };
+
+export const BOOKLET_LAYOUTS = {
+    /*
+    For page layouts: pages are 1-indexed for sanity reasons, and the order for the back list must be reversed
+
+    'front' will be the side that ends up with consecutive pagenumbers on the innermost fold, by convention.
+    
+    page numbers should be listed from left to right, top to bottom, starting in the top left.
+    */
+    4: {
+        front: [3, 2],
+        back: [1, 4],
+        rotate: [4, 1],
+    },
+    8: {
+        front: [6, 3, 7, 2],
+        back: [8, 1, 5, 4],
+        rotate: [4, 5, 1, 8],
+    },
+    16: {
+        front: [3, 6, 14, 11, 15, 10, 2, 7],
+        back: [1, 8, 16, 9, 13, 12, 4, 5],
+        rotate: [5, 4, 12, 13, 9, 16, 8, 1],
+    },
+    32: {
+        front: [30, 3, 6, 27, 19, 14, 11, 22, 18, 15, 10, 23, 31, 2, 7, 26],
+        back: [32, 1, 8, 15, 17, 16, 9, 24, 20, 13, 12, 21, 29, 4, 5, 28],
+        rotate: [28, 5, 4, 29, 21, 12, 13, 20, 24, 9, 16, 17, 25, 8, 1, 32],
+    },
+};
