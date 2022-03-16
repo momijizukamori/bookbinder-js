@@ -4,57 +4,32 @@ import {
     clearLocalSettings,
 } from './localStorageUtils';
 
-const mockSettings = {
-    duplex: false,
-    format: 'standardsig',
-    sigsize: 8,
-    lockratio: true,
-    papersize: 'A4',
-    pagelayout: 'quarto',
-};
-const mockStoredSettings = JSON.stringify(mockSettings);
-
-const defaultLocalStorageMock = {
-    getItem: jest.fn(),
-    setItem: jest.fn(),
-    removeItem: jest.fn(),
-    clear: jest.fn(),
-};
-
-global.localStorage = defaultLocalStorageMock;
-
 describe('local storage utils', () => {
-    beforeEach(() => {
-        jest.clearAllMocks();
-    });
+    const mockSettings = {
+        duplex: false,
+        format: 'standardsig',
+        sigsize: 8,
+        lockratio: true,
+        papersize: 'A4',
+        pagelayout: 'octavo',
+    };
 
     it('gets empty settings from local storage if none have been set', () => {
         try {
+            const expected = {};
             const actual = getLocalSettings();
-            expect(actual).toEqual({});
+            expect(actual).toEqual(expected);
         } catch (error) {
             expect(error).toBeFalsy();
         }
     });
 
-    it('gets existing settings from local storage', () => {
-        const mockStorageWithSettings = {
-            ...defaultLocalStorageMock,
-            getItem: jest.fn().mockReturnValue(mockStoredSettings),
-        };
-        global.localStorage = mockStorageWithSettings;
+    it('sets local settings and gets those settings', () => {
         try {
-            const actual = getLocalSettings();
-            expect(actual).toEqual(mockSettings);
-        } catch (error) {
-            expect(error).toBeFalsy();
-        }
-    });
-
-    it('sets local settings', () => {
-        try {
+            const expected = mockSettings;
             setLocalSettings(mockSettings);
-            expect(defaultLocalStorageMock.setItem).toHaveBeenCalled();
+            const actual = getLocalSettings();
+            expect(actual).toEqual(expected);
         } catch (error) {
             expect(error).toBeFalsy();
         }
@@ -62,8 +37,11 @@ describe('local storage utils', () => {
 
     it('removes local settings', () => {
         try {
+            const expected = {};
+            setLocalSettings(mockSettings);
             clearLocalSettings();
-            expect(defaultLocalStorageMock.removeItem).toHaveBeenCalled();
+            const actual = getLocalSettings();
+            expect(actual).toEqual(expected);
         } catch (error) {
             expect(error).toBeFalsy();
         }
