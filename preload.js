@@ -17,6 +17,8 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var _perfectbound_js__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(178);
 /* harmony import */ var _wacky_imposition_js__WEBPACK_IMPORTED_MODULE_5__ = __webpack_require__(179);
 /* harmony import */ var _constants_js__WEBPACK_IMPORTED_MODULE_6__ = __webpack_require__(177);
+/* harmony import */ var jszip__WEBPACK_IMPORTED_MODULE_7__ = __webpack_require__(180);
+/* harmony import */ var jszip__WEBPACK_IMPORTED_MODULE_7___default = /*#__PURE__*/__webpack_require__.n(jszip__WEBPACK_IMPORTED_MODULE_7__);
 
 
 
@@ -24,10 +26,9 @@ __webpack_require__.r(__webpack_exports__);
 
 
 
-var JSZip = __webpack_require__(180);
+
 class Book {
     constructor() {
-
         this.inputpdf = null;    //  string with pdf filepath
         this.password = null;    //  if necessary
 
@@ -182,7 +183,7 @@ class Book {
         //	create a directory named after the input pdf and fill it with
         //	the signatures
 
-        this.zip = new JSZip();
+        this.zip = new (jszip__WEBPACK_IMPORTED_MODULE_7___default())();
 
         this.filename = this.inputpdf.replace(/\s|,|\.pdf/, '');
 

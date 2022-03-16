@@ -5,10 +5,9 @@ import { Booklet } from './booklet.js';
 import { PerfectBound } from './perfectbound.js';
 import { WackyImposition } from './wacky_imposition.js';
 import { PAGE_LAYOUTS, PAGE_SIZES, TARGET_BOOK_SIZE, LINE_LEN } from './constants.js';
-var JSZip = require("jszip");
+import JSZip from 'jszip';
 export class Book {
     constructor() {
-
         this.inputpdf = null;    //  string with pdf filepath
         this.password = null;    //  if necessary
 
