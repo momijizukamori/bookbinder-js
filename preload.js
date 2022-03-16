@@ -31253,24 +31253,22 @@ __webpack_require__.r(__webpack_exports__);
 const STORAGE_KEY = 'bookbinderSettings';
 
 function getLocalSettings() {
-	try {
-		const localSettings = JSON.parse(localStorage.getItem(STORAGE_KEY));
-		return localSettings;
-	} catch (error) {
-		const emptySettings = {};
-		setLocalSettings(emptySettings);
-		return emptySettings;
-	}
+    const emptySettings = {};
+    const localSettings = JSON.parse(localStorage.getItem(STORAGE_KEY));
+    if (!localSettings) {
+        setLocalSettings(emptySettings);
+		return getLocalSettings();
+    }
+    return localSettings;
 }
 
 function setLocalSettings(newSettings) {
-	localStorage.setItem(STORAGE_KEY, JSON.stringify(newSettings));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(newSettings));
 }
 
 function clearLocalSettings() {
-	localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem(STORAGE_KEY);
 }
-
 
 
 /***/ }),
