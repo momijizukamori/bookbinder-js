@@ -14,9 +14,9 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var file_saver__WEBPACK_IMPORTED_MODULE_1___default = /*#__PURE__*/__webpack_require__.n(file_saver__WEBPACK_IMPORTED_MODULE_1__);
 /* harmony import */ var _signatures_js__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(175);
 /* harmony import */ var _booklet_js__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(176);
-/* harmony import */ var _perfectbound_js__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(177);
-/* harmony import */ var _wacky_imposition_js__WEBPACK_IMPORTED_MODULE_5__ = __webpack_require__(178);
-/* harmony import */ var _constants_js__WEBPACK_IMPORTED_MODULE_6__ = __webpack_require__(179);
+/* harmony import */ var _perfectbound_js__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(178);
+/* harmony import */ var _wacky_imposition_js__WEBPACK_IMPORTED_MODULE_5__ = __webpack_require__(179);
+/* harmony import */ var _constants_js__WEBPACK_IMPORTED_MODULE_6__ = __webpack_require__(177);
 
 
 
@@ -30360,71 +30360,224 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   "Booklet": () => (/* binding */ Booklet)
 /* harmony export */ });
-// For page layouts: pages are 1-indexed for sanity reasons, and the order for the back list must be reversed
-// 'front' will be the side that ends up with consecutive pagenumbers on the innermost fold, by convention.
-// page numbers should be listed from left to right, top to bottom, starting in the top left.
+/* harmony import */ var _constants__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(177);
 
-const page_layouts = {
-	4: {front: [3, 2], back: [1, 4], rotate: [4, 1]},
-	8: {front: [6, 3, 7, 2], back: [8, 1, 5, 4], rotate: [4, 5, 1, 8]},
-	 16: { front: [3, 6, 14, 11, 15, 10, 2, 7], back:[ 1, 8, 16, 9, 13, 12, 4, 5], rotate: [5, 4, 12, 13, 9, 16, 8, 1]},
-	 32: {front: [30, 3, 6, 27, 19, 14, 11, 22, 18, 15, 10, 23, 31, 2, 7, 26], back: [32, 1, 8, 15, 17, 16, 9, 24, 20, 13, 12, 21, 29, 4, 5, 28], 
-		rotate: [28, 5, 4, 29, 21, 12, 13, 20, 24, 9, 16, 17, 25, 8, 1, 32]}
-}
 
-class Booklet{
+class Booklet {
     constructor(pages, duplex, per_sheet, duplexrotate) {
-		this.duplex=duplex;
-		
-		this.sigconfig=[1];
+        this.duplex = duplex;
+
+        this.sigconfig = [1];
         this.pagelist = duplex ? [[]] : [[], []];
-		this.sheets = 1;
-		this.per_sheet = per_sheet;
-		this.rotate = duplexrotate;
+        this.sheets = 1;
+        this.per_sheet = per_sheet;
+        this.rotate = duplexrotate;
 
-		let center = pages.length / 2; // because of zero indexing, this is actually the first page after the center fold
-		const pageblock = per_sheet / 2; // number of pages before and after the center fold, per sheet
-		const front_config = page_layouts[this.per_sheet].front;
-		const back_config = this.rotate ? page_layouts[this.per_sheet].rotate : page_layouts[this.per_sheet].back;
+        let center = pages.length / 2; // because of zero indexing, this is actually the first page after the center fold
+        const pageblock = per_sheet / 2; // number of pages before and after the center fold, per sheet
+        const front_config = _constants__WEBPACK_IMPORTED_MODULE_0__.BOOKLET_LAYOUTS[this.per_sheet].front;
+        const back_config = this.rotate
+            ? _constants__WEBPACK_IMPORTED_MODULE_0__.BOOKLET_LAYOUTS[this.per_sheet].rotate
+            : _constants__WEBPACK_IMPORTED_MODULE_0__.BOOKLET_LAYOUTS[this.per_sheet].back;
 
-		// The way the code works: we start with the innermost sheet of the signature (the only one with consecutive page numbers)
-		// We then grab the the sections of pages that come on either side and reorder according to predefined page layout
+        // The way the code works: we start with the innermost sheet of the signature (the only one with consecutive page numbers)
+        // We then grab the the sections of pages that come on either side and reorder according to predefined page layout
 
-		let front_start = center - pageblock;
-		let front_end = center;
-		let back_start = center;
-		let back_end = center + pageblock;
+        let front_start = center - pageblock;
+        let front_end = center;
+        let back_start = center;
+        let back_end = center + pageblock;
 
+        while (front_start >= 0 && back_end <= pages.length) {
+            let front_block = pages.slice(front_start, front_end);
+            let back_block = pages.slice(back_start, back_end);
 
-		while(front_start >= 0 && back_end <= pages.length) {
-			let front_block = pages.slice(front_start, front_end)
-			let back_block = pages.slice(back_start, back_end)
+            let block = [...front_block, ...back_block];
 
-			let block = [...front_block, ...back_block];
+            front_config.forEach((pnum) => {
+                let page = block[pnum - 1]; //page layouts are 1-indexed, not 0-index
+                this.pagelist[0].push(page);
+            });
 
-			front_config.forEach(pnum => {
-				let page = block[pnum - 1]; //page layouts are 1-indexed, not 0-index
-				this.pagelist[0].push(page)
-			});
+            const backlist = this.duplex ? 0 : 1;
 
-			const backlist = this.duplex? 0 : 1;
+            back_config.forEach((pnum) => {
+                let page = block[pnum - 1];
+                this.pagelist[backlist].push(page);
+            });
 
-			back_config.forEach(pnum => {
-				let page = block[pnum - 1];
-				this.pagelist[backlist].push(page)
-			});
-
-			// Update all our counters
-			front_start -= pageblock;
-			front_end -= pageblock
-			back_start += pageblock;
-			back_end += pageblock
-		}
+            // Update all our counters
+            front_start -= pageblock;
+            front_end -= pageblock;
+            back_start += pageblock;
+            back_end += pageblock;
+        }
     }
 }
 
+
 /***/ }),
 /* 177 */
+/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   "PAGE_SIZES": () => (/* binding */ PAGE_SIZES),
+/* harmony export */   "TARGET_BOOK_SIZE": () => (/* binding */ TARGET_BOOK_SIZE),
+/* harmony export */   "LINE_LEN": () => (/* binding */ LINE_LEN),
+/* harmony export */   "PAGE_LAYOUTS": () => (/* binding */ PAGE_LAYOUTS),
+/* harmony export */   "BOOKLET_LAYOUTS": () => (/* binding */ BOOKLET_LAYOUTS)
+/* harmony export */ });
+// TODO haven't used these anywhere yet because there aren't tests in place to ensure against breakage
+const PAGE_SIZES = {
+    LETTER: [612, 792],
+    NOTE: [540, 720],
+    LEGAL: [612, 1008],
+    TABLOID: [792, 1224],
+    EXECUTIVE: [522, 756],
+    POSTCARD: [283, 416],
+    A0: [2384, 3370],
+    A1: [1684, 2384],
+    A3: [842, 1191],
+    A4: [595, 842],
+    A5: [420, 595],
+    A6: [297, 420],
+    A7: [210, 297],
+    A8: [148, 210],
+    A9: [105, 148],
+    B0: [2834, 4008],
+    B1: [2004, 2834],
+    B2: [1417, 2004],
+    B3: [1000, 1417],
+    B4: [708, 1000],
+    B5: [498, 708],
+    B6: [354, 498],
+    B7: [249, 354],
+    B8: [175, 249],
+    B9: [124, 175],
+    B10: [87, 124],
+    ARCH_E: [2592, 3456],
+    ARCH_C: [1296, 1728],
+    ARCH_B: [864, 1296],
+    ARCH_A: [648, 864],
+    FLSA: [612, 936],
+    FLSE: [648, 936],
+    HALFLETTER: [396, 612],
+    _11X17: [792, 1224],
+    ID_1: [242.65, 153],
+    ID_2: [297, 210],
+    ID_3: [354, 249],
+    LEDGER: [1224, 792],
+    CROWN_QUARTO: [535, 697],
+    LARGE_CROWN_QUARTO: [569, 731],
+    DEMY_QUARTO: [620, 782],
+    ROYAL_QUARTO: [671, 884],
+    CROWN_OCTAVO: [348, 527],
+    LARGE_CROWN_OCTAVO: [365, 561],
+    DEMY_OCTAVO: [391, 612],
+    ROYAL_OCTAVO: [442, 663],
+    SMALL_PAPERBACK: [314, 504],
+    PENGUIN_SMALL_PAPERBACK: [314, 513],
+    PENGUIN_LARGE_PAPERBACK: [365, 561],
+};
+
+const TARGET_BOOK_SIZE = {
+    standard: [314.5, 502.0],
+    large: [368.5, 558.5],
+};
+
+const LINE_LEN = 18;
+
+const PAGE_LAYOUTS = {
+    /*
+	Pages in these layouts are assumed to be already reordered. Layout should go left to right, top to bottom.
+
+	Values are the degree of rotation from a portrait offset needed to re-impose this on a portrait-oriented page, and should only need to be specified for one side.
+	*/
+    folio: {
+        rotations: [[-90], [-90]],
+        landscape: true,
+        rows: 2,
+        cols: 1,
+        per_sheet: 4,
+    },
+    folio_alt: {
+        rotations: [[90], [90]],
+        landscape: true,
+        rows: 2,
+        cols: 1,
+        per_sheet: 4,
+    },
+    quarto: {
+        rotations: [
+            [0, 0],
+            [-180, -180],
+        ],
+        landscape: false,
+        rows: 2,
+        cols: 2,
+        per_sheet: 8,
+    },
+    octavo: {
+        rotations: [
+            [-90, 90],
+            [-90, 90],
+            [-90, 90],
+            [-90, 90],
+        ],
+        landscape: true,
+        rows: 4,
+        cols: 2,
+        per_sheet: 16,
+    },
+    sextodecimo: {
+        rotations: [
+            [0, 0, 0, 0],
+            [-180, -180, -180, -180],
+            [0, 0, 0, 0],
+            [-180, -180, -180, -180],
+        ],
+        landscape: false,
+        rows: 4,
+        cols: 4,
+        per_sheet: 32,
+    },
+};
+
+const BOOKLET_LAYOUTS = {
+    /*
+    For page layouts: pages are 1-indexed for sanity reasons, and the order for the back list must be reversed
+
+    'front' will be the side that ends up with consecutive pagenumbers on the innermost fold, by convention.
+    
+    page numbers should be listed from left to right, top to bottom, starting in the top left.
+    */
+    4: {
+        front: [3, 2],
+        back: [1, 4],
+        rotate: [4, 1],
+    },
+    8: {
+        front: [6, 3, 7, 2],
+        back: [8, 1, 5, 4],
+        rotate: [4, 5, 1, 8],
+    },
+    16: {
+        front: [3, 6, 14, 11, 15, 10, 2, 7],
+        back: [1, 8, 16, 9, 13, 12, 4, 5],
+        rotate: [5, 4, 12, 13, 9, 16, 8, 1],
+    },
+    32: {
+        front: [30, 3, 6, 27, 19, 14, 11, 22, 18, 15, 10, 23, 31, 2, 7, 26],
+        back: [32, 1, 8, 15, 17, 16, 9, 24, 20, 13, 12, 21, 29, 4, 5, 28],
+        rotate: [28, 5, 4, 29, 21, 12, 13, 20, 24, 9, 16, 17, 25, 8, 1, 32],
+    },
+};
+
+
+/***/ }),
+/* 178 */
 /***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
 
 "use strict";
@@ -30467,7 +30620,7 @@ class PerfectBound {
 }
 
 /***/ }),
-/* 178 */
+/* 179 */
 /***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
 
 "use strict";
@@ -31018,135 +31171,6 @@ class WackyImposition{
 }
 
 /***/ }),
-/* 179 */
-/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
-
-"use strict";
-__webpack_require__.r(__webpack_exports__);
-/* harmony export */ __webpack_require__.d(__webpack_exports__, {
-/* harmony export */   "PAGE_SIZES": () => (/* binding */ PAGE_SIZES),
-/* harmony export */   "TARGET_BOOK_SIZE": () => (/* binding */ TARGET_BOOK_SIZE),
-/* harmony export */   "LINE_LEN": () => (/* binding */ LINE_LEN),
-/* harmony export */   "PAGE_LAYOUTS": () => (/* binding */ PAGE_LAYOUTS)
-/* harmony export */ });
-// TODO haven't used these anywhere yet because there aren't tests in place to ensure against breakage
-const PAGE_SIZES = {
-    LETTER: [612, 792],
-    NOTE: [540, 720],
-    LEGAL: [612, 1008],
-    TABLOID: [792, 1224],
-    EXECUTIVE: [522, 756],
-    POSTCARD: [283, 416],
-    A0: [2384, 3370],
-    A1: [1684, 2384],
-    A3: [842, 1191],
-    A4: [595, 842],
-    A5: [420, 595],
-    A6: [297, 420],
-    A7: [210, 297],
-    A8: [148, 210],
-    A9: [105, 148],
-    B0: [2834, 4008],
-    B1: [2004, 2834],
-    B2: [1417, 2004],
-    B3: [1000, 1417],
-    B4: [708, 1000],
-    B5: [498, 708],
-    B6: [354, 498],
-    B7: [249, 354],
-    B8: [175, 249],
-    B9: [124, 175],
-    B10: [87, 124],
-    ARCH_E: [2592, 3456],
-    ARCH_C: [1296, 1728],
-    ARCH_B: [864, 1296],
-    ARCH_A: [648, 864],
-    FLSA: [612, 936],
-    FLSE: [648, 936],
-    HALFLETTER: [396, 612],
-    _11X17: [792, 1224],
-    ID_1: [242.65, 153],
-    ID_2: [297, 210],
-    ID_3: [354, 249],
-    LEDGER: [1224, 792],
-    CROWN_QUARTO: [535, 697],
-    LARGE_CROWN_QUARTO: [569, 731],
-    DEMY_QUARTO: [620, 782],
-    ROYAL_QUARTO: [671, 884],
-    CROWN_OCTAVO: [348, 527],
-    LARGE_CROWN_OCTAVO: [365, 561],
-    DEMY_OCTAVO: [391, 612],
-    ROYAL_OCTAVO: [442, 663],
-    SMALL_PAPERBACK: [314, 504],
-    PENGUIN_SMALL_PAPERBACK: [314, 513],
-    PENGUIN_LARGE_PAPERBACK: [365, 561],
-};
-
-const TARGET_BOOK_SIZE = {
-    standard: [314.5, 502.0],
-    large: [368.5, 558.5],
-};
-
-const LINE_LEN = 18;
-
-const PAGE_LAYOUTS = {
-    /*
-	Pages in these layouts are assumed to be already reordered. Layout should go left to right, top to bottom.
-
-	Values are the degree of rotation from a portrait offset needed to re-impose this on a portrait-oriented page, and should only need to be specified for one side.
-	*/
-    folio: {
-        rotations: [[-90], [-90]],
-        landscape: true,
-        rows: 2,
-        cols: 1,
-        per_sheet: 4,
-    },
-    folio_alt: {
-        rotations: [[90], [90]],
-        landscape: true,
-        rows: 2,
-        cols: 1,
-        per_sheet: 4,
-    },
-    quarto: {
-        rotations: [
-            [0, 0],
-            [-180, -180],
-        ],
-        landscape: false,
-        rows: 2,
-        cols: 2,
-        per_sheet: 8,
-    },
-    octavo: {
-        rotations: [
-            [-90, 90],
-            [-90, 90],
-            [-90, 90],
-            [-90, 90],
-        ],
-        landscape: true,
-        rows: 4,
-        cols: 2,
-        per_sheet: 16,
-    },
-    sextodecimo: {
-        rotations: [
-            [0, 0, 0, 0],
-            [-180, -180, -180, -180],
-            [0, 0, 0, 0],
-            [-180, -180, -180, -180],
-        ],
-        landscape: false,
-        rows: 4,
-        cols: 4,
-        per_sheet: 32,
-    },
-};
-
-
-/***/ }),
 /* 180 */
 /***/ ((module, __unused_webpack_exports, __webpack_require__) => {
 
@@ -31261,7 +31285,7 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony export */   "renderWacky": () => (/* binding */ renderWacky),
 /* harmony export */   "renderFormFromSettings": () => (/* binding */ renderFormFromSettings)
 /* harmony export */ });
-/* harmony import */ var _constants__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(179);
+/* harmony import */ var _constants__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(177);
 
 
 function renderPageCount(book) {
