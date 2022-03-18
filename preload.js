@@ -31440,7 +31440,8 @@ __webpack_require__.r(__webpack_exports__);
 function handleGenerateClick(generateEl, book) {
 	generateEl.setAttribute('disabled', true);
 	generateEl.innerText = 'Generating, this may take a little while...';
-	let result = book.createoutputfiles();
+	console.log('The whole Book model:', book);
+	const result = book.createoutputfiles();
 	result
 		.then((_) => {
 			console.log('Generated result!');
