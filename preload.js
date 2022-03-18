@@ -30430,7 +30430,6 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony export */   "PAGE_LAYOUTS": () => (/* binding */ PAGE_LAYOUTS),
 /* harmony export */   "BOOKLET_LAYOUTS": () => (/* binding */ BOOKLET_LAYOUTS)
 /* harmony export */ });
-// TODO haven't used these anywhere yet because there aren't tests in place to ensure against breakage
 const PAGE_SIZES = {
     LETTER: [612, 792],
     NOTE: [540, 720],

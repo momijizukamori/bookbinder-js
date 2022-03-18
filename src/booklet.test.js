@@ -74,6 +74,7 @@ describe('Booklet model', () => {
             'b',
             'b',
         ];
+        // TODO confirm this 'expected' result is indeed what is wanted - I've just copied the result of making a new model with the testPages as input, assuming it's currently working as-intended
         const expected = {
             duplex: true,
             sigconfig: [1],

@@ -1,4 +1,3 @@
-// TODO haven't used these anywhere yet because there aren't tests in place to ensure against breakage
 export const PAGE_SIZES = {
     LETTER: [612, 792],
     NOTE: [540, 720],
