@@ -129,6 +129,13 @@
                 <span class="row"> <input type="radio" id="customsig" name="sig_format" value="customsig">
                     <label for="customsig">Custom signatures</label> <input type="text" name="custom_sig">
                     <span data-balloon-length="medium" aria-label="Specify as a set of numbers seperated by commas, such as: 10, 10, 8" data-balloon-pos="up">🛈</span>
+                    <span class="row">
+                    <details>
+                        <summary>A note on calculating signature lengths</summary>
+                        <p>
+                        In this code, the length of a signature is the number of full-sized sheets of paper per signature. For a folio book, this means that the number of folds you punch through when sewing together a signature is the same as the number of sheets in the signature, as each sheet has one fold. For quarto, this will be two folds for each sheet - octavo, four; sextodecimo, eight. Calculate your signature lengths accordingly (in particular, you almost certainly don't want more than one sheet for sextodecimo).
+                    </p>
+                    </details></span>
 
                 <h3>Wacky Small Layouts</h3>
                 <span class="row"><i>These layouts contain one or more signature per printed page. They do not use many of the other settings </i></span>

@@ -16808,7 +16808,7 @@ var PDFPageEmbedder = /** @class */ (function () {
                     throw new _errors__WEBPACK_IMPORTED_MODULE_0__.MissingPageContentsEmbeddingError();
                 decodedContents = this.decodeContents(Contents);
                 _b = this.boundingBox, left = _b.left, bottom = _b.bottom, right = _b.right, top = _b.top;
-                xObject = context.stream(decodedContents, {
+                xObject = context.flateStream(decodedContents, {
                     Type: 'XObject',
                     Subtype: 'Form',
                     FormType: 1,
@@ -31571,7 +31571,10 @@ window.addEventListener('DOMContentLoaded', () => {
             (0,_utils_changeHandlers_js__WEBPACK_IMPORTED_MODULE_2__.handleInputChange)(book, bookbinderForm)
         );
     });
-    fileInput.addEventListener('change', (e) => (0,_utils_changeHandlers_js__WEBPACK_IMPORTED_MODULE_2__.handleFileChange)(e, book));
+    fileInput.addEventListener('change', (e) => { 
+        (0,_utils_changeHandlers_js__WEBPACK_IMPORTED_MODULE_2__.handleFileChange)(e, book);
+        generate.removeAttribute('disabled');
+    });
     generate.addEventListener('click', () =>
         (0,_utils_clickHandlers_js__WEBPACK_IMPORTED_MODULE_3__.handleGenerateClick)(generate, book)
     );
