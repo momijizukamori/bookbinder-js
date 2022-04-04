@@ -14,6 +14,8 @@ If you require more detailed instructions on any of these steps, please see the 
 ## Branching and Committing
 1. Create a feature branch with `git checkout -b` for whatever you're working on, such as `feature/contribution-docs` or `bugfix/page-layout-issues`
 1. Commit your changes as you go with meaningful commit messages
+1. Ideally, write tests for any new behavior you're introducting
+1. Run tests with `npm run test` as you introduce changes; try to catch any breaking changes early and, as appropriate, either debug your code to find the problem or update the existing tests to reflect the new expected behavior
 1. Push your changes up to the feature branch on your fork as you go with `git push origin [name of branch]`, for example, `git push origin feature/contribution-docs`
 
 ## Pull Requests
@@ -21,5 +23,6 @@ If you require more detailed instructions on any of these steps, please see the 
 	- first, [make sure your fork is still up-to-date](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/working-with-forks/syncing-a-fork#syncing-a-fork-from-the-command-line) with the latest version of the upstream repository with `git merge upstream/main`
 	- address any conflicts that may arise with upstream updates (currently outside the scope of this guide, but you can read some docs [here](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/addressing-merge-conflicts/about-merge-conflicts)).
 	- push all your latest changes, including any updates merged from upstream, up to your fork's feature branch as described above
+	- make sure tests are passing with `npm run test`
 	- open a pull request against the parent repository, as described in the link at the start of this section. Choose the parent repository's main branch as the 'base' and your fork's feature branch as the 'head'. Describe the changes you've made and review the changed files to make sure it's what you intended. See the following screenshot for an example:
 	![pull request example](/docs/PR-example.png)
