@@ -24,7 +24,10 @@ window.addEventListener('DOMContentLoaded', () => {
             handleInputChange(book, bookbinderForm)
         );
     });
-    fileInput.addEventListener('change', (e) => handleFileChange(e, book));
+    fileInput.addEventListener('change', (e) => { 
+        handleFileChange(e, book);
+        generate.removeAttribute('disabled');
+    });
     generate.addEventListener('click', () =>
         handleGenerateClick(generate, book)
     );
