@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Bookbinder</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://unpkg.com/balloon-css/balloon.min.css">
+    <link rel="stylesheet" type="text/css" href="../styles.css">
+    <script type="text/javascript" src="./preload.js"></script>
+</head>
+
+<body>
+    <div class="wrapper">
+        <div class="section" id="intro">
+            <h1>Bookbinder JS</h1>
+            A Javascript-based app for formatting PDFs for bookbinding. For more information, feature requests, or to
+            contribute, view the project's <a href="https://github.com/momijizukamori/bookbinder-js">Github repository</a>.
+        </div>
+        <form id="bookbinder" name="bookbinder">
+            <div class="section" id="input">
+                <h2>File Info</h2>
+                <span class="row"><label>Input File: <input type="file" name="input_file" accept=".pdf"
+                            id="input_file"></label></span>
+                <!-- <span class="row"><label>Page Size: <span id="page_size"></span></span> -->
+                <span class="row">Number of Pages: <span id="page_count"></span></span>
+                <!-- <span class="row">Page Ratio: <span id="input_ratio"></span></span> -->
+            </div>
+
+            <!-- <div class="section" id="units">
+                <h2>Units</h2>
+                <span class="row"><input type="radio" id="inch" name="units" value="inch">
+                    <label for="inch">Inches</label></span>
+                <span class="row"><input type="radio" id="mm" name="units" value="mm" checked>
+                    <label for="mm">Millimeters</label></span>
+                <span class="row"><input type="radio" id="pt" name="units" value="pt">
+                    <label for="pt">Points</label></span>
+            </div> -->
+
+            <div class="section" id="printer_info">
+                <h2>Printer</h2>
+                <span class="row"><label for="paper_size">Paper size</label>
+                    <select name="paper_size" id="paper_size">
+                    </select></span>
+
+                <span class="row"><label for="printer_type">Printer type</label>
+                    <select name="printer_type" id="printer_type">
+                        <option value="single" selected>Single-Sided</option>
+                        <option value="duplex">Duplex</option>
+                    </select>
+                    <span data-balloon-length="medium" aria-label="Duplex will alternate front and backs of sheets in a single file; Single-sided will split fronts and backs into seperate files." data-balloon-pos="up">🛈</span></span>
+
+                <span class="row"> <label>Alternate Page Rotation <input type="checkbox" name="rotate_page"
+                            checked></label></span>
+                <!-- <span class="row"> <label>Double pages per sheet <input type="checkbox" name="double_page"></label></span> -->
+
+            </div>
+
+            <div class="section" id="book_size">
+                <h2>Book Size</h2>
+                <span class="row"><input type="radio" id="standard" name="book_size" value="standard">
+                    <label for="standard">Standard Paperback</label></span>
+                <span class="row"><input type="radio" id="large" name="book_size" value="large">
+                    <label for="large">Large format paperback</label></span>
+                <span class="row"><input type="radio" id="full" name="book_size" value="full" checked>
+                    <label for="full">Full paper size</label></span>
+                <span class="row"><input type="radio" id="custom" name="book_size" value="custom">
+                    <label for="custom">Custom</label> - <label>Width <input type="number" name="custom_width"></label> x
+                    <label>Height <input type="number" name="custom_height"></label></span>
+
+                <span class="row"> <label for="page_scaling">Page scaling</label>
+                    <select name="page_scaling" id="page_scaling">
+                        <option value="lockratio" selected>Keep proportional</option>
+                        <option value="stretch">Stretch to fit</option>
+                    </select>
+
+            </div>
+
+            <div class="section" id="flyleaf_info">
+                <h2>Flyleaf</h2>
+                <span class="row"> <label>Add flyleaf <input type="checkbox" name="flyleaf"></label>
+                    <span data-balloon-length="medium" aria-label="An extra blank page at the start and end of the book" data-balloon-pos="up">🛈</span>
+                </span> 
+
+            </div>
+
+            <div class="section" id="sig_format">
+                <h2>Signature Format</h2>
+
+                <!-- <span class="row"><label>Default signature length: </label><input type="text" placeholder="8" name="sig_length"></label></span> -->
+                <!-- <span class="row"> <input type="radio" id="booklet" name="sig_format" value="booklet">
+                    <label for="booklet">Booklet</label></span> -->
+                <span class="row"> <input type="radio" id="perfect" name="sig_format" value="perfect">
+                    <label for="perfect">Perfectbound</label></span>
+                <span class="row"> <input type="radio" id="standardsig" name="sig_format" value="standardsig" checked>
+                    <label for="standardsig">Standard signatures</label> - length </label><input type="number" value="8"
+                        name="sig_length"></label> 
+                        <span data-balloon-length="medium" aria-label="Number of sheets per signature" data-balloon-pos="up">🛈</span></span>
+                <span class="row"> <input type="radio" id="customsig" name="sig_format" value="customsig">
+                    <label for="customsig">Custom signatures</label> <input type="text" name="custom_sig">
+                    <span data-balloon-length="medium" aria-label="Specify as a set of numbers seperated by commas, such as: 10, 10, 8" data-balloon-pos="up">🛈</span>
+                </span>
+            </div>
+
+            <div class="section" id="sig_info">
+                <h2>Signature Info</h2>
+                <span class="row">Total Pages: <span id="total_pages"></span></span>
+                <span class="row">Total Sheets: <span id="total_sheets"></span></span>
+                <span class="row">Number of Signatures: <span id="sig_count"></span></span>
+                <span class="row">Signature Arrangement: <span id="sig_arrange"></span></span>
+            </div>
+            <center><button type="button" name="generate" id="generate" disabled>Generate Output</button></center>
+        </form>
+    </div>
+</body>
+
+</html>

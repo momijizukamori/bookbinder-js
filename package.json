@@ -4,11 +4,16 @@
   "description": "An app to rearrange PDF pages for printing for bookbinding",
   "main": "main.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build": "webpack build",
+    "test": "jest"
   },
   "author": "momijizukamori@gmail.com",
   "license": "MPL",
   "devDependencies": {
+    "@babel/core": "^7.17.5",
+    "@babel/preset-env": "^7.16.11",
+    "babel-jest": "^27.5.1",
+    "jest": "^27.5.1",
     "webpack": "^5.50.0",
     "webpack-cli": "^4.8.0"
   },
