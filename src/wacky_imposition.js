@@ -262,14 +262,16 @@ export class WackyImposition{
             sheets[sheet*2 + 1].unshift(backs[row]);
             console.log(" -> row ",row," => sheet ", sheet, " grabs front ",fronts[row]," and back ",backs[row])
         }
-        for (let filler = 0; filler < 6 - rowCount % 6; ++filler) {
-            let sheet = Math.floor(rowCount/6);
-            if (filler % 2 == 0) {
-                sheets[sheet*2].unshift([blank(),blank(),blank(),blank(),blank(),blank(),blank(),blank(),blank(),blank()]);
-                sheets[sheet*2 + 1].unshift([blank(),blank(),blank(),blank(),blank(),blank(),blank(),blank(),blank(),blank()]);
-            } else {
-                sheets[sheet*2].push([blank(),blank(),blank(),blank(),blank(),blank(),blank(),blank(),blank(),blank()]);
-                sheets[sheet*2 + 1].push([blank(),blank(),blank(),blank(),blank(),blank(),blank(),blank(),blank(),blank()]);
+        if (sheets[sheets.length - 1].length < 6){
+            for (let filler = 0; filler < 6 - rowCount % 6; ++filler) {
+                let sheet = Math.floor(rowCount/6);
+                if (filler % 2 == 0) {
+                    sheets[sheet*2].unshift([blank(),blank(),blank(),blank(),blank(),blank(),blank(),blank(),blank(),blank()]);
+                    sheets[sheet*2 + 1].unshift([blank(),blank(),blank(),blank(),blank(),blank(),blank(),blank(),blank(),blank()]);
+                } else {
+                    sheets[sheet*2].push([blank(),blank(),blank(),blank(),blank(),blank(),blank(),blank(),blank(),blank()]);
+                    sheets[sheet*2 + 1].push([blank(),blank(),blank(),blank(),blank(),blank(),blank(),blank(),blank(),blank()]);
+                }
             }
         }
         for (let i=0;i < sheets.length; ++i){
