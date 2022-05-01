@@ -596,10 +596,6 @@ class Book {
                 if (pageInfo.isBlank)
                     continue;
                 let origPage = embeddedPages[filteredList.indexOf(pageInfo.num)]
-                // is not accounting correctly for doubles of left/right...?
-                // 0 = 1
-                // 1 = 1
-                // 2 = 2
                 let hOffset = (this.pack_pages) ? leftGap : (1 + i - i % 2) * leftGap;
                 let vOffset = (this.pack_pages) ? topGap : topGap  + (2 * topGap * row);
                 console.log("[",row,", ",i,"] hGap ", hGap, "/ vGap ",vGap," || leftGap ", leftGap, "/ topGap ",topGap," :: "+hOffset+", "+vOffset )
