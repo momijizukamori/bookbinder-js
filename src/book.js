@@ -548,7 +548,7 @@ export class Book {
         let filteredList = [];
         console.log(pagelist)
         pagelist = pagelist.filter( r => {  // need second sheet to remain small even if there's room to expand
-            return isFirst || r.filter(c => {return c.isBlank == false;}).length > 0;
+            return !isFirst || r.filter(c => {return c.isBlank == false;}).length > 0;
         });
         console.log(pagelist)
         console.log("Hitting that write_single_page : isPacked[",this.pack_pages,"] || (front ",isFront,"/ first ",isFirst,") [",pagelist.length,",",pagelist[0].length,"]")
@@ -579,7 +579,6 @@ export class Book {
                 let origPage = embeddedPages[filteredList.indexOf(pageInfo.num)]
                 let hOffset = (this.pack_pages) ? leftGap : (1 + i - i % 2) * leftGap;
                 let vOffset = (this.pack_pages) ? topGap : topGap  + (2 * topGap * row);
-                console.log("[",row,", ",i,"] hGap ", hGap, "/ vGap ",vGap," || leftGap ", leftGap, "/ topGap ",topGap," :: "+hOffset+", "+vOffset )
                 let positioning = { 
                     x: x + hOffset + (pageInfo.vFlip ? printPageWidth : 0), 
                     y: y + vOffset + (pageInfo.vFlip ? printPageHeight : 0), 

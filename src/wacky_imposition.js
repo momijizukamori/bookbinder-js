@@ -130,20 +130,22 @@ export class WackyImposition{
      */
     build_1_3rd_lineFunction() {
         return info => {
+            let vGap = row => { return (info.isPacked) ? info.gap[1] : info.gap[1] * row}
+            let hGap = col => { return (info.isPacked) ? info.gap[0] : info.gap[0] * col}
             let foldMarks = [];
             [0,1,2,3].forEach( row => {
                 [0,1,2].forEach( page => {
                     foldMarks = foldMarks.concat(this.crosshairMark(
-                        info.gap[0] + info.renderPageSize[0] * page,
-                        info.gap[1] + info.renderPageSize[1] * row,
+                        hGap(page) + info.renderPageSize[0] * page,
+                        vGap(row) + info.renderPageSize[1] * row,
                         5
                         ));
                 });
             });
             return [
-                this.foldHorizontal(info.paperSize[0], info.gap[1] + info.renderPageSize[1]),
-                this.foldHorizontal(info.paperSize[0], info.gap[1] + info.renderPageSize[1] * 2),
-                this.cutHorizontal(info.paperSize[0], info.gap[1] + info.renderPageSize[1] * 3),
+                this.foldHorizontal(info.paperSize[0], vGap(1) + info.renderPageSize[1]),
+                this.foldHorizontal(info.paperSize[0],vGap(2) + info.renderPageSize[1] * 2),
+                this.cutHorizontal(info.paperSize[0], vGap(3) + info.renderPageSize[1] * 3),
             ]
             .concat(foldMarks);
         };
@@ -205,15 +207,17 @@ export class WackyImposition{
      */
     build_3_3_4_lineFunction() {
         return info => {
+            let vGap = row => { return (info.isPacked) ? info.gap[1] : info.gap[1] * row};
+            let hGap = col => { return (info.isPacked) ? info.gap[0] : info.gap[0] * col};
             let cutBetweenTheThrees = {
-                start: { x: info.gap[0] + 2 * info.renderPageSize[0], y: info.renderPageSize[1] * 2 + info.gap[1] },
-                end: { x: info.gap[0] + 2 * info.renderPageSize[0], y: info.paperSize[1] },
+                start: { x: hGap(2) + 2 * info.renderPageSize[0], y: info.renderPageSize[1] * 2 + info.gap[1] },
+                end: { x: hGap(2) + 2 * info.renderPageSize[0], y: info.paperSize[1] },
                 thickness: 0.25,
                 opacity: 0.4,
             };
             let foldBetweenTheFours = {
-                start: { x: info.gap[0] + 2 * info.renderPageSize[0], y: info.renderPageSize[1] * 2 + info.gap[1] },
-                end: { x: info.gap[0] + 2 * info.renderPageSize[0], y: 0 },
+                start: { x: hGap(2) + 2 * info.renderPageSize[0], y: info.renderPageSize[1] * 2 + info.gap[1] },
+                end: { x: hGap(2) + 2 * info.renderPageSize[0], y: 0 },
                 thickness: 0.5,
                 opacity: 0.4,
                 dashArray: [2, 5]
@@ -222,19 +226,19 @@ export class WackyImposition{
             [0,1,2,3,4,5].forEach( row => {
                 [0,1,2,3,4].forEach( page => {
                     foldMarks = foldMarks.concat(this.crosshairMark(
-                        info.gap[0] + info.renderPageSize[0] * page,
-                        info.gap[1] + info.renderPageSize[1] * row,
+                        hGap(page) + info.renderPageSize[0] * page,
+                        vGap(row) + info.renderPageSize[1] * row,
                         5
                         ));
                 });
             });
             return [
-                this.foldHorizontal(info.paperSize[0], info.gap[1] + info.renderPageSize[1]),
-                this.cutHorizontal(info.paperSize[0], info.gap[1] + info.renderPageSize[1] * 2),
-                this.foldHorizontal(info.paperSize[0], info.gap[1] + info.renderPageSize[1] * 3),
-                this.foldHorizontal(info.paperSize[0], info.gap[1] + info.renderPageSize[1] * 4),
-                this.cutVertical(info.paperSize[1], info.gap[0]),
-                this.cutVertical(info.paperSize[1], info.gap[0] + info.renderPageSize[0] * 4),
+                this.foldHorizontal(info.paperSize[0], vGap(1) + info.renderPageSize[1]),
+                this.cutHorizontal(info.paperSize[0], vGap(2) + info.renderPageSize[1] * 2),
+                this.foldHorizontal(info.paperSize[0], vGap(3) + info.renderPageSize[1] * 3),
+                this.foldHorizontal(info.paperSize[0], vGap(4) + info.renderPageSize[1] * 4),
+                this.cutVertical(info.paperSize[1], hGap(0)),
+                this.cutVertical(info.paperSize[1], hGap(4) + info.renderPageSize[0] * 4),
                 cutBetweenTheThrees,
                 foldBetweenTheFours
             ].concat(foldMarks);
