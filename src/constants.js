@@ -1,3 +1,4 @@
+/** units in "pt" */
 export const PAGE_SIZES = {
     LETTER: [612, 792],
     NOTE: [540, 720],

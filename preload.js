@@ -59,6 +59,7 @@ class Book {
         this.cropmarks = false;
         this.cutmarks = false;
 
+        this.fore_edge_padding_pt = 0;  // (wacky only atm) -- to track buffer space on non-binding edge
         this.pack_pages = true;     // (wacky only atm) - to track if the white space should be distributed
     }
 
@@ -93,6 +94,10 @@ class Book {
         this.page_layout = form.get('pagelayout') == null ? 'folio' : _constants_js__WEBPACK_IMPORTED_MODULE_6__.PAGE_LAYOUTS[form.get('pagelayout')];
         this.per_sheet = this.page_layout.per_sheet;
         this.pack_pages = form.get('wacky_spacing') == 'wacky_pack';
+        this.fore_edge_padding_pt = parseInt(form.get('fore_edge_padding_pt'))
+        if(isNaN(this.fore_edge_padding_pt)) {
+            this.fore_edge_padding_pt = 0;
+        }
     }
 
     async openpdf(file) {
@@ -582,18 +587,19 @@ class Book {
         let pageHeight = papersize[1] / pagelist.length;
         let pageWidth = papersize[0] / pagelist[0].length;
         let heightRatio =  pageHeight / sourcePage.height;
-        let widthRatio =  pageWidth / sourcePage.width;
+        let widthRatio =  pageWidth / (sourcePage.width + this.fore_edge_padding_pt);
         let pageScale = Math.min(heightRatio, widthRatio);
         let vGap = papersize[1] - (sourcePage.height * pageScale * pagelist.length);
         let topGap = (this.pack_pages) ? vGap / 2.0 : vGap / (pagelist.length * 2);
-        let hGap = papersize[0] - (sourcePage.width * pageScale * pagelist[0].length);
+        let hGap = papersize[0] - ((sourcePage.width + this.fore_edge_padding_pt) * pageScale * pagelist[0].length);
         let leftGap = (this.pack_pages) ? hGap / 2.0 : (hGap / pagelist[0].length) ;
         let printPageWidth = pageScale * sourcePage.width;
         let printPageHeight = pageScale * sourcePage.height;
+        let printedForeEdgeGutter = pageScale * this.fore_edge_padding_pt;
         for (let row=0; row < pagelist.length; ++row ) {
             let y = sourcePage.height * pageScale * row;
             for (let i=0; i < pagelist[row].length; ++i) {
-                let x = sourcePage.width * pageScale * i;
+                let x = (sourcePage.width + this.fore_edge_padding_pt) * pageScale * i + (this.fore_edge_padding_pt * (i + 1)%2);
                 let pageInfo = pagelist[row][i]
                 if (pageInfo.isBlank)
                     continue;
@@ -601,7 +607,7 @@ class Book {
                 let hOffset = (this.pack_pages) ? leftGap : (1 + i - i % 2) * leftGap;
                 let vOffset = (this.pack_pages) ? topGap : topGap  + (2 * topGap * row);
                 let positioning = { 
-                    x: x + hOffset + (pageInfo.vFlip ? printPageWidth : 0), 
+                    x: x + hOffset + (pageInfo.vFlip ? printPageWidth : 0) + printedForeEdgeGutter * ((i + 1)%2), 
                     y: y + vOffset + (pageInfo.vFlip ? printPageHeight : 0), 
                     width: printPageWidth , 
                     height: printPageHeight, 
@@ -614,7 +620,7 @@ class Book {
         lineMaker({
             isFront: isFront,
             gap: [leftGap, topGap],
-            renderPageSize: [printPageWidth, printPageHeight],
+            renderPageSize: [printPageWidth + printedForeEdgeGutter, printPageHeight],
             paperSize: papersize,
             isPacked: this.pack_pages
         }).forEach( line => { curPage.drawLine(line)});
@@ -30446,6 +30452,7 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony export */   "PAGE_LAYOUTS": () => (/* binding */ PAGE_LAYOUTS),
 /* harmony export */   "BOOKLET_LAYOUTS": () => (/* binding */ BOOKLET_LAYOUTS)
 /* harmony export */ });
+/** units in "pt" */
 const PAGE_SIZES = {
     LETTER: [612, 792],
     NOTE: [540, 720],
