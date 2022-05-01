@@ -546,9 +546,11 @@ export class Book {
      */
     async write_single_page(outPDF, isLandscape, isFront, isFirst, pagelist, lineMaker) {
         let filteredList = [];
+        console.log(pagelist)
         pagelist = pagelist.filter( r => {  // need second sheet to remain small even if there's room to expand
-            return isFirst && r.filter(c => {return c.isBlank == false;}).length > 0;
+            return isFirst || r.filter(c => {return c.isBlank == false;}).length > 0;
         });
+        console.log(pagelist)
         console.log("Hitting that write_single_page : isPacked[",this.pack_pages,"] || (front ",isFront,"/ first ",isFirst,") [",pagelist.length,",",pagelist[0].length,"]")
         pagelist.forEach(row => { row.forEach( page => { if (!page.isBlank) filteredList.push(page.num) }) });
         let embeddedPages = await outPDF.embedPdf(this.currentdoc, filteredList);
