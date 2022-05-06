@@ -31070,46 +31070,6 @@ class WackyImposition{
             return baseCuts.concat(foldMarks)
         };
     }
-    /**
-     * @return a FUNCTION. The function takes as it's parameter:
-     *       Object definition: {
-     *           gap: [leftGap, topGap],
-     *           renderPageSize: [width, height],
-     *           paperSize: [width, height],
-     *           isFront: boolean,
-     *           isPacked: boolean
-     *       }
-     *       and returns: a list of lines, as described by PDF-lib.js's `PDFPageDrawLineOptions` object
-     */
-    build_3_6s_lineFunction() {
-        return info => {
-            let vGap = row => { return (info.isPacked) ? info.gap[1] : info.gap[1] * (2 * row); };
-            let hGap = col => { return (info.isPacked) ? info.gap[0] : col * info.gap[0]};
-            let baseCuts = [
-                //this.cutHorizontal(info.paperSize[0], vGap(0)),
-                this.cutHorizontal(info.paperSize[0], vGap(0) + info.renderPageSize[1] * 0),
-                this.cutHorizontal(info.paperSize[0], vGap(1) + info.renderPageSize[1] * 1),
-                this.cutHorizontal(info.paperSize[0], vGap(2) + info.renderPageSize[1] * 2),
-                this.cutHorizontal(info.paperSize[0], vGap(3) + info.renderPageSize[1] * 3),
-                this.cutHorizontal(info.paperSize[0], vGap(4) + info.renderPageSize[1] * 4),
-
-                this.cutVertical(info.paperSize[1], hGap(0)),
-                this.cutVertical(info.paperSize[1], hGap(6) + info.renderPageSize[0] * 6),
-            ];
-            let foldMarks = [];
-            [0,1,2,3].forEach( row => {
-                [...Array(6).keys()].forEach( page => {
-                    foldMarks = foldMarks.concat(this.crosshairMark(
-                        hGap(page) + info.renderPageSize[0] * page,
-                        vGap(row) + info.renderPageSize[1] * row,
-                        5
-                        ));
-                });
-            });
-            console.log("Providing lines: \nbase cuts: ",baseCuts,"\nfold marks: ",foldMarks,"\ntotal: ",baseCuts.concat(foldMarks))
-            return baseCuts.concat(foldMarks)
-        };
-    }
 
     /**
      * @param pageCount - total pages in document

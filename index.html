@@ -138,8 +138,8 @@
                     </details></span>
 
                 <h3>Wacky Small Layouts</h3>
-                <span class="row"><i>These layouts contain one or more signature per printed page. They do not use many of the other settings </i></span>
-                <span class="row" style="text-align: left; float:left;">Out Edge Padding: <br><input type="number" id="fore_edge_padding_pt" name="fore_edge_padding_pt">pt</span>
+                <span class="row" style="margin-bottom:15px;"><i>These layouts contain one or more signature per printed page. They use only the "File Info" and "Printer" settings.</i></span>
+                <span class="row" style="text-align: left; float:left;">Fore-Edge Padding: <br><input type="number" id="fore_edge_padding_pt" name="fore_edge_padding_pt" style="width: 5em;margin-left: 15px;"> pt</span>
                 <span class="row" style="text-align: right; float:right;" id="wacky_spacing">
                     <input type="radio" id="wacky_pack" name="wacky_spacing" value="wacky_pack" checked>
                     <label for="wacky_pack">Packed page layout</label> 
@@ -147,10 +147,10 @@
                     <input type="radio" id="wacky_gap" name="wacky_spacing" value="wacky_gap">
                     <label for="wacky_gap">Distributed space page layout</label>
                 </span>
-                <span class="row" style="clear:both;"> <input type="radio" id="1_3rd" name="sig_format" value="1_3rd">
-                    <label for="1_3rd">6 per side (3 folio signature)</label>
+                <span class="row" style="clear:both;padding-top: 15px;"> <input type="radio" id="1_3rd" name="sig_format" value="1_3rd">
+                    <label for="1_3rd">6 per side <sub>(3 folio signature)</sub></label>
                 </span>
-                <span class="row">
+                <span class="row instruction-indent">
                     <details>
                         <summary>Instructions</summary>
                         <p>
@@ -162,9 +162,9 @@
                     </details>
                 </span>
                 <span class="row"> <input type="radio" id="A7_2_16s" name="sig_format" value="A7_2_16s">
-                    <label for="A7_2_16s">16 per side (4 folio signature x 2)</label>
+                    <label for="A7_2_16s">16 per side <sub>(4 folio signature x 2)</sub></label>
                 </span>
-                <span class="row">
+                <span class="row instruction-indent">
                     <details>
                         <summary>Instructions</summary>
                         <p>
@@ -174,15 +174,15 @@
                     </details>
                 </span>
                 <span class="row"> <input type="radio" id="a_3_6s" name="sig_format" value="a_3_6s">
-                    <label for="a_3_6s">Small (18 per side, 3 folio signature per row, 3 rows per side)</label>
+                    <label for="a_3_6s">Small - 18 per side <sub>(3 folio signature per row x 3)</sub></label>
                 </span>
-                <span class="row">
+                <span class="row instruction-indent">
                     <details>
                         <summary>Instructions</summary>
                         <p>
                         <b> THIS IS A LANDSCAPE LAYOUT. IT MUST BE PRINTED AND "flipped on the short size" (the non-typical flipping)</b>
                         <br>
-                        Thankfully most small layouts fit on one page-- easy enough to do a test print and make sure you're duplexing correctly (if that's your route)
+                        Remember to do a single-sheet test print if it's your first time to make sure duplex/mirroring is correct!
                         </p><p>
                         Cut out the rows. Fold up the folios like a zig-zag (two per face). Then fold the center of the text (smoosh the two matching page numbers together).
                         </p><p>
@@ -191,9 +191,9 @@
                     </details>
                 </span>
                 <span class="row"> <input type="radio" id="a9_3_3_4" name="sig_format" value="a9_3_3_4">
-                    <label for="a9_3_3_4">Little (20 per side, 3 folio/3 folio/4 folio signatures per side)</label>
+                    <label for="a9_3_3_4">Little - 20 per side <sub>(3 folio / 3 folio / 4 folio signatures)</sub></label>
                 </span>
-                <span class="row">
+                <span class="row instruction-indent">
                     <details>
                         <summary>Instructions</summary>
                         <p>
@@ -202,15 +202,15 @@
                         </p>
                     </details></span>
                 <span class="row"> <input type="radio" id="a_4_8s" name="sig_format" value="a_4_8s">
-                    <label for="a_4_8s">Petite (32 per side, 4 folio signature per row, 4 rows per side)</label>
+                    <label for="a_4_8s">Petite - 32 per side <sub>(4 folio signature per row x 4)</sub></label>
                 </span>
-                <span class="row">
+                <span class="row instruction-indent">
                     <details>
                         <summary>Instructions</summary>
                         <p>
                         <b> THIS IS A LANDSCAPE LAYOUT. IT MUST BE PRINTED AND "flipped on the short size" (the non-typical flipping)</b>
                         <br>
-                        Thankfully most small layouts fit on one page-- easy enough to do a test print and make sure you're duplexing correctly (if that's your route)
+                        Remember to do a single-sheet test print if it's your first time to make sure duplex/mirroring is correct!
                         </p><p>
                         Cut out the rows. Fold up the folios like a zig-zag (two per face). Then fold the center of the text (smoosh the two matching page numbers together).
                         </p><p>
@@ -219,8 +219,8 @@
                     </details>
                 </span>
                 <span class="row"> <input type="radio" id="a10_6_10s" name="sig_format" value="a10_6_10s">
-                    <label for="a10_6_10s">Mini (60 per side, 2 folio/3 folio signatures per row, 6 rows per side)</label></span>
-                <span class="row">
+                    <label for="a10_6_10s">Mini - 60 per side <sub>(2 folio / 3 folio signatures per row x 6)</sub></label></span>
+                <span class="row instruction-indent">
                     <details>
                         <summary>Instructions</summary>
                         <p>
