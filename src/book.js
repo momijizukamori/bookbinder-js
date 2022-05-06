@@ -159,7 +159,7 @@ export class Book {
             }
 
             this.rearrangedpages = this.book.pagelist;
-        } else if (this.format == 'a9_3_3_4' || this.format == 'a10_6_10s' || this.format == 'A7_32' || this.format == 'A7_2_16s' || this.format == '1_3rd' || this.format == 'a_3_6s') {
+        } else if (this.format == 'a9_3_3_4' || this.format == 'a10_6_10s' || this.format == 'A7_2_16s' || this.format == '1_3rd' || this.format == 'a_3_6s' || this.format == 'a_4_8s') {
             this.book = new WackyImposition(this.orderedpages, this.duplex, this.format, this.pack_pages)
         }
         console.log("Created pages for : ",this.book)
@@ -192,10 +192,10 @@ export class Book {
             await this.buildSheets(this.filename, this.book.a9_3_3_4_builder());
         } else if (this.format == 'a10_6_10s') {
             await this.buildSheets(this.filename, this.book.a10_6_10s_builder());
+        } else if (this.format == 'a_4_8s') {
+            await this.buildSheets(this.filename, this.book.a_4_8s_builder());
         } else if (this.format == 'a_3_6s') {
             await this.buildSheets(this.filename, this.book.a_3_6s_builder());
-        } else if (this.format == 'A7_32') {
-            await this.buildSheets(this.filename, this.book.a7_32_builder());
         } else if (this.format == 'A7_2_16s') {
             await this.buildSheets(this.filename, this.book.a7_2_16s_builder());
         } else if (this.format == '1_3rd') {

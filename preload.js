@@ -180,7 +180,7 @@ class Book {
             }
 
             this.rearrangedpages = this.book.pagelist;
-        } else if (this.format == 'a9_3_3_4' || this.format == 'a10_6_10s' || this.format == 'A7_32' || this.format == 'A7_2_16s' || this.format == '1_3rd' || this.format == 'a_3_6s') {
+        } else if (this.format == 'a9_3_3_4' || this.format == 'a10_6_10s' || this.format == 'A7_2_16s' || this.format == '1_3rd' || this.format == 'a_3_6s' || this.format == 'a_4_8s') {
             this.book = new _wacky_imposition_js__WEBPACK_IMPORTED_MODULE_5__.WackyImposition(this.orderedpages, this.duplex, this.format, this.pack_pages)
         }
         console.log("Created pages for : ",this.book)
@@ -213,10 +213,10 @@ class Book {
             await this.buildSheets(this.filename, this.book.a9_3_3_4_builder());
         } else if (this.format == 'a10_6_10s') {
             await this.buildSheets(this.filename, this.book.a10_6_10s_builder());
+        } else if (this.format == 'a_4_8s') {
+            await this.buildSheets(this.filename, this.book.a_4_8s_builder());
         } else if (this.format == 'a_3_6s') {
             await this.buildSheets(this.filename, this.book.a_3_6s_builder());
-        } else if (this.format == 'A7_32') {
-            await this.buildSheets(this.filename, this.book.a7_32_builder());
         } else if (this.format == 'A7_2_16s') {
             await this.buildSheets(this.filename, this.book.a7_2_16s_builder());
         } else if (this.format == '1_3rd') {
@@ -30672,12 +30672,12 @@ class WackyImposition{
       } else if (format == "a10_6_10s") {
         this.sheets = Math.ceil(pages.length/120.0);
         this.sigconfig = Array(Math.ceil(pages.length/20.0) * 2)
+      } else if (format == "a_4_8s") {
+        this.sheets = Math.ceil(pages.length/64.0);
+        this.sigconfig = Array(Math.ceil(pages.length/16.0) * 2)
       } else if (format == "a_3_6s") {
         this.sheets = Math.ceil(pages.length/36.0);
         this.sigconfig = Array(Math.ceil(pages.length/12))
-      } else if (format == "A7_32") {
-        this.sheets = Math.ceil(pages.length/32.0);
-        this.sigconfig = Array(Math.ceil(pages.length/32.0))
       } else if (format == "A7_2_16s") {
         this.sheets = Math.ceil(pages.length/32.0);
         this.sigconfig = Array(this.sheets * 2)
@@ -30714,17 +30714,18 @@ class WackyImposition{
     a_3_6s_builder() {
         return {
             sheetMaker: this.build_3_6s_sheetList.bind(this),
-            lineMaker: this.build_3_6s_lineFunction.bind(this),
+            lineMaker: this.build_strip_lineFunction.bind(this, 3, 6),
             isLandscape: true,
             fileNameMod: "3_by_6"+ ((this.isPacked) ? "_packed" : "_spread")
         }
     }
-    a7_32_builder() {
+
+    a_4_8s_builder() {
         return {
-            sheetMaker: this.build_32_sheetList.bind(this),
-            lineMaker: this.build_32_lineFunction.bind(this),
-            isLandscape: false,
-            fileNameMod: "4_by_4_single_signature"+ ((this.isPacked) ? "_packed" : "_spread")
+            sheetMaker: this.build_4_8s_sheetList.bind(this),
+            lineMaker: this.build_strip_lineFunction.bind(this, 4, 8),
+            isLandscape: true,
+            fileNameMod: "4_by_8"+ ((this.isPacked) ? "_packed" : "_spread")
         }
     }
 
@@ -30803,9 +30804,6 @@ class WackyImposition{
             .concat(foldMarks);
         };
     }
-
-
-
 
     /**
      * Produces two 3 folio foldup signatures and a 4 folio foldup signature.
@@ -30899,67 +30897,6 @@ class WackyImposition{
     }
 
     /**
-     * @param pageCount - total pages in document
-     * @return an array of sheets. Assumes 1st is "front", 2nd is "back", 3rd is "front", etc. 
-     *      Each sheet is an array of rows, containing a list of page objects
-     */
-    build_6_10s_sheetList(pageCount) {
-        let fronts = []
-        let backs = []
-        let page = this.page;
-        let blank = this.blankPage;
-        let rowCount = Math.ceil(pageCount / 20.0);
-        console.log("Building the 6 rows of 10 pages. Given ",pageCount," page count, there will be ",rowCount," rows...");
-        for (let row=0; row < rowCount; ++row ) {
-            let i = row * 20 - 1;
-            let front = [page(i+6),page(i+3),page(i+2),page(i+7),page(i+10),page(i+19),page(i+18),page(i+11),page(i+14),page(i+15)];
-            let back = [page(i+16),page(i+13),page(i+12),page(i+17),page(i+20),page(i+9),page(i+8),page(i+1),page(i+4),page(i+5)];
-            if (!this.duplex) {
-                console.log("in duplex mode, reversing")
-                back.reverse();
-            }
-            fronts.push(this.auditForBlanks(front, pageCount));
-            backs.push(this.auditForBlanks(back, pageCount));
-            console.log("   -> adding front ",fronts[fronts.length - 1], " and back ", backs[fronts.length-1])
-        }
-        let sheets = [];
-        for (let row=0; row < rowCount; ++row ) {
-            let sheet = Math.floor(row/6);
-            if (row % 6 == 0 ) {
-                sheets[sheet*2] = [];
-                sheets[sheet*2 + 1] = [];
-                console.log(sheets)
-            }
-            sheets[sheet*2].unshift(fronts[row]);
-            sheets[sheet*2 + 1].unshift(backs[row]);
-            console.log(" -> row ",row," => sheet ", sheet, " grabs front ",fronts[row]," and back ",backs[row])
-        }
-        if (sheets[sheets.length - 1].length < 6){
-            for (let filler = 0; filler < 6 - rowCount % 6; ++filler) {
-                let sheet = Math.floor(rowCount/6);
-                if (filler % 2 == 0) {
-                    sheets[sheet*2].unshift([blank(),blank(),blank(),blank(),blank(),blank(),blank(),blank(),blank(),blank()]);
-                    sheets[sheet*2 + 1].unshift([blank(),blank(),blank(),blank(),blank(),blank(),blank(),blank(),blank(),blank()]);
-                } else {
-                    sheets[sheet*2].push([blank(),blank(),blank(),blank(),blank(),blank(),blank(),blank(),blank(),blank()]);
-                    sheets[sheet*2 + 1].push([blank(),blank(),blank(),blank(),blank(),blank(),blank(),blank(),blank(),blank()]);
-                }
-            }
-        }
-        for (let i=0;i < sheets.length; ++i){
-            if (i % 2 == 1 && !this.duplex) {   // stupid "flip on short edge" rotation plans...
-                sheets[i].reverse();
-                sheets[i].forEach( row => {
-                    row.forEach( page => {
-                        this.rotate180(page);
-                    });
-                });
-            }
-        }
-        return sheets;
-    }
-
-    /**
      * @return a FUNCTION. The function takes as it's parameter:
      *       Object definition: {
      *           gap: [leftGap, topGap],
@@ -31007,23 +30944,46 @@ class WackyImposition{
         };
     }
 
+    build_3_6s_sheetList(pageCount) {
+        let page = this.page;
+        let frontFunc = i => {return [page(i+2),page(i+11),page(i+10),page(i+3),page(i+6),page(i+7)];};
+        let backFunc = i => {return [page(i+8),page(i+5),page(i+4),page(i+9),page(i+12),page(i+1)];};
+        return this.build_strips_sheetList(3, 3, pageCount, frontFunc, backFunc);
+    }
+    build_4_8s_sheetList(pageCount) {
+        let page = this.page;
+        let frontFunc = i => {return [page(i+2),page(i+15),page(i+14),page(i+3),page(i+6),page(i+11),page(i+10),page(i+7)];};
+        let backFunc = i => {return [page(i+8),page(i+9),page(i+12),page(i+5),page(i+4),page(i+13),page(i+16),page(i+1)];};
+        return this.build_strips_sheetList(4, 4, pageCount, frontFunc, backFunc);
+    }
+    build_6_10s_sheetList(pageCount) {
+        let page = this.page;
+        let frontFunc = i => {return [page(i+6),page(i+3),page(i+2),page(i+7),page(i+10),page(i+19),page(i+18),page(i+11),page(i+14),page(i+15)];};
+        let backFunc = i => {return [page(i+16),page(i+13),page(i+12),page(i+17),page(i+20),page(i+9),page(i+8),page(i+1),page(i+4),page(i+5)];};
+        return this.build_strips_sheetList(4, 4, pageCount, frontFunc, backFunc);
+    }
 
     /**
+     * @param rows - number of rows for page
+     * @param folioPerRow - number of folios per row (not pages!)
      * @param pageCount - total pages in document
+     * @param frontPageFunc - function (takes page number i to start (0)) that lays out the front pages as an array of pages
+     * @param backPageFunc - function (takes page number i to start (0)) that lays out the back pages as an array of pages
      * @return an array of sheets. Assumes 1st is "front", 2nd is "back", 3rd is "front", etc. 
      *      Each sheet is an array of rows, containing a list of page objects
      */
-    build_3_6s_sheetList(pageCount) {
+    build_strips_sheetList(rows, folioPerRow, pageCount, frontPageFunc, backPageFunc) {
         let fronts = []
         let backs = []
         let page = this.page;
         let blank = this.blankPage;
-        let rowCount = Math.ceil(pageCount / 12.0);
-        console.log("Building the 3 rows of 6 pages. Given ",pageCount," page count, there will be ",rowCount," rows...");
+        let totalPagesPerRow = folioPerRow * 4;
+        let rowCount = Math.ceil(pageCount / totalPagesPerRow);
+        console.log("Building the ",rows," rows of ",(folioPerRow * 2)," pages. Given ",pageCount," page count, there will be ",rowCount," rows...");
         for (let row=0; row < rowCount; ++row ) {
-            let i = row * 12 - 1;
-            let front = [page(i+2),page(i+11),page(i+10),page(i+3),page(i+6),page(i+7)];
-            let back = [page(i+8),page(i+5),page(i+4),page(i+9),page(i+12),page(i+1)];
+            let i = row * totalPagesPerRow - 1;
+            let front = frontPageFunc(i);
+            let back = backPageFunc(i);
             if (!this.duplex) {
                 console.log("in duplex mode, reversing")
                 back.reverse();
@@ -31034,8 +30994,8 @@ class WackyImposition{
         }
         let sheets = [];
         for (let row=0; row < rowCount; ++row ) {
-            let sheet = Math.floor(row/3);
-            if (row % 3 == 0 ) {
+            let sheet = Math.floor(row/rows);
+            if (row % rows == 0 ) {
                 sheets[sheet*2] = [];
                 sheets[sheet*2 + 1] = [];
                 console.log(sheets)
@@ -31044,15 +31004,18 @@ class WackyImposition{
             sheets[sheet*2 + 1].unshift(backs[row]);
             console.log(" -> row ",row," => sheet ", sheet, " grabs front ",fronts[row]," and back ",backs[row])
         }
-        if (sheets[sheets.length - 1].length < 3){
-            for (let filler = 0; filler < 3 - rowCount % 3; ++filler) {
-                let sheet = Math.floor(rowCount/3);
+        if (sheets[sheets.length - 1].length < rows){
+            let rowOfBlanks = new Array(folioPerRow * 2)
+            for(let j = 0; j < rowOfBlanks.length; ++j) { rowOfBlanks[j] = blank()}
+            console.log("I present you my blanks! [for ",folioPerRow,"] : ", rowOfBlanks)
+            for (let filler = 0; filler < rows - rowCount % rows; ++filler) {
+                let sheet = Math.floor(rowCount/rows);
                 if (filler % 2 == 0) {
-                    sheets[sheet*2].unshift([blank(),blank(),blank(),blank(),blank(),blank()]);
-                    sheets[sheet*2 + 1].unshift([blank(),blank(),blank(),blank(),blank(),blank()]);
+                    sheets[sheet*2].unshift(rowOfBlanks);
+                    sheets[sheet*2 + 1].unshift(rowOfBlanks);
                 } else {
-                    sheets[sheet*2].push([blank(),blank(),blank(),blank(),blank(),blank()]);
-                    sheets[sheet*2 + 1].push([blank(),blank(),blank(),blank(),blank(),blank()]);
+                    sheets[sheet*2].push(rowOfBlanks);
+                    sheets[sheet*2 + 1].push(rowOfBlanks);
                 }
             }
         }
@@ -31069,6 +31032,44 @@ class WackyImposition{
         return sheets;
     }
 
+    /**
+     * @param rowCount - how many rows expected to be cut out
+     * @param colCount - how many column fold lines
+     * @return a FUNCTION. The function takes as it's parameter:
+     *       Object definition: {
+     *           gap: [leftGap, topGap],
+     *           renderPageSize: [width, height],
+     *           paperSize: [width, height],
+     *           isFront: boolean,
+     *           isPacked: boolean
+     *       }
+     *       and returns: a list of lines, as described by PDF-lib.js's `PDFPageDrawLineOptions` object
+     */
+    build_strip_lineFunction(rowCount, colCount) {
+        return info => {
+            let vGap = row => { return (info.isPacked) ? info.gap[1] : info.gap[1] * (2 * row); };
+            let hGap = col => { return (info.isPacked) ? info.gap[0] : col * info.gap[0]};
+            let baseCuts = [
+                this.cutVertical(info.paperSize[1], hGap(0)),
+                this.cutVertical(info.paperSize[1], hGap(colCount) + info.renderPageSize[0] * colCount),
+            ];
+            for (let i = 0; i <= rowCount; ++i) {
+                baseCuts.push(this.cutHorizontal(info.paperSize[0], vGap(i) + info.renderPageSize[1] * i));
+            }
+            let foldMarks = [];
+            [...Array(rowCount).keys()].forEach( row => {
+                [...Array(colCount).keys()].forEach( page => {
+                    foldMarks = foldMarks.concat(this.crosshairMark(
+                        hGap(page) + info.renderPageSize[0] * page,
+                        vGap(row) + info.renderPageSize[1] * row,
+                        5
+                        ));
+                });
+            });
+            console.log("Providing lines: \nbase cuts: ",baseCuts,"\nfold marks: ",foldMarks,"\ntotal: ",baseCuts.concat(foldMarks))
+            return baseCuts.concat(foldMarks)
+        };
+    }
     /**
      * @return a FUNCTION. The function takes as it's parameter:
      *       Object definition: {
@@ -31107,63 +31108,6 @@ class WackyImposition{
             });
             console.log("Providing lines: \nbase cuts: ",baseCuts,"\nfold marks: ",foldMarks,"\ntotal: ",baseCuts.concat(foldMarks))
             return baseCuts.concat(foldMarks)
-        };
-    }
-
-    /**
-     * @param pageCount - total pages in document
-     * @return an array of sheets. Assumes 1st is "front", 2nd is "back", 3rd is "front", etc. 
-     *      Each sheet is an array of rows, containing a list of page objects
-     */
-    build_32_sheetList(pageCount) {
-        let p = this.page;
-        let sheets = [];
-        let sheetCount = Math.ceil(pageCount / 32.0);
-        console.log("Building the 32 pages. Given ",pageCount," page count, there will be ",sheetCount," sheets...");
-        for (let sheet=0; sheet < sheetCount; ++sheet ) {
-            let i = sheet * 32 - 1;
-            let front = [
-                this.auditForBlanks([p(i+20), p(i+13),   p(i+18), p(i+15)], pageCount),
-                this.auditForBlanks([p(i+24), p(i+9),   p(i+22), p(i+11)], pageCount),
-                this.auditForBlanks([p(i+28), p(i+5),    p(i+26), p(i+7)], pageCount),
-                this.auditForBlanks([p(i+32), p(i+1),   p(i+30), p(i+3)], pageCount),
-            ];
-            let back = [
-                this.auditForBlanks([p(i+16), p(i+17),  p(i+14), p(i+19)], pageCount),
-                this.auditForBlanks([p(i+12), p(i+21),  p(i+10), p(i+23)], pageCount),
-                this.auditForBlanks([p(i+8), p(i+25),  p(i+6), p(i+27)], pageCount),
-                this.auditForBlanks([p(i+4), p(i+29),  p(i+2), p(i+31)], pageCount),
-            ]
-            sheets.push(front);
-            sheets.push(back);
-        }
-        return sheets
-    }
-
-    /**
-     * @return a FUNCTION. The function takes as it's parameter:
-     *       Object definition: {
-     *           gap: [leftGap, topGap],
-     *           renderPageSize: [width, height],
-     *           paperSize: [width, height],
-     *           isFront: boolean,
-     *           isPacked: boolean
-     *       }
-     *       and returns: a list of lines, as described by PDF-lib.js's `PDFPageDrawLineOptions` object
-     */
-    build_32_lineFunction() {
-        return info => {
-            let foldMarks = [];
-            [0,1,2,3,4].forEach( row => {
-                [0,2,4].forEach( page => {
-                    foldMarks = foldMarks.concat(this.crosshairMark(
-                        info.gap[0] + info.renderPageSize[0] * page,
-                        info.gap[1] + info.renderPageSize[1] * row,
-                        5
-                        ));
-                });
-            });
-            return foldMarks
         };
     }
 
@@ -31229,7 +31173,6 @@ class WackyImposition{
             ].concat(foldMarks);
         };
     }
-
 
     // ---------------- drawing lines helpers
 
@@ -31478,8 +31421,8 @@ function renderWacky() {
         document.getElementById('a9_3_3_4').checked ||
         document.getElementById('a10_6_10s').checked ||
         document.getElementById('a_3_6s').checked ||
+        document.getElementById('a_4_8s').checked ||
         document.getElementById('A7_2_16s').checked ||
-        document.getElementById('A7_32').checked ||
         document.getElementById('1_3rd').checked;
     console.log('Is a wacky layout? ', isWacky);
     document
