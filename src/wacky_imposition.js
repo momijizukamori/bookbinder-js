@@ -221,6 +221,7 @@ export class WackyImposition{
                 dashArray: [2, 5]
             };
             let foldMarks = [];
+
             [0,1,2,3,4,5].forEach( row => {
                 [0,1,2,3,4].forEach( page => {
                     foldMarks = foldMarks.concat(this.crosshairMark(
@@ -462,12 +463,14 @@ export class WackyImposition{
      */
     build_2_16s_lineFunction() {
         return info => {
+            let vGap = row => { return (info.isPacked) ? info.gap[1] : info.gap[1] * (2 * row); };
+            let hGap = col => { return (info.isPacked) ? info.gap[0] : col * info.gap[0]};
             let foldMarks = [];
             [0,1,2,3,4].forEach( row => {
                 [0,1,2,3,4].forEach( page => {
                     foldMarks = foldMarks.concat(this.crosshairMark(
-                        info.gap[0] + info.renderPageSize[0] * page,
-                        info.gap[1] + info.renderPageSize[1] * row,
+                        hGap(page) + info.renderPageSize[0] * page,
+                        vGap(row) + info.renderPageSize[1] * row,
                         5
                         ));
                 });
