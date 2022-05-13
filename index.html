@@ -138,11 +138,19 @@
                     </details></span>
 
                 <h3>Wacky Small Layouts</h3>
-                <span class="row"><i>These layouts contain one or more signature per printed page. They do not use many of the other settings </i></span>
-                <span class="row"> <input type="radio" id="1_3rd" name="sig_format" value="1_3rd">
-                    <label for="1_3rd">6 per side (3 folio signature)</label></span>
+                <span class="row" style="margin-bottom:15px;"><i>These layouts contain one or more signature per printed page. They use only the "File Info" and "Printer" settings. The names are arbitrary and hold no standardized meaning.</i></span>
+                <span class="row" style="text-align: left; float:left;">Fore-Edge Padding: <br><input type="number" id="fore_edge_padding_pt" name="fore_edge_padding_pt" style="width: 5em;margin-left: 15px;"> pt</span>
+                <span class="row" style="text-align: right; float:right;" id="wacky_spacing">
+                    <input type="radio" id="wacky_pack" name="wacky_spacing" value="wacky_pack" checked>
+                    <label for="wacky_pack">Packed page layout</label> 
+                    <br>
+                    <input type="radio" id="wacky_gap" name="wacky_spacing" value="wacky_gap">
+                    <label for="wacky_gap">Distributed space page layout</label>
                 </span>
-                <span class="row">
+                <span class="row" style="clear:both;padding-top: 15px;"> <input type="radio" id="1_3rd" name="sig_format" value="1_3rd">
+                    <label for="1_3rd">6 per side <sub>(3 folio signature)</sub></label>
+                </span>
+                <span class="row instruction-indent">
                     <details>
                         <summary>Instructions</summary>
                         <p>
@@ -151,31 +159,41 @@
                         <p>
                         Not the most paper efficient of layouts, but it's optimized for organization (if a signature is just one page, harder to botch the ordering) and many, smaller signatures make for rounder backs and large swell in my [six's] opinion (which helps w/ nice shoulders, if you're into that sort of thing)
                         </p>
-                    </details></span>
-                <span class="row"> <input type="radio" id="A7_32" name="sig_format" value="A7_32">
-                    <label for="A7_32">16 per side (16 folio signature)</label></span>
+                    </details>
                 </span>
-                <span class="row">
-                    <details>
-                        <summary>Instructions</summary>
-                        <p>
-                        Cut each folio out. Nestle them into each other. The upper left is the outer folio, and the lower right is the inner folio. They stack left -> right, top -> bottom. 
-                        </p>
-                    </details></span>
                 <span class="row"> <input type="radio" id="A7_2_16s" name="sig_format" value="A7_2_16s">
-                    <label for="A7_2_16s">16 per side (4 folio signature x 2)</label></span>
+                    <label for="A7_2_16s">Petite - 16 per side <sub>(4 folio signature x 2)</sub></label>
                 </span>
-                <span class="row">
+                <span class="row instruction-indent">
                     <details>
                         <summary>Instructions</summary>
                         <p>
                         <center><img src="img/2_sig_4x4_diagram.png" style='height: 100%; width: 100%; object-fit: contain'></center>
                         Cut the vertical center line. You can also cut the horizontal lines if you like, or just fold it up as detailed above.
                         </p>
-                    </details></span>
+                    </details>
+                </span>
+                <span class="row"> <input type="radio" id="a_3_6s" name="sig_format" value="a_3_6s">
+                    <label for="a_3_6s">Small - 18 per side <sub>(3 folio signature per row x 3)</sub></label>
+                </span>
+                <span class="row instruction-indent">
+                    <details>
+                        <summary>Instructions</summary>
+                        <p>
+                        <b> THIS IS A LANDSCAPE LAYOUT. IT MUST BE PRINTED AND "flipped on the short size" (the non-typical flipping)</b>
+                        <br>
+                        Remember to do a single-sheet test print if it's your first time to make sure duplex/mirroring is correct!
+                        </p><p>
+                        Cut out the rows. Fold up the folios like a zig-zag (two per face). Then fold the center of the text (smoosh the two matching page numbers together).
+                        </p><p>
+                        Note that when folding, it's important for the <b>center of the folios to line up</b>. That's what I measure against (less so fretting about folding exactly at the edge). Remember! Printer skew is a real thing!
+                        </p>
+                    </details>
+                </span>
                 <span class="row"> <input type="radio" id="a9_3_3_4" name="sig_format" value="a9_3_3_4">
-                    <label for="a9_3_3_4">Little (20 per side, 3/3/4 signatures per side)</label></span>
-                <span class="row">
+                    <label for="a9_3_3_4">Little - 20 per side <sub>(3 folio / 3 folio / 4 folio signatures)</sub></label>
+                </span>
+                <span class="row instruction-indent">
                     <details>
                         <summary>Instructions</summary>
                         <p>
@@ -183,9 +201,26 @@
                         Cut along the cut lines. Fold up the 3 folio signatures, then the 4 folio.
                         </p>
                     </details></span>
+                <span class="row"> <input type="radio" id="a_4_8s" name="sig_format" value="a_4_8s">
+                    <label for="a_4_8s">Tiny - 32 per side <sub>(4 folio signature per row x 4)</sub></label>
+                </span>
+                <span class="row instruction-indent">
+                    <details>
+                        <summary>Instructions</summary>
+                        <p>
+                        <b> THIS IS A LANDSCAPE LAYOUT. IT MUST BE PRINTED AND "flipped on the short size" (the non-typical flipping)</b>
+                        <br>
+                        Remember to do a single-sheet test print if it's your first time to make sure duplex/mirroring is correct!
+                        </p><p>
+                        Cut out the rows. Fold up the folios like a zig-zag (two per face). Then fold the center of the text (smoosh the two matching page numbers together).
+                        </p><p>
+                        Note that when folding, it's important for the <b>center of the folios to line up</b>. That's what I measure against (less so fretting about folding exactly at the edge). Remember! Printer skew is a real thing!
+                        </p>
+                    </details>
+                </span>
                 <span class="row"> <input type="radio" id="a10_6_10s" name="sig_format" value="a10_6_10s">
-                    <label for="a10_6_10s">Mini (60 per side, 2/3 signatures per row, 6 rows per side)</label></span>
-                <span class="row">
+                    <label for="a10_6_10s">Mini - 60 per side <sub>(2 folio / 3 folio signatures per row x 6)</sub></label></span>
+                <span class="row instruction-indent">
                     <details>
                         <summary>Instructions</summary>
                         <p>

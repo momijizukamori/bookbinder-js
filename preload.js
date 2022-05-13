@@ -58,6 +58,9 @@ class Book {
         this.per_sheet = 8; //number of pages to print per sheet.
         this.cropmarks = false;
         this.cutmarks = false;
+
+        this.fore_edge_padding_pt = 0;  // (wacky only atm) -- to track buffer space on non-binding edge
+        this.pack_pages = true;     // (wacky only atm) - to track if the white space should be distributed
     }
 
     update(form) {
@@ -90,7 +93,11 @@ class Book {
         this.booksize = [this.papersize[1] * 0.5, this.papersize[0]];
         this.page_layout = form.get('pagelayout') == null ? 'folio' : _constants_js__WEBPACK_IMPORTED_MODULE_6__.PAGE_LAYOUTS[form.get('pagelayout')];
         this.per_sheet = this.page_layout.per_sheet;
-
+        this.pack_pages = form.get('wacky_spacing') == 'wacky_pack';
+        this.fore_edge_padding_pt = parseInt(form.get('fore_edge_padding_pt'))
+        if(isNaN(this.fore_edge_padding_pt)) {
+            this.fore_edge_padding_pt = 0;
+        }
     }
 
     async openpdf(file) {
@@ -173,8 +180,8 @@ class Book {
             }
 
             this.rearrangedpages = this.book.pagelist;
-        } else if (this.format == 'a9_3_3_4' || this.format == 'a10_6_10s' || this.format == 'A7_32' || this.format == 'A7_2_16s' || this.format == '1_3rd') {
-            this.book = new _wacky_imposition_js__WEBPACK_IMPORTED_MODULE_5__.WackyImposition(this.orderedpages, this.duplex, this.format)
+        } else if (this.format == 'a9_3_3_4' || this.format == 'a10_6_10s' || this.format == 'A7_2_16s' || this.format == '1_3rd' || this.format == 'a_3_6s' || this.format == 'a_4_8s') {
+            this.book = new _wacky_imposition_js__WEBPACK_IMPORTED_MODULE_5__.WackyImposition(this.orderedpages, this.duplex, this.format, this.pack_pages)
         }
         console.log("Created pages for : ",this.book)
     }
@@ -206,8 +213,10 @@ class Book {
             await this.buildSheets(this.filename, this.book.a9_3_3_4_builder());
         } else if (this.format == 'a10_6_10s') {
             await this.buildSheets(this.filename, this.book.a10_6_10s_builder());
-        } else if (this.format == 'A7_32') {
-            await this.buildSheets(this.filename, this.book.a7_32_builder());
+        } else if (this.format == 'a_4_8s') {
+            await this.buildSheets(this.filename, this.book.a_4_8s_builder());
+        } else if (this.format == 'a_3_6s') {
+            await this.buildSheets(this.filename, this.book.a_3_6s_builder());
         } else if (this.format == 'A7_2_16s') {
             await this.buildSheets(this.filename, this.book.a7_2_16s_builder());
         } else if (this.format == '1_3rd') {
@@ -504,6 +513,7 @@ class Book {
      *      lineMaker: function that makes a function that generates trim lines for the PDF,
      *      isLandscape: true if we need to have largest dimension be width,
      *      fileNameMod: string to affix to exported file name (contains no buffer begin/end characters)
+     *      isPacked: boolean - true if white spaces goes on the outside, false if white space goes everywhere (non-binding edge)
      * }
      */
     async buildSheets(id, builder) {
@@ -514,13 +524,14 @@ class Book {
         const outPDF_back = await pdf_lib__WEBPACK_IMPORTED_MODULE_0__.PDFDocument.create();
 
         for (let i=0; i < sheets.length; ++i ) {
-            let isFront = i % 2 == 0
+            let isFront = i % 2 == 0;
+            let isFirst = i < 2;
             console.log("Trying to write ", sheets[i])
             let targetPDF = (this.duplex || isFront) ? outPDF : outPDF_back;
-            await this.write_single_page(targetPDF, builder.isLandscape, isFront, sheets[i], lineMaker);
+            await this.write_single_page(targetPDF, builder.isLandscape, isFront, isFirst, sheets[i], lineMaker);
         }
         {
-            console.log("Trying to save to PDF")
+            console.log("Trying to save to PDF ", builder.fileNameMod, " w/ packing : ", this.pack_pages)
             let fileName = id + "_" + builder.fileNameMod + ( this.duplex ? '' : '_fronts') +'.pdf';
             await outPDF.save().then(pdfBytes => { 
                 console.log("Calling zip.file on ", fileName);
@@ -549,6 +560,7 @@ class Book {
      * @param outPDF - the PDFDocument document we're appending a page to
      * @param isLandscape - true if we need to have largest dimension be width
      * @param isFront - true if front of page
+     * @param isFirst - true if this is the first (front/back) pair of sheets
      * @param pagelist - a 2 dimensional array. Outer array is rows, nested array page objects. Object definition: { 
      *      num: page number from original doc, 
      *      isBlank: true renders it blank-- will override any `num` included,
@@ -558,8 +570,14 @@ class Book {
      *      Function takes as parameters: 
      * @return 
      */
-    async write_single_page(outPDF, isLandscape, isFront, pagelist, lineMaker) {
+    async write_single_page(outPDF, isLandscape, isFront, isFirst, pagelist, lineMaker) {
         let filteredList = [];
+        console.log(pagelist)
+        pagelist = pagelist.filter( r => {  // need second sheet to remain small even if there's room to expand
+            return !isFirst || r.filter(c => {return c.isBlank == false;}).length > 0;
+        });
+        console.log(pagelist)
+        console.log("Hitting that write_single_page : isPacked[",this.pack_pages,"] || (front ",isFront,"/ first ",isFirst,") [",pagelist.length,",",pagelist[0].length,"]")
         pagelist.forEach(row => { row.forEach( page => { if (!page.isBlank) filteredList.push(page.num) }) });
         let embeddedPages = await outPDF.embedPdf(this.currentdoc, filteredList);
         // TODO : make sure the max dimen is correct here...
@@ -569,38 +587,42 @@ class Book {
         let pageHeight = papersize[1] / pagelist.length;
         let pageWidth = papersize[0] / pagelist[0].length;
         let heightRatio =  pageHeight / sourcePage.height;
-        let widthRatio =  pageWidth / sourcePage.width;
+        let widthRatio =  pageWidth / (sourcePage.width + this.fore_edge_padding_pt);
         let pageScale = Math.min(heightRatio, widthRatio);
         let vGap = papersize[1] - (sourcePage.height * pageScale * pagelist.length);
-        let topGap = vGap / 2.0;
-        let hGap = papersize[0] - (sourcePage.width * pageScale * pagelist[0].length);
-        let leftGap = hGap / 2.0;
-        let printPageWidth = pageScale * sourcePage.width
-        let printPageHeight = pageScale * sourcePage.height
+        let topGap = (this.pack_pages) ? vGap / 2.0 : vGap / (pagelist.length * 2);
+        let hGap = papersize[0] - ((sourcePage.width + this.fore_edge_padding_pt) * pageScale * pagelist[0].length);
+        let leftGap = (this.pack_pages) ? hGap / 2.0 : (hGap / pagelist[0].length) ;
+        let printPageWidth = pageScale * sourcePage.width;
+        let printPageHeight = pageScale * sourcePage.height;
+        let printedForeEdgeGutter = pageScale * this.fore_edge_padding_pt;
         for (let row=0; row < pagelist.length; ++row ) {
             let y = sourcePage.height * pageScale * row;
             for (let i=0; i < pagelist[row].length; ++i) {
-                let x = sourcePage.width * pageScale * i;
+                let x = (sourcePage.width + this.fore_edge_padding_pt) * pageScale * i + (this.fore_edge_padding_pt * (i + 1)%2);
                 let pageInfo = pagelist[row][i]
                 if (pageInfo.isBlank)
                     continue;
                 let origPage = embeddedPages[filteredList.indexOf(pageInfo.num)]
+                let hOffset = (this.pack_pages) ? leftGap : (1 + i - i % 2) * leftGap;
+                let vOffset = (this.pack_pages) ? topGap : topGap  + (2 * topGap * row);
                 let positioning = { 
-                    x: x + leftGap + (pageInfo.vFlip ? printPageWidth : 0), 
-                    y: y + topGap + (pageInfo.vFlip ? printPageHeight : 0), 
+                    x: x + hOffset + (pageInfo.vFlip ? printPageWidth : 0) + printedForeEdgeGutter * ((i + 1)%2), 
+                    y: y + vOffset + (pageInfo.vFlip ? printPageHeight : 0), 
                     width: printPageWidth , 
                     height: printPageHeight, 
                     rotate: pageInfo.vFlip ? (0,pdf_lib__WEBPACK_IMPORTED_MODULE_0__.degrees)(180) : (0,pdf_lib__WEBPACK_IMPORTED_MODULE_0__.degrees)(0)
                 }
-                console.log(" [",row,",",i,"] Given page info ", pageInfo, " now embedding at ", positioning," the ", origPage);
+                //console.log(" [",row,",",i,"] Given page info ", pageInfo, " now embedding at ", positioning);
                 curPage.drawPage(origPage, positioning);
             }
         }
         lineMaker({
             isFront: isFront,
             gap: [leftGap, topGap],
-            renderPageSize: [printPageWidth, printPageHeight],
+            renderPageSize: [printPageWidth + printedForeEdgeGutter, printPageHeight],
             paperSize: papersize,
+            isPacked: this.pack_pages
         }).forEach( line => { curPage.drawLine(line)});
     }
 
@@ -1077,12 +1099,12 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony export */   "BlendMode": () => (/* reexport safe */ _PDFPageOptions__WEBPACK_IMPORTED_MODULE_9__.BlendMode),
 /* harmony export */   "ParseSpeeds": () => (/* reexport safe */ _PDFDocumentOptions__WEBPACK_IMPORTED_MODULE_10__.ParseSpeeds),
 /* harmony export */   "StandardFonts": () => (/* reexport safe */ _StandardFonts__WEBPACK_IMPORTED_MODULE_11__.StandardFonts),
-/* harmony export */   "PDFDocument": () => (/* reexport safe */ _PDFDocument__WEBPACK_IMPORTED_MODULE_12__.default),
-/* harmony export */   "PDFFont": () => (/* reexport safe */ _PDFFont__WEBPACK_IMPORTED_MODULE_13__.default),
-/* harmony export */   "PDFImage": () => (/* reexport safe */ _PDFImage__WEBPACK_IMPORTED_MODULE_14__.default),
-/* harmony export */   "PDFPage": () => (/* reexport safe */ _PDFPage__WEBPACK_IMPORTED_MODULE_15__.default),
-/* harmony export */   "PDFEmbeddedPage": () => (/* reexport safe */ _PDFEmbeddedPage__WEBPACK_IMPORTED_MODULE_16__.default),
-/* harmony export */   "PDFJavaScript": () => (/* reexport safe */ _PDFJavaScript__WEBPACK_IMPORTED_MODULE_17__.default)
+/* harmony export */   "PDFDocument": () => (/* reexport safe */ _PDFDocument__WEBPACK_IMPORTED_MODULE_12__["default"]),
+/* harmony export */   "PDFFont": () => (/* reexport safe */ _PDFFont__WEBPACK_IMPORTED_MODULE_13__["default"]),
+/* harmony export */   "PDFImage": () => (/* reexport safe */ _PDFImage__WEBPACK_IMPORTED_MODULE_14__["default"]),
+/* harmony export */   "PDFPage": () => (/* reexport safe */ _PDFPage__WEBPACK_IMPORTED_MODULE_15__["default"]),
+/* harmony export */   "PDFEmbeddedPage": () => (/* reexport safe */ _PDFEmbeddedPage__WEBPACK_IMPORTED_MODULE_16__["default"]),
+/* harmony export */   "PDFJavaScript": () => (/* reexport safe */ _PDFJavaScript__WEBPACK_IMPORTED_MODULE_17__["default"])
 /* harmony export */ });
 /* harmony import */ var _form__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(4);
 /* harmony import */ var _text__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(172);
@@ -1136,15 +1158,15 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony export */   "defaultRadioGroupAppearanceProvider": () => (/* reexport safe */ _appearances__WEBPACK_IMPORTED_MODULE_0__.defaultRadioGroupAppearanceProvider),
 /* harmony export */   "defaultTextFieldAppearanceProvider": () => (/* reexport safe */ _appearances__WEBPACK_IMPORTED_MODULE_0__.defaultTextFieldAppearanceProvider),
 /* harmony export */   "normalizeAppearance": () => (/* reexport safe */ _appearances__WEBPACK_IMPORTED_MODULE_0__.normalizeAppearance),
-/* harmony export */   "PDFButton": () => (/* reexport safe */ _PDFButton__WEBPACK_IMPORTED_MODULE_1__.default),
-/* harmony export */   "PDFCheckBox": () => (/* reexport safe */ _PDFCheckBox__WEBPACK_IMPORTED_MODULE_2__.default),
-/* harmony export */   "PDFDropdown": () => (/* reexport safe */ _PDFDropdown__WEBPACK_IMPORTED_MODULE_3__.default),
-/* harmony export */   "PDFField": () => (/* reexport safe */ _PDFField__WEBPACK_IMPORTED_MODULE_4__.default),
-/* harmony export */   "PDFForm": () => (/* reexport safe */ _PDFForm__WEBPACK_IMPORTED_MODULE_5__.default),
-/* harmony export */   "PDFOptionList": () => (/* reexport safe */ _PDFOptionList__WEBPACK_IMPORTED_MODULE_6__.default),
-/* harmony export */   "PDFRadioGroup": () => (/* reexport safe */ _PDFRadioGroup__WEBPACK_IMPORTED_MODULE_7__.default),
-/* harmony export */   "PDFSignature": () => (/* reexport safe */ _PDFSignature__WEBPACK_IMPORTED_MODULE_8__.default),
-/* harmony export */   "PDFTextField": () => (/* reexport safe */ _PDFTextField__WEBPACK_IMPORTED_MODULE_9__.default)
+/* harmony export */   "PDFButton": () => (/* reexport safe */ _PDFButton__WEBPACK_IMPORTED_MODULE_1__["default"]),
+/* harmony export */   "PDFCheckBox": () => (/* reexport safe */ _PDFCheckBox__WEBPACK_IMPORTED_MODULE_2__["default"]),
+/* harmony export */   "PDFDropdown": () => (/* reexport safe */ _PDFDropdown__WEBPACK_IMPORTED_MODULE_3__["default"]),
+/* harmony export */   "PDFField": () => (/* reexport safe */ _PDFField__WEBPACK_IMPORTED_MODULE_4__["default"]),
+/* harmony export */   "PDFForm": () => (/* reexport safe */ _PDFForm__WEBPACK_IMPORTED_MODULE_5__["default"]),
+/* harmony export */   "PDFOptionList": () => (/* reexport safe */ _PDFOptionList__WEBPACK_IMPORTED_MODULE_6__["default"]),
+/* harmony export */   "PDFRadioGroup": () => (/* reexport safe */ _PDFRadioGroup__WEBPACK_IMPORTED_MODULE_7__["default"]),
+/* harmony export */   "PDFSignature": () => (/* reexport safe */ _PDFSignature__WEBPACK_IMPORTED_MODULE_8__["default"]),
+/* harmony export */   "PDFTextField": () => (/* reexport safe */ _PDFTextField__WEBPACK_IMPORTED_MODULE_9__["default"])
 /* harmony export */ });
 /* harmony import */ var _appearances__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(5);
 /* harmony import */ var _PDFButton__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(149);
@@ -2556,54 +2578,54 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony export */   "UnexpectedObjectTypeError": () => (/* reexport safe */ _errors__WEBPACK_IMPORTED_MODULE_0__.UnexpectedObjectTypeError),
 /* harmony export */   "UnrecognizedStreamTypeError": () => (/* reexport safe */ _errors__WEBPACK_IMPORTED_MODULE_0__.UnrecognizedStreamTypeError),
 /* harmony export */   "UnsupportedEncodingError": () => (/* reexport safe */ _errors__WEBPACK_IMPORTED_MODULE_0__.UnsupportedEncodingError),
-/* harmony export */   "CharCodes": () => (/* reexport safe */ _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_1__.default),
-/* harmony export */   "PDFContext": () => (/* reexport safe */ _PDFContext__WEBPACK_IMPORTED_MODULE_2__.default),
-/* harmony export */   "PDFObjectCopier": () => (/* reexport safe */ _PDFObjectCopier__WEBPACK_IMPORTED_MODULE_3__.default),
-/* harmony export */   "PDFWriter": () => (/* reexport safe */ _writers_PDFWriter__WEBPACK_IMPORTED_MODULE_4__.default),
-/* harmony export */   "PDFStreamWriter": () => (/* reexport safe */ _writers_PDFStreamWriter__WEBPACK_IMPORTED_MODULE_5__.default),
-/* harmony export */   "PDFHeader": () => (/* reexport safe */ _document_PDFHeader__WEBPACK_IMPORTED_MODULE_6__.default),
-/* harmony export */   "PDFTrailer": () => (/* reexport safe */ _document_PDFTrailer__WEBPACK_IMPORTED_MODULE_7__.default),
-/* harmony export */   "PDFTrailerDict": () => (/* reexport safe */ _document_PDFTrailerDict__WEBPACK_IMPORTED_MODULE_8__.default),
-/* harmony export */   "PDFCrossRefSection": () => (/* reexport safe */ _document_PDFCrossRefSection__WEBPACK_IMPORTED_MODULE_9__.default),
-/* harmony export */   "StandardFontEmbedder": () => (/* reexport safe */ _embedders_StandardFontEmbedder__WEBPACK_IMPORTED_MODULE_10__.default),
-/* harmony export */   "CustomFontEmbedder": () => (/* reexport safe */ _embedders_CustomFontEmbedder__WEBPACK_IMPORTED_MODULE_11__.default),
-/* harmony export */   "CustomFontSubsetEmbedder": () => (/* reexport safe */ _embedders_CustomFontSubsetEmbedder__WEBPACK_IMPORTED_MODULE_12__.default),
-/* harmony export */   "FileEmbedder": () => (/* reexport safe */ _embedders_FileEmbedder__WEBPACK_IMPORTED_MODULE_13__.default),
+/* harmony export */   "CharCodes": () => (/* reexport safe */ _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_1__["default"]),
+/* harmony export */   "PDFContext": () => (/* reexport safe */ _PDFContext__WEBPACK_IMPORTED_MODULE_2__["default"]),
+/* harmony export */   "PDFObjectCopier": () => (/* reexport safe */ _PDFObjectCopier__WEBPACK_IMPORTED_MODULE_3__["default"]),
+/* harmony export */   "PDFWriter": () => (/* reexport safe */ _writers_PDFWriter__WEBPACK_IMPORTED_MODULE_4__["default"]),
+/* harmony export */   "PDFStreamWriter": () => (/* reexport safe */ _writers_PDFStreamWriter__WEBPACK_IMPORTED_MODULE_5__["default"]),
+/* harmony export */   "PDFHeader": () => (/* reexport safe */ _document_PDFHeader__WEBPACK_IMPORTED_MODULE_6__["default"]),
+/* harmony export */   "PDFTrailer": () => (/* reexport safe */ _document_PDFTrailer__WEBPACK_IMPORTED_MODULE_7__["default"]),
+/* harmony export */   "PDFTrailerDict": () => (/* reexport safe */ _document_PDFTrailerDict__WEBPACK_IMPORTED_MODULE_8__["default"]),
+/* harmony export */   "PDFCrossRefSection": () => (/* reexport safe */ _document_PDFCrossRefSection__WEBPACK_IMPORTED_MODULE_9__["default"]),
+/* harmony export */   "StandardFontEmbedder": () => (/* reexport safe */ _embedders_StandardFontEmbedder__WEBPACK_IMPORTED_MODULE_10__["default"]),
+/* harmony export */   "CustomFontEmbedder": () => (/* reexport safe */ _embedders_CustomFontEmbedder__WEBPACK_IMPORTED_MODULE_11__["default"]),
+/* harmony export */   "CustomFontSubsetEmbedder": () => (/* reexport safe */ _embedders_CustomFontSubsetEmbedder__WEBPACK_IMPORTED_MODULE_12__["default"]),
+/* harmony export */   "FileEmbedder": () => (/* reexport safe */ _embedders_FileEmbedder__WEBPACK_IMPORTED_MODULE_13__["default"]),
 /* harmony export */   "AFRelationship": () => (/* reexport safe */ _embedders_FileEmbedder__WEBPACK_IMPORTED_MODULE_13__.AFRelationship),
-/* harmony export */   "JpegEmbedder": () => (/* reexport safe */ _embedders_JpegEmbedder__WEBPACK_IMPORTED_MODULE_14__.default),
-/* harmony export */   "PngEmbedder": () => (/* reexport safe */ _embedders_PngEmbedder__WEBPACK_IMPORTED_MODULE_15__.default),
-/* harmony export */   "PDFPageEmbedder": () => (/* reexport safe */ _embedders_PDFPageEmbedder__WEBPACK_IMPORTED_MODULE_16__.default),
-/* harmony export */   "ViewerPreferences": () => (/* reexport safe */ _interactive_ViewerPreferences__WEBPACK_IMPORTED_MODULE_17__.default),
+/* harmony export */   "JpegEmbedder": () => (/* reexport safe */ _embedders_JpegEmbedder__WEBPACK_IMPORTED_MODULE_14__["default"]),
+/* harmony export */   "PngEmbedder": () => (/* reexport safe */ _embedders_PngEmbedder__WEBPACK_IMPORTED_MODULE_15__["default"]),
+/* harmony export */   "PDFPageEmbedder": () => (/* reexport safe */ _embedders_PDFPageEmbedder__WEBPACK_IMPORTED_MODULE_16__["default"]),
+/* harmony export */   "ViewerPreferences": () => (/* reexport safe */ _interactive_ViewerPreferences__WEBPACK_IMPORTED_MODULE_17__["default"]),
 /* harmony export */   "NonFullScreenPageMode": () => (/* reexport safe */ _interactive_ViewerPreferences__WEBPACK_IMPORTED_MODULE_17__.NonFullScreenPageMode),
 /* harmony export */   "ReadingDirection": () => (/* reexport safe */ _interactive_ViewerPreferences__WEBPACK_IMPORTED_MODULE_17__.ReadingDirection),
 /* harmony export */   "PrintScaling": () => (/* reexport safe */ _interactive_ViewerPreferences__WEBPACK_IMPORTED_MODULE_17__.PrintScaling),
 /* harmony export */   "Duplex": () => (/* reexport safe */ _interactive_ViewerPreferences__WEBPACK_IMPORTED_MODULE_17__.Duplex),
-/* harmony export */   "PDFObject": () => (/* reexport safe */ _objects_PDFObject__WEBPACK_IMPORTED_MODULE_18__.default),
-/* harmony export */   "PDFBool": () => (/* reexport safe */ _objects_PDFBool__WEBPACK_IMPORTED_MODULE_19__.default),
-/* harmony export */   "PDFNumber": () => (/* reexport safe */ _objects_PDFNumber__WEBPACK_IMPORTED_MODULE_20__.default),
-/* harmony export */   "PDFString": () => (/* reexport safe */ _objects_PDFString__WEBPACK_IMPORTED_MODULE_21__.default),
-/* harmony export */   "PDFHexString": () => (/* reexport safe */ _objects_PDFHexString__WEBPACK_IMPORTED_MODULE_22__.default),
-/* harmony export */   "PDFName": () => (/* reexport safe */ _objects_PDFName__WEBPACK_IMPORTED_MODULE_23__.default),
-/* harmony export */   "PDFNull": () => (/* reexport safe */ _objects_PDFNull__WEBPACK_IMPORTED_MODULE_24__.default),
-/* harmony export */   "PDFArray": () => (/* reexport safe */ _objects_PDFArray__WEBPACK_IMPORTED_MODULE_25__.default),
-/* harmony export */   "PDFDict": () => (/* reexport safe */ _objects_PDFDict__WEBPACK_IMPORTED_MODULE_26__.default),
-/* harmony export */   "PDFRef": () => (/* reexport safe */ _objects_PDFRef__WEBPACK_IMPORTED_MODULE_27__.default),
-/* harmony export */   "PDFInvalidObject": () => (/* reexport safe */ _objects_PDFInvalidObject__WEBPACK_IMPORTED_MODULE_28__.default),
-/* harmony export */   "PDFStream": () => (/* reexport safe */ _objects_PDFStream__WEBPACK_IMPORTED_MODULE_29__.default),
-/* harmony export */   "PDFRawStream": () => (/* reexport safe */ _objects_PDFRawStream__WEBPACK_IMPORTED_MODULE_30__.default),
-/* harmony export */   "PDFCatalog": () => (/* reexport safe */ _structures_PDFCatalog__WEBPACK_IMPORTED_MODULE_31__.default),
-/* harmony export */   "PDFContentStream": () => (/* reexport safe */ _structures_PDFContentStream__WEBPACK_IMPORTED_MODULE_32__.default),
-/* harmony export */   "PDFCrossRefStream": () => (/* reexport safe */ _structures_PDFCrossRefStream__WEBPACK_IMPORTED_MODULE_33__.default),
-/* harmony export */   "PDFObjectStream": () => (/* reexport safe */ _structures_PDFObjectStream__WEBPACK_IMPORTED_MODULE_34__.default),
-/* harmony export */   "PDFPageTree": () => (/* reexport safe */ _structures_PDFPageTree__WEBPACK_IMPORTED_MODULE_35__.default),
-/* harmony export */   "PDFPageLeaf": () => (/* reexport safe */ _structures_PDFPageLeaf__WEBPACK_IMPORTED_MODULE_36__.default),
-/* harmony export */   "PDFFlateStream": () => (/* reexport safe */ _structures_PDFFlateStream__WEBPACK_IMPORTED_MODULE_37__.default),
-/* harmony export */   "PDFOperator": () => (/* reexport safe */ _operators_PDFOperator__WEBPACK_IMPORTED_MODULE_38__.default),
-/* harmony export */   "PDFOperatorNames": () => (/* reexport safe */ _operators_PDFOperatorNames__WEBPACK_IMPORTED_MODULE_39__.default),
-/* harmony export */   "PDFObjectParser": () => (/* reexport safe */ _parser_PDFObjectParser__WEBPACK_IMPORTED_MODULE_40__.default),
-/* harmony export */   "PDFObjectStreamParser": () => (/* reexport safe */ _parser_PDFObjectStreamParser__WEBPACK_IMPORTED_MODULE_41__.default),
-/* harmony export */   "PDFParser": () => (/* reexport safe */ _parser_PDFParser__WEBPACK_IMPORTED_MODULE_42__.default),
-/* harmony export */   "PDFXRefStreamParser": () => (/* reexport safe */ _parser_PDFXRefStreamParser__WEBPACK_IMPORTED_MODULE_43__.default),
+/* harmony export */   "PDFObject": () => (/* reexport safe */ _objects_PDFObject__WEBPACK_IMPORTED_MODULE_18__["default"]),
+/* harmony export */   "PDFBool": () => (/* reexport safe */ _objects_PDFBool__WEBPACK_IMPORTED_MODULE_19__["default"]),
+/* harmony export */   "PDFNumber": () => (/* reexport safe */ _objects_PDFNumber__WEBPACK_IMPORTED_MODULE_20__["default"]),
+/* harmony export */   "PDFString": () => (/* reexport safe */ _objects_PDFString__WEBPACK_IMPORTED_MODULE_21__["default"]),
+/* harmony export */   "PDFHexString": () => (/* reexport safe */ _objects_PDFHexString__WEBPACK_IMPORTED_MODULE_22__["default"]),
+/* harmony export */   "PDFName": () => (/* reexport safe */ _objects_PDFName__WEBPACK_IMPORTED_MODULE_23__["default"]),
+/* harmony export */   "PDFNull": () => (/* reexport safe */ _objects_PDFNull__WEBPACK_IMPORTED_MODULE_24__["default"]),
+/* harmony export */   "PDFArray": () => (/* reexport safe */ _objects_PDFArray__WEBPACK_IMPORTED_MODULE_25__["default"]),
+/* harmony export */   "PDFDict": () => (/* reexport safe */ _objects_PDFDict__WEBPACK_IMPORTED_MODULE_26__["default"]),
+/* harmony export */   "PDFRef": () => (/* reexport safe */ _objects_PDFRef__WEBPACK_IMPORTED_MODULE_27__["default"]),
+/* harmony export */   "PDFInvalidObject": () => (/* reexport safe */ _objects_PDFInvalidObject__WEBPACK_IMPORTED_MODULE_28__["default"]),
+/* harmony export */   "PDFStream": () => (/* reexport safe */ _objects_PDFStream__WEBPACK_IMPORTED_MODULE_29__["default"]),
+/* harmony export */   "PDFRawStream": () => (/* reexport safe */ _objects_PDFRawStream__WEBPACK_IMPORTED_MODULE_30__["default"]),
+/* harmony export */   "PDFCatalog": () => (/* reexport safe */ _structures_PDFCatalog__WEBPACK_IMPORTED_MODULE_31__["default"]),
+/* harmony export */   "PDFContentStream": () => (/* reexport safe */ _structures_PDFContentStream__WEBPACK_IMPORTED_MODULE_32__["default"]),
+/* harmony export */   "PDFCrossRefStream": () => (/* reexport safe */ _structures_PDFCrossRefStream__WEBPACK_IMPORTED_MODULE_33__["default"]),
+/* harmony export */   "PDFObjectStream": () => (/* reexport safe */ _structures_PDFObjectStream__WEBPACK_IMPORTED_MODULE_34__["default"]),
+/* harmony export */   "PDFPageTree": () => (/* reexport safe */ _structures_PDFPageTree__WEBPACK_IMPORTED_MODULE_35__["default"]),
+/* harmony export */   "PDFPageLeaf": () => (/* reexport safe */ _structures_PDFPageLeaf__WEBPACK_IMPORTED_MODULE_36__["default"]),
+/* harmony export */   "PDFFlateStream": () => (/* reexport safe */ _structures_PDFFlateStream__WEBPACK_IMPORTED_MODULE_37__["default"]),
+/* harmony export */   "PDFOperator": () => (/* reexport safe */ _operators_PDFOperator__WEBPACK_IMPORTED_MODULE_38__["default"]),
+/* harmony export */   "PDFOperatorNames": () => (/* reexport safe */ _operators_PDFOperatorNames__WEBPACK_IMPORTED_MODULE_39__["default"]),
+/* harmony export */   "PDFObjectParser": () => (/* reexport safe */ _parser_PDFObjectParser__WEBPACK_IMPORTED_MODULE_40__["default"]),
+/* harmony export */   "PDFObjectStreamParser": () => (/* reexport safe */ _parser_PDFObjectStreamParser__WEBPACK_IMPORTED_MODULE_41__["default"]),
+/* harmony export */   "PDFParser": () => (/* reexport safe */ _parser_PDFParser__WEBPACK_IMPORTED_MODULE_42__["default"]),
+/* harmony export */   "PDFXRefStreamParser": () => (/* reexport safe */ _parser_PDFXRefStreamParser__WEBPACK_IMPORTED_MODULE_43__["default"]),
 /* harmony export */   "decodePDFRawStream": () => (/* reexport safe */ _streams_decode__WEBPACK_IMPORTED_MODULE_44__.decodePDFRawStream),
 /* harmony export */   "AnnotationFlags": () => (/* reexport safe */ _annotation__WEBPACK_IMPORTED_MODULE_45__.AnnotationFlags),
 /* harmony export */   "AppearanceCharacteristics": () => (/* reexport safe */ _annotation__WEBPACK_IMPORTED_MODULE_45__.AppearanceCharacteristics),
@@ -3163,7 +3185,7 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony export */   "isType": () => (/* reexport safe */ _validators__WEBPACK_IMPORTED_MODULE_8__.isType),
 /* harmony export */   "singleQuote": () => (/* reexport safe */ _validators__WEBPACK_IMPORTED_MODULE_8__.singleQuote),
 /* harmony export */   "pdfDocEncodingDecode": () => (/* reexport safe */ _pdfDocEncoding__WEBPACK_IMPORTED_MODULE_9__.pdfDocEncodingDecode),
-/* harmony export */   "Cache": () => (/* reexport safe */ _Cache__WEBPACK_IMPORTED_MODULE_10__.default)
+/* harmony export */   "Cache": () => (/* reexport safe */ _Cache__WEBPACK_IMPORTED_MODULE_10__["default"])
 /* harmony export */ });
 /* harmony import */ var _arrays__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(13);
 /* harmony import */ var _async__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(16);
@@ -4325,7 +4347,7 @@ var padStart = function (value, length, padChar) {
 // Top level file is just a mixin of submodules & constants
 
 
-var assign    = __webpack_require__(25).assign;
+var assign    = (__webpack_require__(25).assign);
 
 var deflate   = __webpack_require__(26);
 var inflate   = __webpack_require__(34);
@@ -12056,7 +12078,7 @@ var byAscendingObjectNumber = function (_a, _b) {
 var PDFContext = /** @class */ (function () {
     function PDFContext() {
         this.largestObjectNumber = 0;
-        this.header = _document_PDFHeader__WEBPACK_IMPORTED_MODULE_1__.default.forVersion(1, 7);
+        this.header = _document_PDFHeader__WEBPACK_IMPORTED_MODULE_1__["default"].forVersion(1, 7);
         this.trailerInfo = {};
         this.indirectObjects = new Map();
     }
@@ -12068,7 +12090,7 @@ var PDFContext = /** @class */ (function () {
     };
     PDFContext.prototype.nextRef = function () {
         this.largestObjectNumber += 1;
-        return _objects_PDFRef__WEBPACK_IMPORTED_MODULE_11__.default.of(this.largestObjectNumber);
+        return _objects_PDFRef__WEBPACK_IMPORTED_MODULE_11__["default"].of(this.largestObjectNumber);
     };
     PDFContext.prototype.register = function (object) {
         var ref = this.nextRef();
@@ -12085,14 +12107,14 @@ var PDFContext = /** @class */ (function () {
         }
         // TODO: `preservePDFNull` is for backwards compatibility. Should be
         // removed in next breaking API change.
-        var preservePDFNull = types.includes(_objects_PDFNull__WEBPACK_IMPORTED_MODULE_7__.default);
-        var result = ref instanceof _objects_PDFRef__WEBPACK_IMPORTED_MODULE_11__.default ? this.indirectObjects.get(ref) : ref;
-        if (!result || (result === _objects_PDFNull__WEBPACK_IMPORTED_MODULE_7__.default && !preservePDFNull))
+        var preservePDFNull = types.includes(_objects_PDFNull__WEBPACK_IMPORTED_MODULE_7__["default"]);
+        var result = ref instanceof _objects_PDFRef__WEBPACK_IMPORTED_MODULE_11__["default"] ? this.indirectObjects.get(ref) : ref;
+        if (!result || (result === _objects_PDFNull__WEBPACK_IMPORTED_MODULE_7__["default"] && !preservePDFNull))
             return undefined;
         for (var idx = 0, len = types.length; idx < len; idx++) {
             var type = types[idx];
-            if (type === _objects_PDFNull__WEBPACK_IMPORTED_MODULE_7__.default) {
-                if (result === _objects_PDFNull__WEBPACK_IMPORTED_MODULE_7__.default)
+            if (type === _objects_PDFNull__WEBPACK_IMPORTED_MODULE_7__["default"]) {
+                if (result === _objects_PDFNull__WEBPACK_IMPORTED_MODULE_7__["default"])
                     return result;
             }
             else {
@@ -12107,13 +12129,13 @@ var PDFContext = /** @class */ (function () {
         for (var _i = 1; _i < arguments.length; _i++) {
             types[_i - 1] = arguments[_i];
         }
-        var result = ref instanceof _objects_PDFRef__WEBPACK_IMPORTED_MODULE_11__.default ? this.indirectObjects.get(ref) : ref;
+        var result = ref instanceof _objects_PDFRef__WEBPACK_IMPORTED_MODULE_11__["default"] ? this.indirectObjects.get(ref) : ref;
         if (types.length === 0)
             return result;
         for (var idx = 0, len = types.length; idx < len; idx++) {
             var type = types[idx];
-            if (type === _objects_PDFNull__WEBPACK_IMPORTED_MODULE_7__.default) {
-                if (result === _objects_PDFNull__WEBPACK_IMPORTED_MODULE_7__.default)
+            if (type === _objects_PDFNull__WEBPACK_IMPORTED_MODULE_7__["default"]) {
+                if (result === _objects_PDFNull__WEBPACK_IMPORTED_MODULE_7__["default"])
                     return result;
             }
             else {
@@ -12137,43 +12159,43 @@ var PDFContext = /** @class */ (function () {
         return Array.from(this.indirectObjects.entries()).sort(byAscendingObjectNumber);
     };
     PDFContext.prototype.obj = function (literal) {
-        if (literal instanceof _objects_PDFObject__WEBPACK_IMPORTED_MODULE_9__.default) {
+        if (literal instanceof _objects_PDFObject__WEBPACK_IMPORTED_MODULE_9__["default"]) {
             return literal;
         }
         else if (literal === null || literal === undefined) {
-            return _objects_PDFNull__WEBPACK_IMPORTED_MODULE_7__.default;
+            return _objects_PDFNull__WEBPACK_IMPORTED_MODULE_7__["default"];
         }
         else if (typeof literal === 'string') {
-            return _objects_PDFName__WEBPACK_IMPORTED_MODULE_6__.default.of(literal);
+            return _objects_PDFName__WEBPACK_IMPORTED_MODULE_6__["default"].of(literal);
         }
         else if (typeof literal === 'number') {
-            return _objects_PDFNumber__WEBPACK_IMPORTED_MODULE_8__.default.of(literal);
+            return _objects_PDFNumber__WEBPACK_IMPORTED_MODULE_8__["default"].of(literal);
         }
         else if (typeof literal === 'boolean') {
-            return literal ? _objects_PDFBool__WEBPACK_IMPORTED_MODULE_4__.default.True : _objects_PDFBool__WEBPACK_IMPORTED_MODULE_4__.default.False;
+            return literal ? _objects_PDFBool__WEBPACK_IMPORTED_MODULE_4__["default"].True : _objects_PDFBool__WEBPACK_IMPORTED_MODULE_4__["default"].False;
         }
         else if (Array.isArray(literal)) {
-            var array = _objects_PDFArray__WEBPACK_IMPORTED_MODULE_3__.default.withContext(this);
+            var array = _objects_PDFArray__WEBPACK_IMPORTED_MODULE_3__["default"].withContext(this);
             for (var idx = 0, len = literal.length; idx < len; idx++) {
                 array.push(this.obj(literal[idx]));
             }
             return array;
         }
         else {
-            var dict = _objects_PDFDict__WEBPACK_IMPORTED_MODULE_5__.default.withContext(this);
+            var dict = _objects_PDFDict__WEBPACK_IMPORTED_MODULE_5__["default"].withContext(this);
             var keys = Object.keys(literal);
             for (var idx = 0, len = keys.length; idx < len; idx++) {
                 var key = keys[idx];
                 var value = literal[key];
                 if (value !== undefined)
-                    dict.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_6__.default.of(key), this.obj(value));
+                    dict.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_6__["default"].of(key), this.obj(value));
             }
             return dict;
         }
     };
     PDFContext.prototype.stream = function (contents, dict) {
         if (dict === void 0) { dict = {}; }
-        return _objects_PDFRawStream__WEBPACK_IMPORTED_MODULE_10__.default.of(this.obj(dict), (0,_utils__WEBPACK_IMPORTED_MODULE_15__.typedArrayFor)(contents));
+        return _objects_PDFRawStream__WEBPACK_IMPORTED_MODULE_10__["default"].of(this.obj(dict), (0,_utils__WEBPACK_IMPORTED_MODULE_15__.typedArrayFor)(contents));
     };
     PDFContext.prototype.flateStream = function (contents, dict) {
         if (dict === void 0) { dict = {}; }
@@ -12181,7 +12203,7 @@ var PDFContext = /** @class */ (function () {
     };
     PDFContext.prototype.contentStream = function (operators, dict) {
         if (dict === void 0) { dict = {}; }
-        return _structures_PDFContentStream__WEBPACK_IMPORTED_MODULE_14__.default.of(this.obj(dict), operators);
+        return _structures_PDFContentStream__WEBPACK_IMPORTED_MODULE_14__["default"].of(this.obj(dict), operators);
     };
     PDFContext.prototype.formXObject = function (operators, dict) {
         if (dict === void 0) { dict = {}; }
@@ -12198,8 +12220,8 @@ var PDFContext = /** @class */ (function () {
             return this.pushGraphicsStateContentStreamRef;
         }
         var dict = this.obj({});
-        var op = _operators_PDFOperator__WEBPACK_IMPORTED_MODULE_12__.default.of(_operators_PDFOperatorNames__WEBPACK_IMPORTED_MODULE_13__.default.PushGraphicsState);
-        var stream = _structures_PDFContentStream__WEBPACK_IMPORTED_MODULE_14__.default.of(dict, [op]);
+        var op = _operators_PDFOperator__WEBPACK_IMPORTED_MODULE_12__["default"].of(_operators_PDFOperatorNames__WEBPACK_IMPORTED_MODULE_13__["default"].PushGraphicsState);
+        var stream = _structures_PDFContentStream__WEBPACK_IMPORTED_MODULE_14__["default"].of(dict, [op]);
         this.pushGraphicsStateContentStreamRef = this.register(stream);
         return this.pushGraphicsStateContentStreamRef;
     };
@@ -12214,8 +12236,8 @@ var PDFContext = /** @class */ (function () {
             return this.popGraphicsStateContentStreamRef;
         }
         var dict = this.obj({});
-        var op = _operators_PDFOperator__WEBPACK_IMPORTED_MODULE_12__.default.of(_operators_PDFOperatorNames__WEBPACK_IMPORTED_MODULE_13__.default.PopGraphicsState);
-        var stream = _structures_PDFContentStream__WEBPACK_IMPORTED_MODULE_14__.default.of(dict, [op]);
+        var op = _operators_PDFOperator__WEBPACK_IMPORTED_MODULE_12__["default"].of(_operators_PDFOperatorNames__WEBPACK_IMPORTED_MODULE_13__["default"].PopGraphicsState);
+        var stream = _structures_PDFContentStream__WEBPACK_IMPORTED_MODULE_14__["default"].of(dict, [op]);
         this.popGraphicsStateContentStreamRef = this.register(stream);
         return this.popGraphicsStateContentStreamRef;
     };
@@ -12252,16 +12274,16 @@ var PDFHeader = /** @class */ (function () {
     };
     PDFHeader.prototype.copyBytesInto = function (buffer, offset) {
         var initialOffset = offset;
-        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_0__.default.Percent;
-        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_0__.default.P;
-        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_0__.default.D;
-        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_0__.default.F;
-        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_0__.default.Dash;
+        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_0__["default"].Percent;
+        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_0__["default"].P;
+        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_0__["default"].D;
+        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_0__["default"].F;
+        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_0__["default"].Dash;
         offset += (0,_utils__WEBPACK_IMPORTED_MODULE_1__.copyStringIntoBuffer)(this.major, buffer, offset);
-        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_0__.default.Period;
+        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_0__["default"].Period;
         offset += (0,_utils__WEBPACK_IMPORTED_MODULE_1__.copyStringIntoBuffer)(this.minor, buffer, offset);
-        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_0__.default.Newline;
-        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_0__.default.Percent;
+        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_0__["default"].Newline;
+        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_0__["default"].Percent;
         buffer[offset++] = 129;
         buffer[offset++] = 129;
         buffer[offset++] = 129;
@@ -12344,10 +12366,10 @@ var PDFArray = /** @class */ (function (_super) {
     PDFArray.prototype.asRectangle = function () {
         if (this.size() !== 4)
             throw new _errors__WEBPACK_IMPORTED_MODULE_3__.PDFArrayIsNotRectangleError(this.size());
-        var lowerLeftX = this.lookup(0, _PDFNumber__WEBPACK_IMPORTED_MODULE_0__.default).asNumber();
-        var lowerLeftY = this.lookup(1, _PDFNumber__WEBPACK_IMPORTED_MODULE_0__.default).asNumber();
-        var upperRightX = this.lookup(2, _PDFNumber__WEBPACK_IMPORTED_MODULE_0__.default).asNumber();
-        var upperRightY = this.lookup(3, _PDFNumber__WEBPACK_IMPORTED_MODULE_0__.default).asNumber();
+        var lowerLeftX = this.lookup(0, _PDFNumber__WEBPACK_IMPORTED_MODULE_0__["default"]).asNumber();
+        var lowerLeftY = this.lookup(1, _PDFNumber__WEBPACK_IMPORTED_MODULE_0__["default"]).asNumber();
+        var upperRightX = this.lookup(2, _PDFNumber__WEBPACK_IMPORTED_MODULE_0__["default"]).asNumber();
+        var upperRightY = this.lookup(3, _PDFNumber__WEBPACK_IMPORTED_MODULE_0__["default"]).asNumber();
         var x = lowerLeftX;
         var y = lowerLeftY;
         var width = upperRightX - lowerLeftX;
@@ -12382,18 +12404,18 @@ var PDFArray = /** @class */ (function (_super) {
     };
     PDFArray.prototype.copyBytesInto = function (buffer, offset) {
         var initialOffset = offset;
-        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_2__.default.LeftSquareBracket;
-        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_2__.default.Space;
+        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_2__["default"].LeftSquareBracket;
+        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_2__["default"].Space;
         for (var idx = 0, len = this.size(); idx < len; idx++) {
             offset += this.get(idx).copyBytesInto(buffer, offset);
-            buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_2__.default.Space;
+            buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_2__["default"].Space;
         }
-        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_2__.default.RightSquareBracket;
+        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_2__["default"].RightSquareBracket;
         return offset - initialOffset;
     };
     PDFArray.withContext = function (context) { return new PDFArray(context); };
     return PDFArray;
-}(_PDFObject__WEBPACK_IMPORTED_MODULE_1__.default));
+}(_PDFObject__WEBPACK_IMPORTED_MODULE_1__["default"]));
 /* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (PDFArray);
 //# sourceMappingURL=PDFArray.js.map
 
@@ -12442,7 +12464,7 @@ var PDFNumber = /** @class */ (function (_super) {
     };
     PDFNumber.of = function (value) { return new PDFNumber(value); };
     return PDFNumber;
-}(_PDFObject__WEBPACK_IMPORTED_MODULE_1__.default));
+}(_PDFObject__WEBPACK_IMPORTED_MODULE_1__["default"]));
 /* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (PDFNumber);
 //# sourceMappingURL=PDFNumber.js.map
 
@@ -12519,25 +12541,25 @@ var PDFBool = /** @class */ (function (_super) {
     };
     PDFBool.prototype.copyBytesInto = function (buffer, offset) {
         if (this.value) {
-            buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_2__.default.t;
-            buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_2__.default.r;
-            buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_2__.default.u;
-            buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_2__.default.e;
+            buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_2__["default"].t;
+            buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_2__["default"].r;
+            buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_2__["default"].u;
+            buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_2__["default"].e;
             return 4;
         }
         else {
-            buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_2__.default.f;
-            buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_2__.default.a;
-            buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_2__.default.l;
-            buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_2__.default.s;
-            buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_2__.default.e;
+            buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_2__["default"].f;
+            buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_2__["default"].a;
+            buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_2__["default"].l;
+            buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_2__["default"].s;
+            buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_2__["default"].e;
             return 5;
         }
     };
     PDFBool.True = new PDFBool(ENFORCER, true);
     PDFBool.False = new PDFBool(ENFORCER, false);
     return PDFBool;
-}(_PDFObject__WEBPACK_IMPORTED_MODULE_1__.default));
+}(_PDFObject__WEBPACK_IMPORTED_MODULE_1__["default"]));
 /* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (PDFBool);
 //# sourceMappingURL=PDFBool.js.map
 
@@ -12584,13 +12606,13 @@ var PDFDict = /** @class */ (function (_super) {
     preservePDFNull) {
         if (preservePDFNull === void 0) { preservePDFNull = false; }
         var value = this.dict.get(key);
-        if (value === _PDFNull__WEBPACK_IMPORTED_MODULE_0__.default && !preservePDFNull)
+        if (value === _PDFNull__WEBPACK_IMPORTED_MODULE_0__["default"] && !preservePDFNull)
             return undefined;
         return value;
     };
     PDFDict.prototype.has = function (key) {
         var value = this.dict.get(key);
-        return value !== undefined && value !== _PDFNull__WEBPACK_IMPORTED_MODULE_0__.default;
+        return value !== undefined && value !== _PDFNull__WEBPACK_IMPORTED_MODULE_0__["default"];
     };
     PDFDict.prototype.lookupMaybe = function (key) {
         var _a;
@@ -12600,9 +12622,9 @@ var PDFDict = /** @class */ (function (_super) {
         }
         // TODO: `preservePDFNull` is for backwards compatibility. Should be
         // removed in next breaking API change.
-        var preservePDFNull = types.includes(_PDFNull__WEBPACK_IMPORTED_MODULE_0__.default);
+        var preservePDFNull = types.includes(_PDFNull__WEBPACK_IMPORTED_MODULE_0__["default"]);
         var value = (_a = this.context).lookupMaybe.apply(_a, (0,tslib__WEBPACK_IMPORTED_MODULE_3__.__spreadArrays)([this.get(key, preservePDFNull)], types));
-        if (value === _PDFNull__WEBPACK_IMPORTED_MODULE_0__.default && !preservePDFNull)
+        if (value === _PDFNull__WEBPACK_IMPORTED_MODULE_0__["default"] && !preservePDFNull)
             return undefined;
         return value;
     };
@@ -12614,9 +12636,9 @@ var PDFDict = /** @class */ (function (_super) {
         }
         // TODO: `preservePDFNull` is for backwards compatibility. Should be
         // removed in next breaking API change.
-        var preservePDFNull = types.includes(_PDFNull__WEBPACK_IMPORTED_MODULE_0__.default);
+        var preservePDFNull = types.includes(_PDFNull__WEBPACK_IMPORTED_MODULE_0__["default"]);
         var value = (_a = this.context).lookup.apply(_a, (0,tslib__WEBPACK_IMPORTED_MODULE_3__.__spreadArrays)([this.get(key, preservePDFNull)], types));
-        if (value === _PDFNull__WEBPACK_IMPORTED_MODULE_0__.default && !preservePDFNull)
+        if (value === _PDFNull__WEBPACK_IMPORTED_MODULE_0__["default"] && !preservePDFNull)
             return undefined;
         return value;
     };
@@ -12656,19 +12678,19 @@ var PDFDict = /** @class */ (function (_super) {
     };
     PDFDict.prototype.copyBytesInto = function (buffer, offset) {
         var initialOffset = offset;
-        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_2__.default.LessThan;
-        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_2__.default.LessThan;
-        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_2__.default.Newline;
+        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_2__["default"].LessThan;
+        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_2__["default"].LessThan;
+        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_2__["default"].Newline;
         var entries = this.entries();
         for (var idx = 0, len = entries.length; idx < len; idx++) {
             var _a = entries[idx], key = _a[0], value = _a[1];
             offset += key.copyBytesInto(buffer, offset);
-            buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_2__.default.Space;
+            buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_2__["default"].Space;
             offset += value.copyBytesInto(buffer, offset);
-            buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_2__.default.Newline;
+            buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_2__["default"].Newline;
         }
-        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_2__.default.GreaterThan;
-        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_2__.default.GreaterThan;
+        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_2__["default"].GreaterThan;
+        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_2__["default"].GreaterThan;
         return offset - initialOffset;
     };
     PDFDict.withContext = function (context) { return new PDFDict(new Map(), context); };
@@ -12676,7 +12698,7 @@ var PDFDict = /** @class */ (function (_super) {
         return new PDFDict(map, context);
     };
     return PDFDict;
-}(_PDFObject__WEBPACK_IMPORTED_MODULE_1__.default));
+}(_PDFObject__WEBPACK_IMPORTED_MODULE_1__["default"]));
 /* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (PDFDict);
 //# sourceMappingURL=PDFDict.js.map
 
@@ -12713,14 +12735,14 @@ var PDFNull = /** @class */ (function (_super) {
         return 4;
     };
     PDFNull.prototype.copyBytesInto = function (buffer, offset) {
-        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_1__.default.n;
-        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_1__.default.u;
-        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_1__.default.l;
-        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_1__.default.l;
+        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_1__["default"].n;
+        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_1__["default"].u;
+        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_1__["default"].l;
+        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_1__["default"].l;
         return 4;
     };
     return PDFNull;
-}(_PDFObject__WEBPACK_IMPORTED_MODULE_0__.default));
+}(_PDFObject__WEBPACK_IMPORTED_MODULE_0__["default"]));
 /* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (new PDFNull());
 //# sourceMappingURL=PDFNull.js.map
 
@@ -12749,8 +12771,8 @@ var decodeName = function (name) {
     return name.replace(/#([\dABCDEF]{2})/g, function (_, hex) { return (0,_utils__WEBPACK_IMPORTED_MODULE_4__.charFromHexCode)(hex); });
 };
 var isRegularChar = function (charCode) {
-    return charCode >= _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_2__.default.ExclamationPoint &&
-        charCode <= _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_2__.default.Tilde &&
+    return charCode >= _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_2__["default"].ExclamationPoint &&
+        charCode <= _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_2__["default"].Tilde &&
         !_syntax_Irregular__WEBPACK_IMPORTED_MODULE_3__.IsIrregular[charCode];
 };
 var ENFORCER = {};
@@ -12785,15 +12807,15 @@ var PDFName = /** @class */ (function (_super) {
             var byte = (0,_utils__WEBPACK_IMPORTED_MODULE_4__.toCharCode)(char);
             var nextChar = this.encodedName[idx + 1];
             if (!escaped) {
-                if (byte === _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_2__.default.Hash)
+                if (byte === _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_2__["default"].Hash)
                     escaped = true;
                 else
                     pushByte(byte);
             }
             else {
-                if ((byte >= _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_2__.default.Zero && byte <= _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_2__.default.Nine) ||
-                    (byte >= _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_2__.default.a && byte <= _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_2__.default.f) ||
-                    (byte >= _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_2__.default.A && byte <= _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_2__.default.F)) {
+                if ((byte >= _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_2__["default"].Zero && byte <= _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_2__["default"].Nine) ||
+                    (byte >= _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_2__["default"].a && byte <= _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_2__["default"].f) ||
+                    (byte >= _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_2__["default"].A && byte <= _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_2__["default"].F)) {
                     hex += char;
                     if (hex.length === 2 ||
                         !((nextChar >= '0' && nextChar <= '9') ||
@@ -12872,7 +12894,7 @@ var PDFName = /** @class */ (function (_super) {
     PDFName.CreationDate = PDFName.of('CreationDate');
     PDFName.ModDate = PDFName.of('ModDate');
     return PDFName;
-}(_PDFObject__WEBPACK_IMPORTED_MODULE_1__.default));
+}(_PDFObject__WEBPACK_IMPORTED_MODULE_1__["default"]));
 /* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (PDFName);
 //# sourceMappingURL=PDFName.js.map
 
@@ -12895,7 +12917,7 @@ var IsIrregular = new Uint8Array(256);
 for (var idx = 0, len = 256; idx < len; idx++) {
     IsIrregular[idx] = _Whitespace__WEBPACK_IMPORTED_MODULE_2__.IsWhitespace[idx] || _Delimiters__WEBPACK_IMPORTED_MODULE_1__.IsDelimiter[idx] ? 1 : 0;
 }
-IsIrregular[_CharCodes__WEBPACK_IMPORTED_MODULE_0__.default.Hash] = 1;
+IsIrregular[_CharCodes__WEBPACK_IMPORTED_MODULE_0__["default"].Hash] = 1;
 //# sourceMappingURL=Irregular.js.map
 
 /***/ }),
@@ -12910,16 +12932,16 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var _CharCodes__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(60);
 
 var IsDelimiter = new Uint8Array(256);
-IsDelimiter[_CharCodes__WEBPACK_IMPORTED_MODULE_0__.default.LeftParen] = 1;
-IsDelimiter[_CharCodes__WEBPACK_IMPORTED_MODULE_0__.default.RightParen] = 1;
-IsDelimiter[_CharCodes__WEBPACK_IMPORTED_MODULE_0__.default.LessThan] = 1;
-IsDelimiter[_CharCodes__WEBPACK_IMPORTED_MODULE_0__.default.GreaterThan] = 1;
-IsDelimiter[_CharCodes__WEBPACK_IMPORTED_MODULE_0__.default.LeftSquareBracket] = 1;
-IsDelimiter[_CharCodes__WEBPACK_IMPORTED_MODULE_0__.default.RightSquareBracket] = 1;
-IsDelimiter[_CharCodes__WEBPACK_IMPORTED_MODULE_0__.default.LeftCurly] = 1;
-IsDelimiter[_CharCodes__WEBPACK_IMPORTED_MODULE_0__.default.RightCurly] = 1;
-IsDelimiter[_CharCodes__WEBPACK_IMPORTED_MODULE_0__.default.ForwardSlash] = 1;
-IsDelimiter[_CharCodes__WEBPACK_IMPORTED_MODULE_0__.default.Percent] = 1;
+IsDelimiter[_CharCodes__WEBPACK_IMPORTED_MODULE_0__["default"].LeftParen] = 1;
+IsDelimiter[_CharCodes__WEBPACK_IMPORTED_MODULE_0__["default"].RightParen] = 1;
+IsDelimiter[_CharCodes__WEBPACK_IMPORTED_MODULE_0__["default"].LessThan] = 1;
+IsDelimiter[_CharCodes__WEBPACK_IMPORTED_MODULE_0__["default"].GreaterThan] = 1;
+IsDelimiter[_CharCodes__WEBPACK_IMPORTED_MODULE_0__["default"].LeftSquareBracket] = 1;
+IsDelimiter[_CharCodes__WEBPACK_IMPORTED_MODULE_0__["default"].RightSquareBracket] = 1;
+IsDelimiter[_CharCodes__WEBPACK_IMPORTED_MODULE_0__["default"].LeftCurly] = 1;
+IsDelimiter[_CharCodes__WEBPACK_IMPORTED_MODULE_0__["default"].RightCurly] = 1;
+IsDelimiter[_CharCodes__WEBPACK_IMPORTED_MODULE_0__["default"].ForwardSlash] = 1;
+IsDelimiter[_CharCodes__WEBPACK_IMPORTED_MODULE_0__["default"].Percent] = 1;
 //# sourceMappingURL=Delimiters.js.map
 
 /***/ }),
@@ -12934,12 +12956,12 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var _CharCodes__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(60);
 
 var IsWhitespace = new Uint8Array(256);
-IsWhitespace[_CharCodes__WEBPACK_IMPORTED_MODULE_0__.default.Null] = 1;
-IsWhitespace[_CharCodes__WEBPACK_IMPORTED_MODULE_0__.default.Tab] = 1;
-IsWhitespace[_CharCodes__WEBPACK_IMPORTED_MODULE_0__.default.Newline] = 1;
-IsWhitespace[_CharCodes__WEBPACK_IMPORTED_MODULE_0__.default.FormFeed] = 1;
-IsWhitespace[_CharCodes__WEBPACK_IMPORTED_MODULE_0__.default.CarriageReturn] = 1;
-IsWhitespace[_CharCodes__WEBPACK_IMPORTED_MODULE_0__.default.Space] = 1;
+IsWhitespace[_CharCodes__WEBPACK_IMPORTED_MODULE_0__["default"].Null] = 1;
+IsWhitespace[_CharCodes__WEBPACK_IMPORTED_MODULE_0__["default"].Tab] = 1;
+IsWhitespace[_CharCodes__WEBPACK_IMPORTED_MODULE_0__["default"].Newline] = 1;
+IsWhitespace[_CharCodes__WEBPACK_IMPORTED_MODULE_0__["default"].FormFeed] = 1;
+IsWhitespace[_CharCodes__WEBPACK_IMPORTED_MODULE_0__["default"].CarriageReturn] = 1;
+IsWhitespace[_CharCodes__WEBPACK_IMPORTED_MODULE_0__["default"].Space] = 1;
 //# sourceMappingURL=Whitespace.js.map
 
 /***/ }),
@@ -12983,7 +13005,7 @@ var PDFRawStream = /** @class */ (function (_super) {
         return new PDFRawStream(dict, contents);
     };
     return PDFRawStream;
-}(_PDFStream__WEBPACK_IMPORTED_MODULE_0__.default));
+}(_PDFStream__WEBPACK_IMPORTED_MODULE_0__["default"]));
 /* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (PDFRawStream);
 //# sourceMappingURL=PDFRawStream.js.map
 
@@ -13029,7 +13051,7 @@ var PDFStream = /** @class */ (function (_super) {
     };
     PDFStream.prototype.updateDict = function () {
         var contentsSize = this.getContentsSize();
-        this.dict.set(_PDFName__WEBPACK_IMPORTED_MODULE_1__.default.Length, _PDFNumber__WEBPACK_IMPORTED_MODULE_2__.default.of(contentsSize));
+        this.dict.set(_PDFName__WEBPACK_IMPORTED_MODULE_1__["default"].Length, _PDFNumber__WEBPACK_IMPORTED_MODULE_2__["default"].of(contentsSize));
     };
     PDFStream.prototype.sizeInBytes = function () {
         this.updateDict();
@@ -13047,32 +13069,32 @@ var PDFStream = /** @class */ (function (_super) {
         this.updateDict();
         var initialOffset = offset;
         offset += this.dict.copyBytesInto(buffer, offset);
-        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_4__.default.Newline;
-        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_4__.default.s;
-        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_4__.default.t;
-        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_4__.default.r;
-        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_4__.default.e;
-        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_4__.default.a;
-        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_4__.default.m;
-        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_4__.default.Newline;
+        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_4__["default"].Newline;
+        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_4__["default"].s;
+        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_4__["default"].t;
+        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_4__["default"].r;
+        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_4__["default"].e;
+        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_4__["default"].a;
+        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_4__["default"].m;
+        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_4__["default"].Newline;
         var contents = this.getContents();
         for (var idx = 0, len = contents.length; idx < len; idx++) {
             buffer[offset++] = contents[idx];
         }
-        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_4__.default.Newline;
-        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_4__.default.e;
-        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_4__.default.n;
-        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_4__.default.d;
-        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_4__.default.s;
-        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_4__.default.t;
-        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_4__.default.r;
-        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_4__.default.e;
-        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_4__.default.a;
-        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_4__.default.m;
+        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_4__["default"].Newline;
+        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_4__["default"].e;
+        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_4__["default"].n;
+        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_4__["default"].d;
+        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_4__["default"].s;
+        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_4__["default"].t;
+        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_4__["default"].r;
+        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_4__["default"].e;
+        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_4__["default"].a;
+        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_4__["default"].m;
         return offset - initialOffset;
     };
     return PDFStream;
-}(_PDFObject__WEBPACK_IMPORTED_MODULE_3__.default));
+}(_PDFObject__WEBPACK_IMPORTED_MODULE_3__["default"]));
 /* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (PDFStream);
 //# sourceMappingURL=PDFStream.js.map
 
@@ -13131,7 +13153,7 @@ var PDFRef = /** @class */ (function (_super) {
         return instance;
     };
     return PDFRef;
-}(_PDFObject__WEBPACK_IMPORTED_MODULE_1__.default));
+}(_PDFObject__WEBPACK_IMPORTED_MODULE_1__["default"]));
 /* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (PDFRef);
 //# sourceMappingURL=PDFRef.js.map
 
@@ -13159,7 +13181,7 @@ var PDFOperator = /** @class */ (function () {
         var args = new Array(this.args.length);
         for (var idx = 0, len = args.length; idx < len; idx++) {
             var arg = this.args[idx];
-            args[idx] = arg instanceof _objects_PDFObject__WEBPACK_IMPORTED_MODULE_0__.default ? arg.clone(context) : arg;
+            args[idx] = arg instanceof _objects_PDFObject__WEBPACK_IMPORTED_MODULE_0__["default"] ? arg.clone(context) : arg;
         }
         return PDFOperator.of(this.name, args);
     };
@@ -13175,7 +13197,7 @@ var PDFOperator = /** @class */ (function () {
         var size = 0;
         for (var idx = 0, len = this.args.length; idx < len; idx++) {
             var arg = this.args[idx];
-            size += (arg instanceof _objects_PDFObject__WEBPACK_IMPORTED_MODULE_0__.default ? arg.sizeInBytes() : arg.length) + 1;
+            size += (arg instanceof _objects_PDFObject__WEBPACK_IMPORTED_MODULE_0__["default"] ? arg.sizeInBytes() : arg.length) + 1;
         }
         size += this.name.length;
         return size;
@@ -13184,13 +13206,13 @@ var PDFOperator = /** @class */ (function () {
         var initialOffset = offset;
         for (var idx = 0, len = this.args.length; idx < len; idx++) {
             var arg = this.args[idx];
-            if (arg instanceof _objects_PDFObject__WEBPACK_IMPORTED_MODULE_0__.default) {
+            if (arg instanceof _objects_PDFObject__WEBPACK_IMPORTED_MODULE_0__["default"]) {
                 offset += arg.copyBytesInto(buffer, offset);
             }
             else {
                 offset += (0,_utils__WEBPACK_IMPORTED_MODULE_2__.copyStringIntoBuffer)(arg, buffer, offset);
             }
-            buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_1__.default.Space;
+            buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_1__["default"].Space;
         }
         offset += (0,_utils__WEBPACK_IMPORTED_MODULE_2__.copyStringIntoBuffer)(this.name, buffer, offset);
         return offset - initialOffset;
@@ -13350,7 +13372,7 @@ var PDFContentStream = /** @class */ (function (_super) {
         var offset = 0;
         for (var idx = 0, len = this.operators.length; idx < len; idx++) {
             offset += this.operators[idx].copyBytesInto(buffer, offset);
-            buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_1__.default.Newline;
+            buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_1__["default"].Newline;
         }
         return buffer;
     };
@@ -13366,7 +13388,7 @@ var PDFContentStream = /** @class */ (function (_super) {
         return new PDFContentStream(dict, operators, encode);
     };
     return PDFContentStream;
-}(_PDFFlateStream__WEBPACK_IMPORTED_MODULE_0__.default));
+}(_PDFFlateStream__WEBPACK_IMPORTED_MODULE_0__["default"]));
 /* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (PDFContentStream);
 //# sourceMappingURL=PDFContentStream.js.map
 
@@ -13402,7 +13424,7 @@ var PDFFlateStream = /** @class */ (function (_super) {
         };
         _this.encode = encode;
         if (encode)
-            dict.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_2__.default.of('Filter'), _objects_PDFName__WEBPACK_IMPORTED_MODULE_2__.default.of('FlateDecode'));
+            dict.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_2__["default"].of('Filter'), _objects_PDFName__WEBPACK_IMPORTED_MODULE_2__["default"].of('FlateDecode'));
         _this.contentsCache = _utils__WEBPACK_IMPORTED_MODULE_4__.Cache.populatedBy(_this.computeContents);
         return _this;
     }
@@ -13416,7 +13438,7 @@ var PDFFlateStream = /** @class */ (function (_super) {
         throw new _errors__WEBPACK_IMPORTED_MODULE_1__.MethodNotImplementedError(this.constructor.name, 'getUnencodedContents');
     };
     return PDFFlateStream;
-}(_objects_PDFStream__WEBPACK_IMPORTED_MODULE_3__.default));
+}(_objects_PDFStream__WEBPACK_IMPORTED_MODULE_3__["default"]));
 /* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (PDFFlateStream);
 //# sourceMappingURL=PDFFlateStream.js.map
 
@@ -13467,27 +13489,27 @@ var PDFObjectCopier = /** @class */ (function () {
         var _this = this;
         this.traversedObjects = new Map();
         // prettier-ignore
-        this.copy = function (object) { return (object instanceof _structures_PDFPageLeaf__WEBPACK_IMPORTED_MODULE_5__.default ? _this.copyPDFPage(object)
-            : object instanceof _objects_PDFDict__WEBPACK_IMPORTED_MODULE_1__.default ? _this.copyPDFDict(object)
-                : object instanceof _objects_PDFArray__WEBPACK_IMPORTED_MODULE_0__.default ? _this.copyPDFArray(object)
-                    : object instanceof _objects_PDFStream__WEBPACK_IMPORTED_MODULE_4__.default ? _this.copyPDFStream(object)
-                        : object instanceof _objects_PDFRef__WEBPACK_IMPORTED_MODULE_3__.default ? _this.copyPDFIndirectObject(object)
+        this.copy = function (object) { return (object instanceof _structures_PDFPageLeaf__WEBPACK_IMPORTED_MODULE_5__["default"] ? _this.copyPDFPage(object)
+            : object instanceof _objects_PDFDict__WEBPACK_IMPORTED_MODULE_1__["default"] ? _this.copyPDFDict(object)
+                : object instanceof _objects_PDFArray__WEBPACK_IMPORTED_MODULE_0__["default"] ? _this.copyPDFArray(object)
+                    : object instanceof _objects_PDFStream__WEBPACK_IMPORTED_MODULE_4__["default"] ? _this.copyPDFStream(object)
+                        : object instanceof _objects_PDFRef__WEBPACK_IMPORTED_MODULE_3__["default"] ? _this.copyPDFIndirectObject(object)
                             : object.clone()); };
         this.copyPDFPage = function (originalPage) {
             var clonedPage = originalPage.clone();
             // Move any entries that the originalPage is inheriting from its parent
             // tree nodes directly into originalPage so they are preserved during
             // the copy.
-            var InheritableEntries = _structures_PDFPageLeaf__WEBPACK_IMPORTED_MODULE_5__.default.InheritableEntries;
+            var InheritableEntries = _structures_PDFPageLeaf__WEBPACK_IMPORTED_MODULE_5__["default"].InheritableEntries;
             for (var idx = 0, len = InheritableEntries.length; idx < len; idx++) {
-                var key = _objects_PDFName__WEBPACK_IMPORTED_MODULE_2__.default.of(InheritableEntries[idx]);
+                var key = _objects_PDFName__WEBPACK_IMPORTED_MODULE_2__["default"].of(InheritableEntries[idx]);
                 var value = clonedPage.getInheritableAttribute(key);
                 if (!clonedPage.get(key) && value)
                     clonedPage.set(key, value);
             }
             // Remove the parent reference to prevent the whole donor document's page
             // tree from being copied when we only need a single page.
-            clonedPage.delete(_objects_PDFName__WEBPACK_IMPORTED_MODULE_2__.default.of('Parent'));
+            clonedPage.delete(_objects_PDFName__WEBPACK_IMPORTED_MODULE_2__["default"].of('Parent'));
             return _this.copyPDFDict(clonedPage);
         };
         this.copyPDFDict = function (originalDict) {
@@ -13592,38 +13614,38 @@ var PDFPageLeaf = /** @class */ (function (_super) {
         return clone;
     };
     PDFPageLeaf.prototype.Parent = function () {
-        return this.lookupMaybe(_objects_PDFName__WEBPACK_IMPORTED_MODULE_2__.default.Parent, _objects_PDFDict__WEBPACK_IMPORTED_MODULE_1__.default);
+        return this.lookupMaybe(_objects_PDFName__WEBPACK_IMPORTED_MODULE_2__["default"].Parent, _objects_PDFDict__WEBPACK_IMPORTED_MODULE_1__["default"]);
     };
     PDFPageLeaf.prototype.Contents = function () {
-        return this.lookup(_objects_PDFName__WEBPACK_IMPORTED_MODULE_2__.default.of('Contents'));
+        return this.lookup(_objects_PDFName__WEBPACK_IMPORTED_MODULE_2__["default"].of('Contents'));
     };
     PDFPageLeaf.prototype.Annots = function () {
-        return this.lookupMaybe(_objects_PDFName__WEBPACK_IMPORTED_MODULE_2__.default.Annots, _objects_PDFArray__WEBPACK_IMPORTED_MODULE_0__.default);
+        return this.lookupMaybe(_objects_PDFName__WEBPACK_IMPORTED_MODULE_2__["default"].Annots, _objects_PDFArray__WEBPACK_IMPORTED_MODULE_0__["default"]);
     };
     PDFPageLeaf.prototype.BleedBox = function () {
-        return this.lookupMaybe(_objects_PDFName__WEBPACK_IMPORTED_MODULE_2__.default.BleedBox, _objects_PDFArray__WEBPACK_IMPORTED_MODULE_0__.default);
+        return this.lookupMaybe(_objects_PDFName__WEBPACK_IMPORTED_MODULE_2__["default"].BleedBox, _objects_PDFArray__WEBPACK_IMPORTED_MODULE_0__["default"]);
     };
     PDFPageLeaf.prototype.TrimBox = function () {
-        return this.lookupMaybe(_objects_PDFName__WEBPACK_IMPORTED_MODULE_2__.default.TrimBox, _objects_PDFArray__WEBPACK_IMPORTED_MODULE_0__.default);
+        return this.lookupMaybe(_objects_PDFName__WEBPACK_IMPORTED_MODULE_2__["default"].TrimBox, _objects_PDFArray__WEBPACK_IMPORTED_MODULE_0__["default"]);
     };
     PDFPageLeaf.prototype.ArtBox = function () {
-        return this.lookupMaybe(_objects_PDFName__WEBPACK_IMPORTED_MODULE_2__.default.ArtBox, _objects_PDFArray__WEBPACK_IMPORTED_MODULE_0__.default);
+        return this.lookupMaybe(_objects_PDFName__WEBPACK_IMPORTED_MODULE_2__["default"].ArtBox, _objects_PDFArray__WEBPACK_IMPORTED_MODULE_0__["default"]);
     };
     PDFPageLeaf.prototype.Resources = function () {
-        var dictOrRef = this.getInheritableAttribute(_objects_PDFName__WEBPACK_IMPORTED_MODULE_2__.default.Resources);
-        return this.context.lookupMaybe(dictOrRef, _objects_PDFDict__WEBPACK_IMPORTED_MODULE_1__.default);
+        var dictOrRef = this.getInheritableAttribute(_objects_PDFName__WEBPACK_IMPORTED_MODULE_2__["default"].Resources);
+        return this.context.lookupMaybe(dictOrRef, _objects_PDFDict__WEBPACK_IMPORTED_MODULE_1__["default"]);
     };
     PDFPageLeaf.prototype.MediaBox = function () {
-        var arrayOrRef = this.getInheritableAttribute(_objects_PDFName__WEBPACK_IMPORTED_MODULE_2__.default.MediaBox);
-        return this.context.lookup(arrayOrRef, _objects_PDFArray__WEBPACK_IMPORTED_MODULE_0__.default);
+        var arrayOrRef = this.getInheritableAttribute(_objects_PDFName__WEBPACK_IMPORTED_MODULE_2__["default"].MediaBox);
+        return this.context.lookup(arrayOrRef, _objects_PDFArray__WEBPACK_IMPORTED_MODULE_0__["default"]);
     };
     PDFPageLeaf.prototype.CropBox = function () {
-        var arrayOrRef = this.getInheritableAttribute(_objects_PDFName__WEBPACK_IMPORTED_MODULE_2__.default.CropBox);
-        return this.context.lookupMaybe(arrayOrRef, _objects_PDFArray__WEBPACK_IMPORTED_MODULE_0__.default);
+        var arrayOrRef = this.getInheritableAttribute(_objects_PDFName__WEBPACK_IMPORTED_MODULE_2__["default"].CropBox);
+        return this.context.lookupMaybe(arrayOrRef, _objects_PDFArray__WEBPACK_IMPORTED_MODULE_0__["default"]);
     };
     PDFPageLeaf.prototype.Rotate = function () {
-        var numberOrRef = this.getInheritableAttribute(_objects_PDFName__WEBPACK_IMPORTED_MODULE_2__.default.Rotate);
-        return this.context.lookupMaybe(numberOrRef, _objects_PDFNumber__WEBPACK_IMPORTED_MODULE_3__.default);
+        var numberOrRef = this.getInheritableAttribute(_objects_PDFName__WEBPACK_IMPORTED_MODULE_2__["default"].Rotate);
+        return this.context.lookupMaybe(numberOrRef, _objects_PDFNumber__WEBPACK_IMPORTED_MODULE_3__["default"]);
     };
     PDFPageLeaf.prototype.getInheritableAttribute = function (name) {
         var attribute;
@@ -13634,16 +13656,16 @@ var PDFPageLeaf = /** @class */ (function (_super) {
         return attribute;
     };
     PDFPageLeaf.prototype.setParent = function (parentRef) {
-        this.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_2__.default.Parent, parentRef);
+        this.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_2__["default"].Parent, parentRef);
     };
     PDFPageLeaf.prototype.addContentStream = function (contentStreamRef) {
         var Contents = this.normalizedEntries().Contents || this.context.obj([]);
-        this.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_2__.default.Contents, Contents);
+        this.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_2__["default"].Contents, Contents);
         Contents.push(contentStreamRef);
     };
     PDFPageLeaf.prototype.wrapContentStreams = function (startStream, endStream) {
         var Contents = this.Contents();
-        if (Contents instanceof _objects_PDFArray__WEBPACK_IMPORTED_MODULE_0__.default) {
+        if (Contents instanceof _objects_PDFArray__WEBPACK_IMPORTED_MODULE_0__["default"]) {
             Contents.insert(0, startStream);
             Contents.push(endStream);
             return true;
@@ -13683,29 +13705,29 @@ var PDFPageLeaf = /** @class */ (function (_super) {
         if (this.normalized)
             return;
         var context = this.context;
-        var contentsRef = this.get(_objects_PDFName__WEBPACK_IMPORTED_MODULE_2__.default.Contents);
+        var contentsRef = this.get(_objects_PDFName__WEBPACK_IMPORTED_MODULE_2__["default"].Contents);
         var contents = this.context.lookup(contentsRef);
-        if (contents instanceof _objects_PDFStream__WEBPACK_IMPORTED_MODULE_4__.default) {
-            this.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_2__.default.Contents, context.obj([contentsRef]));
+        if (contents instanceof _objects_PDFStream__WEBPACK_IMPORTED_MODULE_4__["default"]) {
+            this.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_2__["default"].Contents, context.obj([contentsRef]));
         }
         if (this.autoNormalizeCTM) {
             this.wrapContentStreams(this.context.getPushGraphicsStateContentStream(), this.context.getPopGraphicsStateContentStream());
         }
         // TODO: Clone `Resources` if it is inherited
-        var dictOrRef = this.getInheritableAttribute(_objects_PDFName__WEBPACK_IMPORTED_MODULE_2__.default.Resources);
-        var Resources = context.lookupMaybe(dictOrRef, _objects_PDFDict__WEBPACK_IMPORTED_MODULE_1__.default) || context.obj({});
-        this.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_2__.default.Resources, Resources);
+        var dictOrRef = this.getInheritableAttribute(_objects_PDFName__WEBPACK_IMPORTED_MODULE_2__["default"].Resources);
+        var Resources = context.lookupMaybe(dictOrRef, _objects_PDFDict__WEBPACK_IMPORTED_MODULE_1__["default"]) || context.obj({});
+        this.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_2__["default"].Resources, Resources);
         // TODO: Clone `Font` if it is inherited
-        var Font = Resources.lookupMaybe(_objects_PDFName__WEBPACK_IMPORTED_MODULE_2__.default.Font, _objects_PDFDict__WEBPACK_IMPORTED_MODULE_1__.default) || context.obj({});
-        Resources.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_2__.default.Font, Font);
+        var Font = Resources.lookupMaybe(_objects_PDFName__WEBPACK_IMPORTED_MODULE_2__["default"].Font, _objects_PDFDict__WEBPACK_IMPORTED_MODULE_1__["default"]) || context.obj({});
+        Resources.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_2__["default"].Font, Font);
         // TODO: Clone `XObject` if it is inherited
-        var XObject = Resources.lookupMaybe(_objects_PDFName__WEBPACK_IMPORTED_MODULE_2__.default.XObject, _objects_PDFDict__WEBPACK_IMPORTED_MODULE_1__.default) || context.obj({});
-        Resources.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_2__.default.XObject, XObject);
+        var XObject = Resources.lookupMaybe(_objects_PDFName__WEBPACK_IMPORTED_MODULE_2__["default"].XObject, _objects_PDFDict__WEBPACK_IMPORTED_MODULE_1__["default"]) || context.obj({});
+        Resources.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_2__["default"].XObject, XObject);
         // TODO: Clone `ExtGState` if it is inherited
-        var ExtGState = Resources.lookupMaybe(_objects_PDFName__WEBPACK_IMPORTED_MODULE_2__.default.ExtGState, _objects_PDFDict__WEBPACK_IMPORTED_MODULE_1__.default) || context.obj({});
-        Resources.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_2__.default.ExtGState, ExtGState);
+        var ExtGState = Resources.lookupMaybe(_objects_PDFName__WEBPACK_IMPORTED_MODULE_2__["default"].ExtGState, _objects_PDFDict__WEBPACK_IMPORTED_MODULE_1__["default"]) || context.obj({});
+        Resources.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_2__["default"].ExtGState, ExtGState);
         var Annots = this.Annots() || context.obj([]);
-        this.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_2__.default.Annots, Annots);
+        this.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_2__["default"].Annots, Annots);
         this.normalized = true;
     };
     PDFPageLeaf.prototype.normalizedEntries = function () {
@@ -13717,9 +13739,9 @@ var PDFPageLeaf = /** @class */ (function (_super) {
             Annots: Annots,
             Resources: Resources,
             Contents: Contents,
-            Font: Resources.lookup(_objects_PDFName__WEBPACK_IMPORTED_MODULE_2__.default.Font, _objects_PDFDict__WEBPACK_IMPORTED_MODULE_1__.default),
-            XObject: Resources.lookup(_objects_PDFName__WEBPACK_IMPORTED_MODULE_2__.default.XObject, _objects_PDFDict__WEBPACK_IMPORTED_MODULE_1__.default),
-            ExtGState: Resources.lookup(_objects_PDFName__WEBPACK_IMPORTED_MODULE_2__.default.ExtGState, _objects_PDFDict__WEBPACK_IMPORTED_MODULE_1__.default),
+            Font: Resources.lookup(_objects_PDFName__WEBPACK_IMPORTED_MODULE_2__["default"].Font, _objects_PDFDict__WEBPACK_IMPORTED_MODULE_1__["default"]),
+            XObject: Resources.lookup(_objects_PDFName__WEBPACK_IMPORTED_MODULE_2__["default"].XObject, _objects_PDFDict__WEBPACK_IMPORTED_MODULE_1__["default"]),
+            ExtGState: Resources.lookup(_objects_PDFName__WEBPACK_IMPORTED_MODULE_2__["default"].ExtGState, _objects_PDFDict__WEBPACK_IMPORTED_MODULE_1__["default"]),
         };
     };
     PDFPageLeaf.InheritableEntries = [
@@ -13730,10 +13752,10 @@ var PDFPageLeaf = /** @class */ (function (_super) {
     ];
     PDFPageLeaf.withContextAndParent = function (context, parent) {
         var dict = new Map();
-        dict.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_2__.default.Type, _objects_PDFName__WEBPACK_IMPORTED_MODULE_2__.default.Page);
-        dict.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_2__.default.Parent, parent);
-        dict.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_2__.default.Resources, context.obj({}));
-        dict.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_2__.default.MediaBox, context.obj([0, 0, 612, 792]));
+        dict.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_2__["default"].Type, _objects_PDFName__WEBPACK_IMPORTED_MODULE_2__["default"].Page);
+        dict.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_2__["default"].Parent, parent);
+        dict.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_2__["default"].Resources, context.obj({}));
+        dict.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_2__["default"].MediaBox, context.obj([0, 0, 612, 792]));
         return new PDFPageLeaf(dict, context, false);
     };
     PDFPageLeaf.fromMapWithContext = function (map, context, autoNormalizeCTM) {
@@ -13741,7 +13763,7 @@ var PDFPageLeaf = /** @class */ (function (_super) {
         return new PDFPageLeaf(map, context, autoNormalizeCTM);
     };
     return PDFPageLeaf;
-}(_objects_PDFDict__WEBPACK_IMPORTED_MODULE_1__.default));
+}(_objects_PDFDict__WEBPACK_IMPORTED_MODULE_1__["default"]));
 /* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (PDFPageLeaf);
 //# sourceMappingURL=PDFPageLeaf.js.map
 
@@ -13792,8 +13814,8 @@ var PDFWriter = /** @class */ (function () {
                         offset = 0;
                         buffer = new Uint8Array(size);
                         offset += header.copyBytesInto(buffer, offset);
-                        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_5__.default.Newline;
-                        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_5__.default.Newline;
+                        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_5__["default"].Newline;
+                        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_5__["default"].Newline;
                         idx = 0, len = indirectObjects.length;
                         _c.label = 2;
                     case 2:
@@ -13801,25 +13823,25 @@ var PDFWriter = /** @class */ (function () {
                         _b = indirectObjects[idx], ref = _b[0], object = _b[1];
                         objectNumber = String(ref.objectNumber);
                         offset += (0,_utils__WEBPACK_IMPORTED_MODULE_6__.copyStringIntoBuffer)(objectNumber, buffer, offset);
-                        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_5__.default.Space;
+                        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_5__["default"].Space;
                         generationNumber = String(ref.generationNumber);
                         offset += (0,_utils__WEBPACK_IMPORTED_MODULE_6__.copyStringIntoBuffer)(generationNumber, buffer, offset);
-                        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_5__.default.Space;
-                        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_5__.default.o;
-                        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_5__.default.b;
-                        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_5__.default.j;
-                        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_5__.default.Newline;
+                        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_5__["default"].Space;
+                        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_5__["default"].o;
+                        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_5__["default"].b;
+                        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_5__["default"].j;
+                        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_5__["default"].Newline;
                         offset += object.copyBytesInto(buffer, offset);
-                        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_5__.default.Newline;
-                        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_5__.default.e;
-                        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_5__.default.n;
-                        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_5__.default.d;
-                        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_5__.default.o;
-                        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_5__.default.b;
-                        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_5__.default.j;
-                        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_5__.default.Newline;
-                        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_5__.default.Newline;
-                        n = object instanceof _structures_PDFObjectStream__WEBPACK_IMPORTED_MODULE_4__.default ? object.getObjectsCount() : 1;
+                        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_5__["default"].Newline;
+                        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_5__["default"].e;
+                        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_5__["default"].n;
+                        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_5__["default"].d;
+                        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_5__["default"].o;
+                        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_5__["default"].b;
+                        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_5__["default"].j;
+                        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_5__["default"].Newline;
+                        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_5__["default"].Newline;
+                        n = object instanceof _structures_PDFObjectStream__WEBPACK_IMPORTED_MODULE_4__["default"] ? object.getObjectsCount() : 1;
                         if (!this.shouldWaitForTick(n)) return [3 /*break*/, 4];
                         return [4 /*yield*/, (0,_utils__WEBPACK_IMPORTED_MODULE_6__.waitForTick)()];
                     case 3:
@@ -13831,12 +13853,12 @@ var PDFWriter = /** @class */ (function () {
                     case 5:
                         if (xref) {
                             offset += xref.copyBytesInto(buffer, offset);
-                            buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_5__.default.Newline;
+                            buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_5__["default"].Newline;
                         }
                         if (trailerDict) {
                             offset += trailerDict.copyBytesInto(buffer, offset);
-                            buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_5__.default.Newline;
-                            buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_5__.default.Newline;
+                            buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_5__["default"].Newline;
+                            buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_5__["default"].Newline;
                         }
                         offset += trailer.copyBytesInto(buffer, offset);
                         return [2 /*return*/, buffer];
@@ -13865,9 +13887,9 @@ var PDFWriter = /** @class */ (function () {
             return (0,tslib__WEBPACK_IMPORTED_MODULE_7__.__generator)(this, function (_a) {
                 switch (_a.label) {
                     case 0:
-                        header = _document_PDFHeader__WEBPACK_IMPORTED_MODULE_1__.default.forVersion(1, 7);
+                        header = _document_PDFHeader__WEBPACK_IMPORTED_MODULE_1__["default"].forVersion(1, 7);
                         size = header.sizeInBytes() + 2;
-                        xref = _document_PDFCrossRefSection__WEBPACK_IMPORTED_MODULE_0__.default.create();
+                        xref = _document_PDFCrossRefSection__WEBPACK_IMPORTED_MODULE_0__["default"].create();
                         indirectObjects = this.context.enumerateIndirectObjects();
                         idx = 0, len = indirectObjects.length;
                         _a.label = 1;
@@ -13888,9 +13910,9 @@ var PDFWriter = /** @class */ (function () {
                     case 4:
                         xrefOffset = size;
                         size += xref.sizeInBytes() + 1; // '\n'
-                        trailerDict = _document_PDFTrailerDict__WEBPACK_IMPORTED_MODULE_3__.default.of(this.createTrailerDict());
+                        trailerDict = _document_PDFTrailerDict__WEBPACK_IMPORTED_MODULE_3__["default"].of(this.createTrailerDict());
                         size += trailerDict.sizeInBytes() + 2; // '\n\n'
-                        trailer = _document_PDFTrailer__WEBPACK_IMPORTED_MODULE_2__.default.forLastCrossRefSectionOffset(xrefOffset);
+                        trailer = _document_PDFTrailer__WEBPACK_IMPORTED_MODULE_2__["default"].forLastCrossRefSectionOffset(xrefOffset);
                         size += trailer.sizeInBytes();
                         return [2 /*return*/, { size: size, header: header, indirectObjects: indirectObjects, xref: xref, trailerDict: trailerDict, trailer: trailer }];
                 }
@@ -13968,11 +13990,11 @@ var PDFCrossRefSection = /** @class */ (function () {
     };
     PDFCrossRefSection.prototype.copyBytesInto = function (buffer, offset) {
         var initialOffset = offset;
-        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_1__.default.x;
-        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_1__.default.r;
-        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_1__.default.e;
-        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_1__.default.f;
-        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_1__.default.Newline;
+        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_1__["default"].x;
+        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_1__["default"].r;
+        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_1__["default"].e;
+        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_1__["default"].f;
+        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_1__["default"].Newline;
         offset += this.copySubsectionsIntoBuffer(this.subsections, buffer, offset);
         return offset - initialOffset;
     };
@@ -13983,10 +14005,10 @@ var PDFCrossRefSection = /** @class */ (function () {
             var subsection = this.subsections[idx];
             var firstObjectNumber = String(subsection[0].ref.objectNumber);
             offset += (0,_utils__WEBPACK_IMPORTED_MODULE_2__.copyStringIntoBuffer)(firstObjectNumber, buffer, offset);
-            buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_1__.default.Space;
+            buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_1__["default"].Space;
             var rangeLength = String(subsection.length);
             offset += (0,_utils__WEBPACK_IMPORTED_MODULE_2__.copyStringIntoBuffer)(rangeLength, buffer, offset);
-            buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_1__.default.Newline;
+            buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_1__["default"].Newline;
             offset += this.copyEntriesIntoBuffer(subsection, buffer, offset);
         }
         return offset - initialOffset;
@@ -13997,13 +14019,13 @@ var PDFCrossRefSection = /** @class */ (function () {
             var entry = entries[idx];
             var entryOffset = (0,_utils__WEBPACK_IMPORTED_MODULE_2__.padStart)(String(entry.offset), 10, '0');
             offset += (0,_utils__WEBPACK_IMPORTED_MODULE_2__.copyStringIntoBuffer)(entryOffset, buffer, offset);
-            buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_1__.default.Space;
+            buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_1__["default"].Space;
             var entryGen = (0,_utils__WEBPACK_IMPORTED_MODULE_2__.padStart)(String(entry.ref.generationNumber), 5, '0');
             offset += (0,_utils__WEBPACK_IMPORTED_MODULE_2__.copyStringIntoBuffer)(entryGen, buffer, offset);
-            buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_1__.default.Space;
-            buffer[offset++] = entry.deleted ? _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_1__.default.f : _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_1__.default.n;
-            buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_1__.default.Space;
-            buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_1__.default.Newline;
+            buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_1__["default"].Space;
+            buffer[offset++] = entry.deleted ? _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_1__["default"].f : _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_1__["default"].n;
+            buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_1__["default"].Space;
+            buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_1__["default"].Newline;
         }
         return 20 * length;
     };
@@ -14028,7 +14050,7 @@ var PDFCrossRefSection = /** @class */ (function () {
     };
     PDFCrossRefSection.create = function () {
         return new PDFCrossRefSection({
-            ref: _objects_PDFRef__WEBPACK_IMPORTED_MODULE_0__.default.of(0, 65535),
+            ref: _objects_PDFRef__WEBPACK_IMPORTED_MODULE_0__["default"].of(0, 65535),
             offset: 0,
             deleted: true,
         });
@@ -14064,23 +14086,23 @@ var PDFTrailer = /** @class */ (function () {
     };
     PDFTrailer.prototype.copyBytesInto = function (buffer, offset) {
         var initialOffset = offset;
-        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_0__.default.s;
-        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_0__.default.t;
-        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_0__.default.a;
-        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_0__.default.r;
-        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_0__.default.t;
-        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_0__.default.x;
-        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_0__.default.r;
-        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_0__.default.e;
-        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_0__.default.f;
-        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_0__.default.Newline;
+        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_0__["default"].s;
+        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_0__["default"].t;
+        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_0__["default"].a;
+        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_0__["default"].r;
+        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_0__["default"].t;
+        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_0__["default"].x;
+        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_0__["default"].r;
+        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_0__["default"].e;
+        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_0__["default"].f;
+        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_0__["default"].Newline;
         offset += (0,_utils__WEBPACK_IMPORTED_MODULE_1__.copyStringIntoBuffer)(this.lastXRefOffset, buffer, offset);
-        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_0__.default.Newline;
-        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_0__.default.Percent;
-        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_0__.default.Percent;
-        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_0__.default.E;
-        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_0__.default.O;
-        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_0__.default.F;
+        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_0__["default"].Newline;
+        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_0__["default"].Percent;
+        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_0__["default"].Percent;
+        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_0__["default"].E;
+        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_0__["default"].O;
+        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_0__["default"].F;
         return offset - initialOffset;
     };
     PDFTrailer.forLastCrossRefSectionOffset = function (offset) {
@@ -14114,14 +14136,14 @@ var PDFTrailerDict = /** @class */ (function () {
     };
     PDFTrailerDict.prototype.copyBytesInto = function (buffer, offset) {
         var initialOffset = offset;
-        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_0__.default.t;
-        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_0__.default.r;
-        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_0__.default.a;
-        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_0__.default.i;
-        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_0__.default.l;
-        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_0__.default.e;
-        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_0__.default.r;
-        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_0__.default.Newline;
+        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_0__["default"].t;
+        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_0__["default"].r;
+        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_0__["default"].a;
+        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_0__["default"].i;
+        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_0__["default"].l;
+        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_0__["default"].e;
+        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_0__["default"].r;
+        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_0__["default"].Newline;
         offset += this.dict.copyBytesInto(buffer, offset);
         return offset - initialOffset;
     };
@@ -14160,9 +14182,9 @@ var PDFObjectStream = /** @class */ (function (_super) {
         _this.objects = objects;
         _this.offsets = _this.computeObjectOffsets();
         _this.offsetsString = _this.computeOffsetsString();
-        _this.dict.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_0__.default.of('Type'), _objects_PDFName__WEBPACK_IMPORTED_MODULE_0__.default.of('ObjStm'));
-        _this.dict.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_0__.default.of('N'), _objects_PDFNumber__WEBPACK_IMPORTED_MODULE_1__.default.of(_this.objects.length));
-        _this.dict.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_0__.default.of('First'), _objects_PDFNumber__WEBPACK_IMPORTED_MODULE_1__.default.of(_this.offsetsString.length));
+        _this.dict.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_0__["default"].of('Type'), _objects_PDFName__WEBPACK_IMPORTED_MODULE_0__["default"].of('ObjStm'));
+        _this.dict.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_0__["default"].of('N'), _objects_PDFNumber__WEBPACK_IMPORTED_MODULE_1__["default"].of(_this.objects.length));
+        _this.dict.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_0__["default"].of('First'), _objects_PDFNumber__WEBPACK_IMPORTED_MODULE_1__["default"].of(_this.offsetsString.length));
         return _this;
     }
     PDFObjectStream.prototype.getObjectsCount = function () {
@@ -14185,7 +14207,7 @@ var PDFObjectStream = /** @class */ (function (_super) {
         for (var idx = 0, len = this.objects.length; idx < len; idx++) {
             var _a = this.objects[idx], object = _a[1];
             offset += object.copyBytesInto(buffer, offset);
-            buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_3__.default.Newline;
+            buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_3__["default"].Newline;
         }
         return buffer;
     };
@@ -14218,7 +14240,7 @@ var PDFObjectStream = /** @class */ (function (_super) {
         return new PDFObjectStream(context, objects, encode);
     };
     return PDFObjectStream;
-}(_PDFFlateStream__WEBPACK_IMPORTED_MODULE_2__.default));
+}(_PDFFlateStream__WEBPACK_IMPORTED_MODULE_2__["default"]));
 /* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (PDFObjectStream);
 //# sourceMappingURL=PDFObjectStream.js.map
 
@@ -14270,9 +14292,9 @@ var PDFStreamWriter = /** @class */ (function (_super) {
                 switch (_a.label) {
                     case 0:
                         objectNumber = this.context.largestObjectNumber + 1;
-                        header = _document_PDFHeader__WEBPACK_IMPORTED_MODULE_0__.default.forVersion(1, 7);
+                        header = _document_PDFHeader__WEBPACK_IMPORTED_MODULE_0__["default"].forVersion(1, 7);
                         size = header.sizeInBytes() + 2;
-                        xrefStream = _structures_PDFCrossRefStream__WEBPACK_IMPORTED_MODULE_7__.default.create(this.createTrailerDict(), this.encodeStreams);
+                        xrefStream = _structures_PDFCrossRefStream__WEBPACK_IMPORTED_MODULE_7__["default"].create(this.createTrailerDict(), this.encodeStreams);
                         uncompressedObjects = [];
                         compressedObjects = [];
                         objectStreamRefs = [];
@@ -14284,8 +14306,8 @@ var PDFStreamWriter = /** @class */ (function (_super) {
                         indirectObject = indirectObjects[idx];
                         ref = indirectObject[0], object = indirectObject[1];
                         shouldNotCompress = ref === this.context.trailerInfo.Encrypt ||
-                            object instanceof _objects_PDFStream__WEBPACK_IMPORTED_MODULE_6__.default ||
-                            object instanceof _objects_PDFInvalidObject__WEBPACK_IMPORTED_MODULE_2__.default ||
+                            object instanceof _objects_PDFStream__WEBPACK_IMPORTED_MODULE_6__["default"] ||
+                            object instanceof _objects_PDFInvalidObject__WEBPACK_IMPORTED_MODULE_2__["default"] ||
                             ref.generationNumber !== 0;
                         if (!shouldNotCompress) return [3 /*break*/, 4];
                         uncompressedObjects.push(indirectObject);
@@ -14303,7 +14325,7 @@ var PDFStreamWriter = /** @class */ (function (_super) {
                         if (!chunk || chunk.length % this.objectsPerStream === 0) {
                             chunk = [];
                             compressedObjects.push(chunk);
-                            objectStreamRef = _objects_PDFRef__WEBPACK_IMPORTED_MODULE_5__.default.of(objectNumber++);
+                            objectStreamRef = _objects_PDFRef__WEBPACK_IMPORTED_MODULE_5__["default"].of(objectNumber++);
                             objectStreamRefs.push(objectStreamRef);
                         }
                         xrefStream.addCompressedEntry(ref, objectStreamRef, chunk.length);
@@ -14319,7 +14341,7 @@ var PDFStreamWriter = /** @class */ (function (_super) {
                         if (!(idx < len)) return [3 /*break*/, 10];
                         chunk = compressedObjects[idx];
                         ref = objectStreamRefs[idx];
-                        objectStream = _structures_PDFObjectStream__WEBPACK_IMPORTED_MODULE_8__.default.withContextAndObjects(this.context, chunk, this.encodeStreams);
+                        objectStream = _structures_PDFObjectStream__WEBPACK_IMPORTED_MODULE_8__["default"].withContextAndObjects(this.context, chunk, this.encodeStreams);
                         xrefStream.addUncompressedEntry(ref, size);
                         size += this.computeIndirectObjectSize([ref, objectStream]);
                         uncompressedObjects.push([ref, objectStream]);
@@ -14332,13 +14354,13 @@ var PDFStreamWriter = /** @class */ (function (_super) {
                         idx++;
                         return [3 /*break*/, 7];
                     case 10:
-                        xrefStreamRef = _objects_PDFRef__WEBPACK_IMPORTED_MODULE_5__.default.of(objectNumber++);
-                        xrefStream.dict.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_3__.default.of('Size'), _objects_PDFNumber__WEBPACK_IMPORTED_MODULE_4__.default.of(objectNumber));
+                        xrefStreamRef = _objects_PDFRef__WEBPACK_IMPORTED_MODULE_5__["default"].of(objectNumber++);
+                        xrefStream.dict.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_3__["default"].of('Size'), _objects_PDFNumber__WEBPACK_IMPORTED_MODULE_4__["default"].of(objectNumber));
                         xrefStream.addUncompressedEntry(xrefStreamRef, size);
                         xrefOffset = size;
                         size += this.computeIndirectObjectSize([xrefStreamRef, xrefStream]);
                         uncompressedObjects.push([xrefStreamRef, xrefStream]);
-                        trailer = _document_PDFTrailer__WEBPACK_IMPORTED_MODULE_1__.default.forLastCrossRefSectionOffset(xrefOffset);
+                        trailer = _document_PDFTrailer__WEBPACK_IMPORTED_MODULE_1__["default"].forLastCrossRefSectionOffset(xrefOffset);
                         size += trailer.sizeInBytes();
                         return [2 /*return*/, { size: size, header: header, indirectObjects: uncompressedObjects, trailer: trailer }];
                 }
@@ -14351,7 +14373,7 @@ var PDFStreamWriter = /** @class */ (function (_super) {
         return new PDFStreamWriter(context, objectsPerTick, encodeStreams, objectsPerStream);
     };
     return PDFStreamWriter;
-}(_PDFWriter__WEBPACK_IMPORTED_MODULE_9__.default));
+}(_PDFWriter__WEBPACK_IMPORTED_MODULE_9__["default"]));
 /* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (PDFStreamWriter);
 //# sourceMappingURL=PDFStreamWriter.js.map
 
@@ -14393,7 +14415,7 @@ var PDFInvalidObject = /** @class */ (function (_super) {
     };
     PDFInvalidObject.of = function (data) { return new PDFInvalidObject(data); };
     return PDFInvalidObject;
-}(_PDFObject__WEBPACK_IMPORTED_MODULE_0__.default));
+}(_PDFObject__WEBPACK_IMPORTED_MODULE_0__["default"]));
 /* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (PDFInvalidObject);
 //# sourceMappingURL=PDFInvalidObject.js.map
 
@@ -14495,7 +14517,7 @@ var PDFCrossRefStream = /** @class */ (function (_super) {
         _this.entryTuplesCache = _utils__WEBPACK_IMPORTED_MODULE_3__.Cache.populatedBy(_this.computeEntryTuples);
         _this.maxByteWidthsCache = _utils__WEBPACK_IMPORTED_MODULE_3__.Cache.populatedBy(_this.computeMaxEntryByteWidths);
         _this.indexCache = _utils__WEBPACK_IMPORTED_MODULE_3__.Cache.populatedBy(_this.computeIndex);
-        dict.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_0__.default.of('Type'), _objects_PDFName__WEBPACK_IMPORTED_MODULE_0__.default.of('XRef'));
+        dict.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_0__["default"].of('Type'), _objects_PDFName__WEBPACK_IMPORTED_MODULE_0__["default"].of('XRef'));
         return _this;
     }
     PDFCrossRefStream.prototype.addDeletedEntry = function (ref, nextFreeObjectNumber) {
@@ -14579,13 +14601,13 @@ var PDFCrossRefStream = /** @class */ (function (_super) {
         var byteWidths = this.maxByteWidthsCache.access();
         var index = this.indexCache.access();
         var context = this.dict.context;
-        this.dict.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_0__.default.of('W'), context.obj(byteWidths));
-        this.dict.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_0__.default.of('Index'), context.obj(index));
+        this.dict.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_0__["default"].of('W'), context.obj(byteWidths));
+        this.dict.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_0__["default"].of('Index'), context.obj(index));
     };
     PDFCrossRefStream.create = function (dict, encode) {
         if (encode === void 0) { encode = true; }
         var stream = new PDFCrossRefStream(dict, [], encode);
-        stream.addDeletedEntry(_objects_PDFRef__WEBPACK_IMPORTED_MODULE_1__.default.of(0, 65535), 0);
+        stream.addDeletedEntry(_objects_PDFRef__WEBPACK_IMPORTED_MODULE_1__["default"].of(0, 65535), 0);
         return stream;
     };
     PDFCrossRefStream.of = function (dict, entries, encode) {
@@ -14593,7 +14615,7 @@ var PDFCrossRefStream = /** @class */ (function (_super) {
         return new PDFCrossRefStream(dict, entries, encode);
     };
     return PDFCrossRefStream;
-}(_PDFFlateStream__WEBPACK_IMPORTED_MODULE_2__.default));
+}(_PDFFlateStream__WEBPACK_IMPORTED_MODULE_2__["default"]));
 /* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (PDFCrossRefStream);
 //# sourceMappingURL=PDFCrossRefStream.js.map
 
@@ -14638,7 +14660,7 @@ var StandardFontEmbedder = /** @class */ (function () {
         for (var idx = 0, len = glyphs.length; idx < len; idx++) {
             hexCodes[idx] = (0,_utils__WEBPACK_IMPORTED_MODULE_2__.toHexString)(glyphs[idx].code);
         }
-        return _objects_PDFHexString__WEBPACK_IMPORTED_MODULE_1__.default.of(hexCodes.join(''));
+        return _objects_PDFHexString__WEBPACK_IMPORTED_MODULE_1__["default"].of(hexCodes.join(''));
     };
     StandardFontEmbedder.prototype.widthOfTextAtSize = function (text, size) {
         var glyphs = this.encodeTextAsGlyphs(text);
@@ -14773,9 +14795,9 @@ var PDFHexString = /** @class */ (function (_super) {
         return this.value.length + 2;
     };
     PDFHexString.prototype.copyBytesInto = function (buffer, offset) {
-        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_1__.default.LessThan;
+        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_1__["default"].LessThan;
         offset += (0,_utils__WEBPACK_IMPORTED_MODULE_2__.copyStringIntoBuffer)(this.value, buffer, offset);
-        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_1__.default.GreaterThan;
+        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_1__["default"].GreaterThan;
         return this.value.length + 2;
     };
     PDFHexString.of = function (value) { return new PDFHexString(value); };
@@ -14788,7 +14810,7 @@ var PDFHexString = /** @class */ (function (_super) {
         return new PDFHexString(hex);
     };
     return PDFHexString;
-}(_PDFObject__WEBPACK_IMPORTED_MODULE_0__.default));
+}(_PDFObject__WEBPACK_IMPORTED_MODULE_0__["default"]));
 /* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (PDFHexString);
 //# sourceMappingURL=PDFHexString.js.map
 
@@ -14861,7 +14883,7 @@ var CustomFontEmbedder = /** @class */ (function () {
         for (var idx = 0, len = glyphs.length; idx < len; idx++) {
             hexCodes[idx] = (0,_utils__WEBPACK_IMPORTED_MODULE_4__.toHexStringOfMinLength)(glyphs[idx].id, 4);
         }
-        return _objects_PDFHexString__WEBPACK_IMPORTED_MODULE_2__.default.of(hexCodes.join(''));
+        return _objects_PDFHexString__WEBPACK_IMPORTED_MODULE_2__["default"].of(hexCodes.join(''));
     };
     // The advanceWidth takes into account kerning automatically, so we don't
     // have to do that manually like we do for the standard fonts.
@@ -14941,8 +14963,8 @@ var CustomFontEmbedder = /** @class */ (function () {
                             CIDToGIDMap: 'Identity',
                             BaseFont: this.baseFontName,
                             CIDSystemInfo: {
-                                Registry: _objects_PDFString__WEBPACK_IMPORTED_MODULE_3__.default.of('Adobe'),
-                                Ordering: _objects_PDFString__WEBPACK_IMPORTED_MODULE_3__.default.of('Identity'),
+                                Registry: _objects_PDFString__WEBPACK_IMPORTED_MODULE_3__["default"].of('Adobe'),
+                                Ordering: _objects_PDFString__WEBPACK_IMPORTED_MODULE_3__["default"].of('Identity'),
                                 Supplement: 0,
                             },
                             FontDescriptor: fontDescriptorRef,
@@ -15184,33 +15206,33 @@ var PDFString = /** @class */ (function (_super) {
             var byte = (0,_utils__WEBPACK_IMPORTED_MODULE_2__.toCharCode)(char);
             var nextChar = this.value[idx + 1];
             if (!escaped) {
-                if (byte === _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_1__.default.BackSlash)
+                if (byte === _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_1__["default"].BackSlash)
                     escaped = true;
                 else
                     pushByte(byte);
             }
             else {
-                if (byte === _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_1__.default.Newline)
+                if (byte === _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_1__["default"].Newline)
                     pushByte();
-                else if (byte === _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_1__.default.CarriageReturn)
+                else if (byte === _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_1__["default"].CarriageReturn)
                     pushByte();
-                else if (byte === _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_1__.default.n)
-                    pushByte(_syntax_CharCodes__WEBPACK_IMPORTED_MODULE_1__.default.Newline);
-                else if (byte === _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_1__.default.r)
-                    pushByte(_syntax_CharCodes__WEBPACK_IMPORTED_MODULE_1__.default.CarriageReturn);
-                else if (byte === _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_1__.default.t)
-                    pushByte(_syntax_CharCodes__WEBPACK_IMPORTED_MODULE_1__.default.Tab);
-                else if (byte === _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_1__.default.b)
-                    pushByte(_syntax_CharCodes__WEBPACK_IMPORTED_MODULE_1__.default.Backspace);
-                else if (byte === _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_1__.default.f)
-                    pushByte(_syntax_CharCodes__WEBPACK_IMPORTED_MODULE_1__.default.FormFeed);
-                else if (byte === _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_1__.default.LeftParen)
-                    pushByte(_syntax_CharCodes__WEBPACK_IMPORTED_MODULE_1__.default.LeftParen);
-                else if (byte === _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_1__.default.RightParen)
-                    pushByte(_syntax_CharCodes__WEBPACK_IMPORTED_MODULE_1__.default.RightParen);
-                else if (byte === _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_1__.default.Backspace)
-                    pushByte(_syntax_CharCodes__WEBPACK_IMPORTED_MODULE_1__.default.BackSlash);
-                else if (byte >= _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_1__.default.Zero && byte <= _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_1__.default.Seven) {
+                else if (byte === _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_1__["default"].n)
+                    pushByte(_syntax_CharCodes__WEBPACK_IMPORTED_MODULE_1__["default"].Newline);
+                else if (byte === _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_1__["default"].r)
+                    pushByte(_syntax_CharCodes__WEBPACK_IMPORTED_MODULE_1__["default"].CarriageReturn);
+                else if (byte === _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_1__["default"].t)
+                    pushByte(_syntax_CharCodes__WEBPACK_IMPORTED_MODULE_1__["default"].Tab);
+                else if (byte === _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_1__["default"].b)
+                    pushByte(_syntax_CharCodes__WEBPACK_IMPORTED_MODULE_1__["default"].Backspace);
+                else if (byte === _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_1__["default"].f)
+                    pushByte(_syntax_CharCodes__WEBPACK_IMPORTED_MODULE_1__["default"].FormFeed);
+                else if (byte === _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_1__["default"].LeftParen)
+                    pushByte(_syntax_CharCodes__WEBPACK_IMPORTED_MODULE_1__["default"].LeftParen);
+                else if (byte === _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_1__["default"].RightParen)
+                    pushByte(_syntax_CharCodes__WEBPACK_IMPORTED_MODULE_1__["default"].RightParen);
+                else if (byte === _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_1__["default"].Backspace)
+                    pushByte(_syntax_CharCodes__WEBPACK_IMPORTED_MODULE_1__["default"].BackSlash);
+                else if (byte >= _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_1__["default"].Zero && byte <= _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_1__["default"].Seven) {
                     octal += char;
                     if (octal.length === 3 || !(nextChar >= '0' && nextChar <= '7')) {
                         pushByte(parseInt(octal, 8));
@@ -15250,9 +15272,9 @@ var PDFString = /** @class */ (function (_super) {
         return this.value.length + 2;
     };
     PDFString.prototype.copyBytesInto = function (buffer, offset) {
-        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_1__.default.LeftParen;
+        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_1__["default"].LeftParen;
         offset += (0,_utils__WEBPACK_IMPORTED_MODULE_2__.copyStringIntoBuffer)(this.value, buffer, offset);
-        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_1__.default.RightParen;
+        buffer[offset++] = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_1__["default"].RightParen;
         return this.value.length + 2;
     };
     // The PDF spec allows newlines and parens to appear directly within a literal
@@ -15269,7 +15291,7 @@ var PDFString = /** @class */ (function (_super) {
         return new PDFString("D:" + year + month + day + hours + mins + secs + "Z");
     };
     return PDFString;
-}(_PDFObject__WEBPACK_IMPORTED_MODULE_0__.default));
+}(_PDFObject__WEBPACK_IMPORTED_MODULE_0__["default"]));
 /* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (PDFString);
 //# sourceMappingURL=PDFString.js.map
 
@@ -15329,7 +15351,7 @@ var CustomFontSubsetEmbedder = /** @class */ (function (_super) {
             hexCodes[idx] = (0,_utils__WEBPACK_IMPORTED_MODULE_2__.toHexStringOfMinLength)(subsetGlyphId, 4);
         }
         this.glyphCache.invalidate();
-        return _objects_PDFHexString__WEBPACK_IMPORTED_MODULE_1__.default.of(hexCodes.join(''));
+        return _objects_PDFHexString__WEBPACK_IMPORTED_MODULE_1__["default"].of(hexCodes.join(''));
     };
     CustomFontSubsetEmbedder.prototype.isCFF = function () {
         return this.subset.cff;
@@ -15349,7 +15371,7 @@ var CustomFontSubsetEmbedder = /** @class */ (function (_super) {
         });
     };
     return CustomFontSubsetEmbedder;
-}(_CustomFontEmbedder__WEBPACK_IMPORTED_MODULE_0__.default));
+}(_CustomFontEmbedder__WEBPACK_IMPORTED_MODULE_0__["default"]));
 /* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (CustomFontSubsetEmbedder);
 //# sourceMappingURL=CustomFontSubsetEmbedder.js.map
 
@@ -15407,20 +15429,20 @@ var FileEmbedder = /** @class */ (function () {
                     Params: {
                         Size: this.fileData.length,
                         CreationDate: creationDate
-                            ? _objects_PDFString__WEBPACK_IMPORTED_MODULE_0__.default.fromDate(creationDate)
+                            ? _objects_PDFString__WEBPACK_IMPORTED_MODULE_0__["default"].fromDate(creationDate)
                             : undefined,
                         ModDate: modificationDate
-                            ? _objects_PDFString__WEBPACK_IMPORTED_MODULE_0__.default.fromDate(modificationDate)
+                            ? _objects_PDFString__WEBPACK_IMPORTED_MODULE_0__["default"].fromDate(modificationDate)
                             : undefined,
                     },
                 });
                 embeddedFileStreamRef = context.register(embeddedFileStream);
                 fileSpecDict = context.obj({
                     Type: 'Filespec',
-                    F: _objects_PDFString__WEBPACK_IMPORTED_MODULE_0__.default.of(this.fileName),
-                    UF: _objects_PDFHexString__WEBPACK_IMPORTED_MODULE_1__.default.fromText(this.fileName),
+                    F: _objects_PDFString__WEBPACK_IMPORTED_MODULE_0__["default"].of(this.fileName),
+                    UF: _objects_PDFHexString__WEBPACK_IMPORTED_MODULE_1__["default"].fromText(this.fileName),
                     EF: { F: embeddedFileStreamRef },
-                    Desc: description ? _objects_PDFHexString__WEBPACK_IMPORTED_MODULE_1__.default.fromText(description) : undefined,
+                    Desc: description ? _objects_PDFHexString__WEBPACK_IMPORTED_MODULE_1__["default"].fromText(description) : undefined,
                     AFRelationship: afRelationship !== null && afRelationship !== void 0 ? afRelationship : undefined,
                 });
                 if (ref) {
@@ -15684,8 +15706,8 @@ var PngType;
 })(PngType || (PngType = {}));
 var PNG = /** @class */ (function () {
     function PNG(pngData) {
-        var upng = _pdf_lib_upng__WEBPACK_IMPORTED_MODULE_0__.default.decode(pngData);
-        var frames = _pdf_lib_upng__WEBPACK_IMPORTED_MODULE_0__.default.toRGBA8(upng);
+        var upng = _pdf_lib_upng__WEBPACK_IMPORTED_MODULE_0__["default"].decode(pngData);
+        var frames = _pdf_lib_upng__WEBPACK_IMPORTED_MODULE_0__["default"].toRGBA8(upng);
         if (frames.length > 1)
             throw new Error("Animated PNGs are not supported");
         var frame = new Uint8Array(frames[0]);
@@ -16774,10 +16796,10 @@ __webpack_require__.r(__webpack_exports__);
 
 var fullPageBoundingBox = function (page) {
     var mediaBox = page.MediaBox();
-    var width = mediaBox.lookup(2, _objects_PDFNumber__WEBPACK_IMPORTED_MODULE_1__.default).asNumber() -
-        mediaBox.lookup(0, _objects_PDFNumber__WEBPACK_IMPORTED_MODULE_1__.default).asNumber();
-    var height = mediaBox.lookup(3, _objects_PDFNumber__WEBPACK_IMPORTED_MODULE_1__.default).asNumber() -
-        mediaBox.lookup(1, _objects_PDFNumber__WEBPACK_IMPORTED_MODULE_1__.default).asNumber();
+    var width = mediaBox.lookup(2, _objects_PDFNumber__WEBPACK_IMPORTED_MODULE_1__["default"]).asNumber() -
+        mediaBox.lookup(0, _objects_PDFNumber__WEBPACK_IMPORTED_MODULE_1__["default"]).asNumber();
+    var height = mediaBox.lookup(3, _objects_PDFNumber__WEBPACK_IMPORTED_MODULE_1__["default"]).asNumber() -
+        mediaBox.lookup(1, _objects_PDFNumber__WEBPACK_IMPORTED_MODULE_1__["default"]).asNumber();
     return { left: 0, bottom: 0, right: width, top: height };
 };
 // Returns the identity matrix, modified to position the content of the given
@@ -16808,7 +16830,7 @@ var PDFPageEmbedder = /** @class */ (function () {
                     throw new _errors__WEBPACK_IMPORTED_MODULE_0__.MissingPageContentsEmbeddingError();
                 decodedContents = this.decodeContents(Contents);
                 _b = this.boundingBox, left = _b.left, bottom = _b.bottom, right = _b.right, top = _b.top;
-                xObject = context.flateStream(decodedContents, {
+                xObject = context.stream(decodedContents, {
                     Type: 'XObject',
                     Subtype: 'Form',
                     FormType: 1,
@@ -16830,15 +16852,15 @@ var PDFPageEmbedder = /** @class */ (function () {
     // `contents` is an array of streams which are merged to include them in the XObject.
     // This methods extracts each stream and joins them with a newline character.
     PDFPageEmbedder.prototype.decodeContents = function (contents) {
-        var newline = Uint8Array.of(_syntax_CharCodes__WEBPACK_IMPORTED_MODULE_6__.default.Newline);
+        var newline = Uint8Array.of(_syntax_CharCodes__WEBPACK_IMPORTED_MODULE_6__["default"].Newline);
         var decodedContents = [];
         for (var idx = 0, len = contents.size(); idx < len; idx++) {
-            var stream = contents.lookup(idx, _objects_PDFStream__WEBPACK_IMPORTED_MODULE_3__.default);
+            var stream = contents.lookup(idx, _objects_PDFStream__WEBPACK_IMPORTED_MODULE_3__["default"]);
             var content = void 0;
-            if (stream instanceof _objects_PDFRawStream__WEBPACK_IMPORTED_MODULE_2__.default) {
+            if (stream instanceof _objects_PDFRawStream__WEBPACK_IMPORTED_MODULE_2__["default"]) {
                 content = (0,_streams_decode__WEBPACK_IMPORTED_MODULE_4__.decodePDFRawStream)(stream).decode();
             }
-            else if (stream instanceof _structures_PDFContentStream__WEBPACK_IMPORTED_MODULE_5__.default) {
+            else if (stream instanceof _structures_PDFContentStream__WEBPACK_IMPORTED_MODULE_5__["default"]) {
                 content = stream.getUnencodedContents();
             }
             else {
@@ -16885,45 +16907,45 @@ __webpack_require__.r(__webpack_exports__);
 
 
 var decodeStream = function (stream, encoding, params) {
-    if (encoding === _objects_PDFName__WEBPACK_IMPORTED_MODULE_3__.default.of('FlateDecode')) {
-        return new _FlateStream__WEBPACK_IMPORTED_MODULE_7__.default(stream);
+    if (encoding === _objects_PDFName__WEBPACK_IMPORTED_MODULE_3__["default"].of('FlateDecode')) {
+        return new _FlateStream__WEBPACK_IMPORTED_MODULE_7__["default"](stream);
     }
-    if (encoding === _objects_PDFName__WEBPACK_IMPORTED_MODULE_3__.default.of('LZWDecode')) {
+    if (encoding === _objects_PDFName__WEBPACK_IMPORTED_MODULE_3__["default"].of('LZWDecode')) {
         var earlyChange = 1;
-        if (params instanceof _objects_PDFDict__WEBPACK_IMPORTED_MODULE_2__.default) {
-            var EarlyChange = params.lookup(_objects_PDFName__WEBPACK_IMPORTED_MODULE_3__.default.of('EarlyChange'));
-            if (EarlyChange instanceof _objects_PDFNumber__WEBPACK_IMPORTED_MODULE_4__.default) {
+        if (params instanceof _objects_PDFDict__WEBPACK_IMPORTED_MODULE_2__["default"]) {
+            var EarlyChange = params.lookup(_objects_PDFName__WEBPACK_IMPORTED_MODULE_3__["default"].of('EarlyChange'));
+            if (EarlyChange instanceof _objects_PDFNumber__WEBPACK_IMPORTED_MODULE_4__["default"]) {
                 earlyChange = EarlyChange.asNumber();
             }
         }
-        return new _LZWStream__WEBPACK_IMPORTED_MODULE_8__.default(stream, undefined, earlyChange);
+        return new _LZWStream__WEBPACK_IMPORTED_MODULE_8__["default"](stream, undefined, earlyChange);
     }
-    if (encoding === _objects_PDFName__WEBPACK_IMPORTED_MODULE_3__.default.of('ASCII85Decode')) {
-        return new _Ascii85Stream__WEBPACK_IMPORTED_MODULE_5__.default(stream);
+    if (encoding === _objects_PDFName__WEBPACK_IMPORTED_MODULE_3__["default"].of('ASCII85Decode')) {
+        return new _Ascii85Stream__WEBPACK_IMPORTED_MODULE_5__["default"](stream);
     }
-    if (encoding === _objects_PDFName__WEBPACK_IMPORTED_MODULE_3__.default.of('ASCIIHexDecode')) {
-        return new _AsciiHexStream__WEBPACK_IMPORTED_MODULE_6__.default(stream);
+    if (encoding === _objects_PDFName__WEBPACK_IMPORTED_MODULE_3__["default"].of('ASCIIHexDecode')) {
+        return new _AsciiHexStream__WEBPACK_IMPORTED_MODULE_6__["default"](stream);
     }
-    if (encoding === _objects_PDFName__WEBPACK_IMPORTED_MODULE_3__.default.of('RunLengthDecode')) {
-        return new _RunLengthStream__WEBPACK_IMPORTED_MODULE_9__.default(stream);
+    if (encoding === _objects_PDFName__WEBPACK_IMPORTED_MODULE_3__["default"].of('RunLengthDecode')) {
+        return new _RunLengthStream__WEBPACK_IMPORTED_MODULE_9__["default"](stream);
     }
     throw new _errors__WEBPACK_IMPORTED_MODULE_0__.UnsupportedEncodingError(encoding.asString());
 };
 var decodePDFRawStream = function (_a) {
     var dict = _a.dict, contents = _a.contents;
-    var stream = new _Stream__WEBPACK_IMPORTED_MODULE_10__.default(contents);
-    var Filter = dict.lookup(_objects_PDFName__WEBPACK_IMPORTED_MODULE_3__.default.of('Filter'));
-    var DecodeParms = dict.lookup(_objects_PDFName__WEBPACK_IMPORTED_MODULE_3__.default.of('DecodeParms'));
-    if (Filter instanceof _objects_PDFName__WEBPACK_IMPORTED_MODULE_3__.default) {
+    var stream = new _Stream__WEBPACK_IMPORTED_MODULE_10__["default"](contents);
+    var Filter = dict.lookup(_objects_PDFName__WEBPACK_IMPORTED_MODULE_3__["default"].of('Filter'));
+    var DecodeParms = dict.lookup(_objects_PDFName__WEBPACK_IMPORTED_MODULE_3__["default"].of('DecodeParms'));
+    if (Filter instanceof _objects_PDFName__WEBPACK_IMPORTED_MODULE_3__["default"]) {
         stream = decodeStream(stream, Filter, DecodeParms);
     }
-    else if (Filter instanceof _objects_PDFArray__WEBPACK_IMPORTED_MODULE_1__.default) {
+    else if (Filter instanceof _objects_PDFArray__WEBPACK_IMPORTED_MODULE_1__["default"]) {
         for (var idx = 0, len = Filter.size(); idx < len; idx++) {
-            stream = decodeStream(stream, Filter.lookup(idx, _objects_PDFName__WEBPACK_IMPORTED_MODULE_3__.default), DecodeParms && DecodeParms.lookupMaybe(idx, _objects_PDFDict__WEBPACK_IMPORTED_MODULE_2__.default));
+            stream = decodeStream(stream, Filter.lookup(idx, _objects_PDFName__WEBPACK_IMPORTED_MODULE_3__["default"]), DecodeParms && DecodeParms.lookupMaybe(idx, _objects_PDFDict__WEBPACK_IMPORTED_MODULE_2__["default"]));
         }
     }
     else if (!!Filter) {
-        throw new _errors__WEBPACK_IMPORTED_MODULE_0__.UnexpectedObjectTypeError([_objects_PDFName__WEBPACK_IMPORTED_MODULE_3__.default, _objects_PDFArray__WEBPACK_IMPORTED_MODULE_1__.default], Filter);
+        throw new _errors__WEBPACK_IMPORTED_MODULE_0__.UnexpectedObjectTypeError([_objects_PDFName__WEBPACK_IMPORTED_MODULE_3__["default"], _objects_PDFArray__WEBPACK_IMPORTED_MODULE_1__["default"]], Filter);
     }
     return stream;
 };
@@ -17022,7 +17044,7 @@ var Ascii85Stream = /** @class */ (function (_super) {
         }
     };
     return Ascii85Stream;
-}(_DecodeStream__WEBPACK_IMPORTED_MODULE_0__.default));
+}(_DecodeStream__WEBPACK_IMPORTED_MODULE_0__["default"]));
 /* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (Ascii85Stream);
 //# sourceMappingURL=Ascii85Stream.js.map
 
@@ -17156,7 +17178,7 @@ var DecodeStream = /** @class */ (function () {
         while (this.bufferLength <= end && !this.eof) {
             this.readBlock();
         }
-        return new _Stream__WEBPACK_IMPORTED_MODULE_1__.default(this.buffer, start, length /* dict */);
+        return new _Stream__WEBPACK_IMPORTED_MODULE_1__["default"](this.buffer, start, length /* dict */);
     };
     DecodeStream.prototype.decode = function () {
         while (!this.eof)
@@ -17379,7 +17401,7 @@ var AsciiHexStream = /** @class */ (function (_super) {
         this.bufferLength = bufferLength;
     };
     return AsciiHexStream;
-}(_DecodeStream__WEBPACK_IMPORTED_MODULE_0__.default));
+}(_DecodeStream__WEBPACK_IMPORTED_MODULE_0__["default"]));
 /* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (AsciiHexStream);
 //# sourceMappingURL=AsciiHexStream.js.map
 
@@ -17760,7 +17782,7 @@ var FlateStream = /** @class */ (function (_super) {
         return [codes, maxLen];
     };
     return FlateStream;
-}(_DecodeStream__WEBPACK_IMPORTED_MODULE_0__.default));
+}(_DecodeStream__WEBPACK_IMPORTED_MODULE_0__["default"]));
 /* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (FlateStream);
 //# sourceMappingURL=FlateStream.js.map
 
@@ -17907,7 +17929,7 @@ var LZWStream = /** @class */ (function (_super) {
         return (cachedData >>> bitsCached) & ((1 << n) - 1);
     };
     return LZWStream;
-}(_DecodeStream__WEBPACK_IMPORTED_MODULE_0__.default));
+}(_DecodeStream__WEBPACK_IMPORTED_MODULE_0__["default"]));
 /* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (LZWStream);
 //# sourceMappingURL=LZWStream.js.map
 
@@ -17972,7 +17994,7 @@ var RunLengthStream = /** @class */ (function (_super) {
         this.bufferLength = bufferLength;
     };
     return RunLengthStream;
-}(_DecodeStream__WEBPACK_IMPORTED_MODULE_0__.default));
+}(_DecodeStream__WEBPACK_IMPORTED_MODULE_0__["default"]));
 /* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (RunLengthStream);
 //# sourceMappingURL=RunLengthStream.js.map
 
@@ -18058,14 +18080,14 @@ var ViewerPreferences = /** @class */ (function () {
         this.dict = dict;
     }
     ViewerPreferences.prototype.lookupBool = function (key) {
-        var returnObj = this.dict.lookup(_objects_PDFName__WEBPACK_IMPORTED_MODULE_2__.default.of(key));
-        if (returnObj instanceof _objects_PDFBool__WEBPACK_IMPORTED_MODULE_1__.default)
+        var returnObj = this.dict.lookup(_objects_PDFName__WEBPACK_IMPORTED_MODULE_2__["default"].of(key));
+        if (returnObj instanceof _objects_PDFBool__WEBPACK_IMPORTED_MODULE_1__["default"])
             return returnObj;
         return undefined;
     };
     ViewerPreferences.prototype.lookupName = function (key) {
-        var returnObj = this.dict.lookup(_objects_PDFName__WEBPACK_IMPORTED_MODULE_2__.default.of(key));
-        if (returnObj instanceof _objects_PDFName__WEBPACK_IMPORTED_MODULE_2__.default)
+        var returnObj = this.dict.lookup(_objects_PDFName__WEBPACK_IMPORTED_MODULE_2__["default"].of(key));
+        if (returnObj instanceof _objects_PDFName__WEBPACK_IMPORTED_MODULE_2__["default"])
             return returnObj;
         return undefined;
     };
@@ -18103,14 +18125,14 @@ var ViewerPreferences = /** @class */ (function () {
         return this.lookupBool('PickTrayByPDFSize');
     };
     ViewerPreferences.prototype.PrintPageRange = function () {
-        var PrintPageRange = this.dict.lookup(_objects_PDFName__WEBPACK_IMPORTED_MODULE_2__.default.of('PrintPageRange'));
-        if (PrintPageRange instanceof _objects_PDFArray__WEBPACK_IMPORTED_MODULE_0__.default)
+        var PrintPageRange = this.dict.lookup(_objects_PDFName__WEBPACK_IMPORTED_MODULE_2__["default"].of('PrintPageRange'));
+        if (PrintPageRange instanceof _objects_PDFArray__WEBPACK_IMPORTED_MODULE_0__["default"])
             return PrintPageRange;
         return undefined;
     };
     ViewerPreferences.prototype.NumCopies = function () {
-        var NumCopies = this.dict.lookup(_objects_PDFName__WEBPACK_IMPORTED_MODULE_2__.default.of('NumCopies'));
-        if (NumCopies instanceof _objects_PDFNumber__WEBPACK_IMPORTED_MODULE_3__.default)
+        var NumCopies = this.dict.lookup(_objects_PDFName__WEBPACK_IMPORTED_MODULE_2__["default"].of('NumCopies'));
+        if (NumCopies instanceof _objects_PDFNumber__WEBPACK_IMPORTED_MODULE_3__["default"])
             return NumCopies;
         return undefined;
     };
@@ -18247,8 +18269,8 @@ var ViewerPreferences = /** @class */ (function () {
             // shall be donoted by 1", several test PDFs (spec 1.7) created in
             // Acrobat XI 11.0 and also read with Reader DC 2020.013 indicate this is
             // actually a 0 based index.
-            var start = rng.lookup(i, _objects_PDFNumber__WEBPACK_IMPORTED_MODULE_3__.default).asNumber();
-            var end = rng.lookup(i + 1, _objects_PDFNumber__WEBPACK_IMPORTED_MODULE_3__.default).asNumber();
+            var start = rng.lookup(i, _objects_PDFNumber__WEBPACK_IMPORTED_MODULE_3__["default"]).asNumber();
+            var end = rng.lookup(i + 1, _objects_PDFNumber__WEBPACK_IMPORTED_MODULE_3__["default"]).asNumber();
             pageRanges.push({ start: start, end: end });
         }
         return pageRanges;
@@ -18269,7 +18291,7 @@ var ViewerPreferences = /** @class */ (function () {
      */
     ViewerPreferences.prototype.setHideToolbar = function (hideToolbar) {
         var HideToolbar = this.dict.context.obj(hideToolbar);
-        this.dict.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_2__.default.of('HideToolbar'), HideToolbar);
+        this.dict.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_2__["default"].of('HideToolbar'), HideToolbar);
     };
     /**
      * Choose whether the PDF reader's menu bar should be hidden while the
@@ -18278,7 +18300,7 @@ var ViewerPreferences = /** @class */ (function () {
      */
     ViewerPreferences.prototype.setHideMenubar = function (hideMenubar) {
         var HideMenubar = this.dict.context.obj(hideMenubar);
-        this.dict.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_2__.default.of('HideMenubar'), HideMenubar);
+        this.dict.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_2__["default"].of('HideMenubar'), HideMenubar);
     };
     /**
      * Choose whether the PDF reader should hide user interface elements in the
@@ -18288,7 +18310,7 @@ var ViewerPreferences = /** @class */ (function () {
      */
     ViewerPreferences.prototype.setHideWindowUI = function (hideWindowUI) {
         var HideWindowUI = this.dict.context.obj(hideWindowUI);
-        this.dict.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_2__.default.of('HideWindowUI'), HideWindowUI);
+        this.dict.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_2__["default"].of('HideWindowUI'), HideWindowUI);
     };
     /**
      * Choose whether the PDF reader should resize the document's window to fit
@@ -18297,7 +18319,7 @@ var ViewerPreferences = /** @class */ (function () {
      */
     ViewerPreferences.prototype.setFitWindow = function (fitWindow) {
         var FitWindow = this.dict.context.obj(fitWindow);
-        this.dict.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_2__.default.of('FitWindow'), FitWindow);
+        this.dict.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_2__["default"].of('FitWindow'), FitWindow);
     };
     /**
      * Choose whether the PDF reader should position the document's window in the
@@ -18306,7 +18328,7 @@ var ViewerPreferences = /** @class */ (function () {
      */
     ViewerPreferences.prototype.setCenterWindow = function (centerWindow) {
         var CenterWindow = this.dict.context.obj(centerWindow);
-        this.dict.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_2__.default.of('CenterWindow'), CenterWindow);
+        this.dict.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_2__["default"].of('CenterWindow'), CenterWindow);
     };
     /**
      * Choose whether the window's title bar should display the document `Title`
@@ -18316,7 +18338,7 @@ var ViewerPreferences = /** @class */ (function () {
      */
     ViewerPreferences.prototype.setDisplayDocTitle = function (displayTitle) {
         var DisplayDocTitle = this.dict.context.obj(displayTitle);
-        this.dict.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_2__.default.of('DisplayDocTitle'), DisplayDocTitle);
+        this.dict.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_2__["default"].of('DisplayDocTitle'), DisplayDocTitle);
     };
     /**
      * Choose how the PDF reader should display the document upon exiting
@@ -18342,8 +18364,8 @@ var ViewerPreferences = /** @class */ (function () {
      */
     ViewerPreferences.prototype.setNonFullScreenPageMode = function (nonFullScreenPageMode) {
         (0,_utils__WEBPACK_IMPORTED_MODULE_4__.assertIsOneOf)(nonFullScreenPageMode, 'nonFullScreenPageMode', NonFullScreenPageMode);
-        var mode = _objects_PDFName__WEBPACK_IMPORTED_MODULE_2__.default.of(nonFullScreenPageMode);
-        this.dict.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_2__.default.of('NonFullScreenPageMode'), mode);
+        var mode = _objects_PDFName__WEBPACK_IMPORTED_MODULE_2__["default"].of(nonFullScreenPageMode);
+        this.dict.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_2__["default"].of('NonFullScreenPageMode'), mode);
     };
     /**
      * Choose the predominant reading order for text.
@@ -18365,8 +18387,8 @@ var ViewerPreferences = /** @class */ (function () {
      */
     ViewerPreferences.prototype.setReadingDirection = function (readingDirection) {
         (0,_utils__WEBPACK_IMPORTED_MODULE_4__.assertIsOneOf)(readingDirection, 'readingDirection', ReadingDirection);
-        var direction = _objects_PDFName__WEBPACK_IMPORTED_MODULE_2__.default.of(readingDirection);
-        this.dict.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_2__.default.of('Direction'), direction);
+        var direction = _objects_PDFName__WEBPACK_IMPORTED_MODULE_2__["default"].of(readingDirection);
+        this.dict.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_2__["default"].of('Direction'), direction);
     };
     /**
      * Choose the page scaling option that should be selected when a print dialog
@@ -18385,8 +18407,8 @@ var ViewerPreferences = /** @class */ (function () {
      */
     ViewerPreferences.prototype.setPrintScaling = function (printScaling) {
         (0,_utils__WEBPACK_IMPORTED_MODULE_4__.assertIsOneOf)(printScaling, 'printScaling', PrintScaling);
-        var scaling = _objects_PDFName__WEBPACK_IMPORTED_MODULE_2__.default.of(printScaling);
-        this.dict.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_2__.default.of('PrintScaling'), scaling);
+        var scaling = _objects_PDFName__WEBPACK_IMPORTED_MODULE_2__["default"].of(printScaling);
+        this.dict.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_2__["default"].of('PrintScaling'), scaling);
     };
     /**
      * Choose the paper handling option that should be selected by default in the
@@ -18405,8 +18427,8 @@ var ViewerPreferences = /** @class */ (function () {
      */
     ViewerPreferences.prototype.setDuplex = function (duplex) {
         (0,_utils__WEBPACK_IMPORTED_MODULE_4__.assertIsOneOf)(duplex, 'duplex', Duplex);
-        var dup = _objects_PDFName__WEBPACK_IMPORTED_MODULE_2__.default.of(duplex);
-        this.dict.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_2__.default.of('Duplex'), dup);
+        var dup = _objects_PDFName__WEBPACK_IMPORTED_MODULE_2__["default"].of(duplex);
+        this.dict.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_2__["default"].of('Duplex'), dup);
     };
     /**
      * Choose whether the PDF document's page size should be used to select the
@@ -18423,7 +18445,7 @@ var ViewerPreferences = /** @class */ (function () {
      */
     ViewerPreferences.prototype.setPickTrayByPDFSize = function (pickTrayByPDFSize) {
         var PickTrayByPDFSize = this.dict.context.obj(pickTrayByPDFSize);
-        this.dict.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_2__.default.of('PickTrayByPDFSize'), PickTrayByPDFSize);
+        this.dict.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_2__["default"].of('PickTrayByPDFSize'), PickTrayByPDFSize);
     };
     /**
      * Choose the page numbers used to initialize the print dialog box when the
@@ -18461,7 +18483,7 @@ var ViewerPreferences = /** @class */ (function () {
         }
         (0,_utils__WEBPACK_IMPORTED_MODULE_4__.assertEachIs)(flatRange, 'printPageRange', ['number']);
         var pageRanges = this.dict.context.obj(flatRange);
-        this.dict.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_2__.default.of('PrintPageRange'), pageRanges);
+        this.dict.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_2__["default"].of('PrintPageRange'), pageRanges);
     };
     /**
      * Choose the default number of copies to be printed when the print dialog is
@@ -18472,7 +18494,7 @@ var ViewerPreferences = /** @class */ (function () {
         (0,_utils__WEBPACK_IMPORTED_MODULE_4__.assertRange)(numCopies, 'numCopies', 1, Number.MAX_VALUE);
         (0,_utils__WEBPACK_IMPORTED_MODULE_4__.assertInteger)(numCopies, 'numCopies');
         var NumCopies = this.dict.context.obj(numCopies);
-        this.dict.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_2__.default.of('NumCopies'), NumCopies);
+        this.dict.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_2__["default"].of('NumCopies'), NumCopies);
     };
     ViewerPreferences.fromDict = function (dict) {
         return new ViewerPreferences(dict);
@@ -18511,10 +18533,10 @@ var PDFCatalog = /** @class */ (function (_super) {
         return _super !== null && _super.apply(this, arguments) || this;
     }
     PDFCatalog.prototype.Pages = function () {
-        return this.lookup(_objects_PDFName__WEBPACK_IMPORTED_MODULE_1__.default.of('Pages'), _objects_PDFDict__WEBPACK_IMPORTED_MODULE_0__.default);
+        return this.lookup(_objects_PDFName__WEBPACK_IMPORTED_MODULE_1__["default"].of('Pages'), _objects_PDFDict__WEBPACK_IMPORTED_MODULE_0__["default"]);
     };
     PDFCatalog.prototype.AcroForm = function () {
-        return this.lookupMaybe(_objects_PDFName__WEBPACK_IMPORTED_MODULE_1__.default.of('AcroForm'), _objects_PDFDict__WEBPACK_IMPORTED_MODULE_0__.default);
+        return this.lookupMaybe(_objects_PDFName__WEBPACK_IMPORTED_MODULE_1__["default"].of('AcroForm'), _objects_PDFDict__WEBPACK_IMPORTED_MODULE_0__["default"]);
     };
     PDFCatalog.prototype.getAcroForm = function () {
         var dict = this.AcroForm();
@@ -18527,25 +18549,25 @@ var PDFCatalog = /** @class */ (function (_super) {
         if (!acroForm) {
             acroForm = _acroform__WEBPACK_IMPORTED_MODULE_2__.PDFAcroForm.create(this.context);
             var acroFormRef = this.context.register(acroForm.dict);
-            this.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_1__.default.of('AcroForm'), acroFormRef);
+            this.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_1__["default"].of('AcroForm'), acroFormRef);
         }
         return acroForm;
     };
     PDFCatalog.prototype.ViewerPreferences = function () {
-        return this.lookupMaybe(_objects_PDFName__WEBPACK_IMPORTED_MODULE_1__.default.of('ViewerPreferences'), _objects_PDFDict__WEBPACK_IMPORTED_MODULE_0__.default);
+        return this.lookupMaybe(_objects_PDFName__WEBPACK_IMPORTED_MODULE_1__["default"].of('ViewerPreferences'), _objects_PDFDict__WEBPACK_IMPORTED_MODULE_0__["default"]);
     };
     PDFCatalog.prototype.getViewerPreferences = function () {
         var dict = this.ViewerPreferences();
         if (!dict)
             return undefined;
-        return _interactive_ViewerPreferences__WEBPACK_IMPORTED_MODULE_3__.default.fromDict(dict);
+        return _interactive_ViewerPreferences__WEBPACK_IMPORTED_MODULE_3__["default"].fromDict(dict);
     };
     PDFCatalog.prototype.getOrCreateViewerPreferences = function () {
         var viewerPrefs = this.getViewerPreferences();
         if (!viewerPrefs) {
-            viewerPrefs = _interactive_ViewerPreferences__WEBPACK_IMPORTED_MODULE_3__.default.create(this.context);
+            viewerPrefs = _interactive_ViewerPreferences__WEBPACK_IMPORTED_MODULE_3__["default"].create(this.context);
             var viewerPrefsRef = this.context.register(viewerPrefs.dict);
-            this.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_1__.default.of('ViewerPreferences'), viewerPrefsRef);
+            this.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_1__["default"].of('ViewerPreferences'), viewerPrefsRef);
         }
         return viewerPrefs;
     };
@@ -18557,7 +18579,7 @@ var PDFCatalog = /** @class */ (function (_super) {
      * Returns the ref of the PDFPageTree node into which `leafRef` was inserted.
      */
     PDFCatalog.prototype.insertLeafNode = function (leafRef, index) {
-        var pagesRef = this.get(_objects_PDFName__WEBPACK_IMPORTED_MODULE_1__.default.of('Pages'));
+        var pagesRef = this.get(_objects_PDFName__WEBPACK_IMPORTED_MODULE_1__["default"].of('Pages'));
         var maybeParentRef = this.Pages().insertLeafNode(leafRef, index);
         return maybeParentRef || pagesRef;
     };
@@ -18566,15 +18588,15 @@ var PDFCatalog = /** @class */ (function (_super) {
     };
     PDFCatalog.withContextAndPages = function (context, pages) {
         var dict = new Map();
-        dict.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_1__.default.of('Type'), _objects_PDFName__WEBPACK_IMPORTED_MODULE_1__.default.of('Catalog'));
-        dict.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_1__.default.of('Pages'), pages);
+        dict.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_1__["default"].of('Type'), _objects_PDFName__WEBPACK_IMPORTED_MODULE_1__["default"].of('Catalog'));
+        dict.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_1__["default"].of('Pages'), pages);
         return new PDFCatalog(dict, context);
     };
     PDFCatalog.fromMapWithContext = function (map, context) {
         return new PDFCatalog(map, context);
     };
     return PDFCatalog;
-}(_objects_PDFDict__WEBPACK_IMPORTED_MODULE_0__.default));
+}(_objects_PDFDict__WEBPACK_IMPORTED_MODULE_0__["default"]));
 /* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (PDFCatalog);
 //# sourceMappingURL=PDFCatalog.js.map
 
@@ -18585,19 +18607,19 @@ var PDFCatalog = /** @class */ (function (_super) {
 "use strict";
 __webpack_require__.r(__webpack_exports__);
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
-/* harmony export */   "PDFAcroButton": () => (/* reexport safe */ _PDFAcroButton__WEBPACK_IMPORTED_MODULE_0__.default),
-/* harmony export */   "PDFAcroCheckBox": () => (/* reexport safe */ _PDFAcroCheckBox__WEBPACK_IMPORTED_MODULE_1__.default),
-/* harmony export */   "PDFAcroChoice": () => (/* reexport safe */ _PDFAcroChoice__WEBPACK_IMPORTED_MODULE_2__.default),
-/* harmony export */   "PDFAcroComboBox": () => (/* reexport safe */ _PDFAcroComboBox__WEBPACK_IMPORTED_MODULE_3__.default),
-/* harmony export */   "PDFAcroField": () => (/* reexport safe */ _PDFAcroField__WEBPACK_IMPORTED_MODULE_4__.default),
-/* harmony export */   "PDFAcroForm": () => (/* reexport safe */ _PDFAcroForm__WEBPACK_IMPORTED_MODULE_5__.default),
-/* harmony export */   "PDFAcroListBox": () => (/* reexport safe */ _PDFAcroListBox__WEBPACK_IMPORTED_MODULE_6__.default),
-/* harmony export */   "PDFAcroNonTerminal": () => (/* reexport safe */ _PDFAcroNonTerminal__WEBPACK_IMPORTED_MODULE_7__.default),
-/* harmony export */   "PDFAcroPushButton": () => (/* reexport safe */ _PDFAcroPushButton__WEBPACK_IMPORTED_MODULE_8__.default),
-/* harmony export */   "PDFAcroRadioButton": () => (/* reexport safe */ _PDFAcroRadioButton__WEBPACK_IMPORTED_MODULE_9__.default),
-/* harmony export */   "PDFAcroSignature": () => (/* reexport safe */ _PDFAcroSignature__WEBPACK_IMPORTED_MODULE_10__.default),
-/* harmony export */   "PDFAcroTerminal": () => (/* reexport safe */ _PDFAcroTerminal__WEBPACK_IMPORTED_MODULE_11__.default),
-/* harmony export */   "PDFAcroText": () => (/* reexport safe */ _PDFAcroText__WEBPACK_IMPORTED_MODULE_12__.default),
+/* harmony export */   "PDFAcroButton": () => (/* reexport safe */ _PDFAcroButton__WEBPACK_IMPORTED_MODULE_0__["default"]),
+/* harmony export */   "PDFAcroCheckBox": () => (/* reexport safe */ _PDFAcroCheckBox__WEBPACK_IMPORTED_MODULE_1__["default"]),
+/* harmony export */   "PDFAcroChoice": () => (/* reexport safe */ _PDFAcroChoice__WEBPACK_IMPORTED_MODULE_2__["default"]),
+/* harmony export */   "PDFAcroComboBox": () => (/* reexport safe */ _PDFAcroComboBox__WEBPACK_IMPORTED_MODULE_3__["default"]),
+/* harmony export */   "PDFAcroField": () => (/* reexport safe */ _PDFAcroField__WEBPACK_IMPORTED_MODULE_4__["default"]),
+/* harmony export */   "PDFAcroForm": () => (/* reexport safe */ _PDFAcroForm__WEBPACK_IMPORTED_MODULE_5__["default"]),
+/* harmony export */   "PDFAcroListBox": () => (/* reexport safe */ _PDFAcroListBox__WEBPACK_IMPORTED_MODULE_6__["default"]),
+/* harmony export */   "PDFAcroNonTerminal": () => (/* reexport safe */ _PDFAcroNonTerminal__WEBPACK_IMPORTED_MODULE_7__["default"]),
+/* harmony export */   "PDFAcroPushButton": () => (/* reexport safe */ _PDFAcroPushButton__WEBPACK_IMPORTED_MODULE_8__["default"]),
+/* harmony export */   "PDFAcroRadioButton": () => (/* reexport safe */ _PDFAcroRadioButton__WEBPACK_IMPORTED_MODULE_9__["default"]),
+/* harmony export */   "PDFAcroSignature": () => (/* reexport safe */ _PDFAcroSignature__WEBPACK_IMPORTED_MODULE_10__["default"]),
+/* harmony export */   "PDFAcroTerminal": () => (/* reexport safe */ _PDFAcroTerminal__WEBPACK_IMPORTED_MODULE_11__["default"]),
+/* harmony export */   "PDFAcroText": () => (/* reexport safe */ _PDFAcroText__WEBPACK_IMPORTED_MODULE_12__["default"]),
 /* harmony export */   "AcroButtonFlags": () => (/* reexport safe */ _flags__WEBPACK_IMPORTED_MODULE_13__.AcroButtonFlags),
 /* harmony export */   "AcroChoiceFlags": () => (/* reexport safe */ _flags__WEBPACK_IMPORTED_MODULE_13__.AcroChoiceFlags),
 /* harmony export */   "AcroFieldFlags": () => (/* reexport safe */ _flags__WEBPACK_IMPORTED_MODULE_13__.AcroFieldFlags),
@@ -18666,22 +18688,22 @@ var PDFAcroButton = /** @class */ (function (_super) {
         return _super !== null && _super.apply(this, arguments) || this;
     }
     PDFAcroButton.prototype.Opt = function () {
-        return this.dict.lookupMaybe(_objects_PDFName__WEBPACK_IMPORTED_MODULE_3__.default.of('Opt'), _objects_PDFString__WEBPACK_IMPORTED_MODULE_0__.default, _objects_PDFHexString__WEBPACK_IMPORTED_MODULE_1__.default, _objects_PDFArray__WEBPACK_IMPORTED_MODULE_2__.default);
+        return this.dict.lookupMaybe(_objects_PDFName__WEBPACK_IMPORTED_MODULE_3__["default"].of('Opt'), _objects_PDFString__WEBPACK_IMPORTED_MODULE_0__["default"], _objects_PDFHexString__WEBPACK_IMPORTED_MODULE_1__["default"], _objects_PDFArray__WEBPACK_IMPORTED_MODULE_2__["default"]);
     };
     PDFAcroButton.prototype.setOpt = function (opt) {
-        this.dict.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_3__.default.of('Opt'), this.dict.context.obj(opt));
+        this.dict.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_3__["default"].of('Opt'), this.dict.context.obj(opt));
     };
     PDFAcroButton.prototype.getExportValues = function () {
         var opt = this.Opt();
         if (!opt)
             return undefined;
-        if (opt instanceof _objects_PDFString__WEBPACK_IMPORTED_MODULE_0__.default || opt instanceof _objects_PDFHexString__WEBPACK_IMPORTED_MODULE_1__.default) {
+        if (opt instanceof _objects_PDFString__WEBPACK_IMPORTED_MODULE_0__["default"] || opt instanceof _objects_PDFHexString__WEBPACK_IMPORTED_MODULE_1__["default"]) {
             return [opt];
         }
         var values = [];
         for (var idx = 0, len = opt.size(); idx < len; idx++) {
             var value = opt.lookup(idx);
-            if (value instanceof _objects_PDFString__WEBPACK_IMPORTED_MODULE_0__.default || value instanceof _objects_PDFHexString__WEBPACK_IMPORTED_MODULE_1__.default) {
+            if (value instanceof _objects_PDFString__WEBPACK_IMPORTED_MODULE_0__["default"] || value instanceof _objects_PDFHexString__WEBPACK_IMPORTED_MODULE_1__["default"]) {
                 values.push(value);
             }
         }
@@ -18691,7 +18713,7 @@ var PDFAcroButton = /** @class */ (function (_super) {
         var opt = this.Opt();
         if (!opt)
             return;
-        if (opt instanceof _objects_PDFString__WEBPACK_IMPORTED_MODULE_0__.default || opt instanceof _objects_PDFHexString__WEBPACK_IMPORTED_MODULE_1__.default) {
+        if (opt instanceof _objects_PDFString__WEBPACK_IMPORTED_MODULE_0__["default"] || opt instanceof _objects_PDFHexString__WEBPACK_IMPORTED_MODULE_1__["default"]) {
             if (idx !== 0)
                 throw new _errors__WEBPACK_IMPORTED_MODULE_5__.IndexOutOfBoundsError(idx, 0, 0);
             this.setOpt([]);
@@ -18711,7 +18733,7 @@ var PDFAcroButton = /** @class */ (function (_super) {
         var widgets = this.getWidgets();
         for (var idx = 0, len = widgets.length; idx < len; idx++) {
             var widget = widgets[idx];
-            var exportVal = (_b = exportValues[idx]) !== null && _b !== void 0 ? _b : _objects_PDFHexString__WEBPACK_IMPORTED_MODULE_1__.default.fromText((_d = (_c = widget.getOnValue()) === null || _c === void 0 ? void 0 : _c.decodeText()) !== null && _d !== void 0 ? _d : '');
+            var exportVal = (_b = exportValues[idx]) !== null && _b !== void 0 ? _b : _objects_PDFHexString__WEBPACK_IMPORTED_MODULE_1__["default"].fromText((_d = (_c = widget.getOnValue()) === null || _c === void 0 ? void 0 : _c.decodeText()) !== null && _d !== void 0 ? _d : '');
             Opt.push(exportVal);
         }
         this.setOpt(Opt);
@@ -18739,12 +18761,12 @@ var PDFAcroButton = /** @class */ (function (_super) {
     };
     PDFAcroButton.prototype.addWidgetWithOpt = function (widget, opt, useExistingOptIdx) {
         var optIdx = this.addOpt(opt, useExistingOptIdx);
-        var apStateValue = _objects_PDFName__WEBPACK_IMPORTED_MODULE_3__.default.of(String(optIdx));
+        var apStateValue = _objects_PDFName__WEBPACK_IMPORTED_MODULE_3__["default"].of(String(optIdx));
         this.addWidget(widget);
         return apStateValue;
     };
     return PDFAcroButton;
-}(_PDFAcroTerminal__WEBPACK_IMPORTED_MODULE_4__.default));
+}(_PDFAcroTerminal__WEBPACK_IMPORTED_MODULE_4__["default"]));
 /* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (PDFAcroButton);
 //# sourceMappingURL=PDFAcroButton.js.map
 
@@ -18775,19 +18797,19 @@ var PDFAcroTerminal = /** @class */ (function (_super) {
         return _super !== null && _super.apply(this, arguments) || this;
     }
     PDFAcroTerminal.prototype.FT = function () {
-        var nameOrRef = this.getInheritableAttribute(_objects_PDFName__WEBPACK_IMPORTED_MODULE_1__.default.of('FT'));
-        return this.dict.context.lookup(nameOrRef, _objects_PDFName__WEBPACK_IMPORTED_MODULE_1__.default);
+        var nameOrRef = this.getInheritableAttribute(_objects_PDFName__WEBPACK_IMPORTED_MODULE_1__["default"].of('FT'));
+        return this.dict.context.lookup(nameOrRef, _objects_PDFName__WEBPACK_IMPORTED_MODULE_1__["default"]);
     };
     PDFAcroTerminal.prototype.getWidgets = function () {
         var kidDicts = this.Kids();
         // This field is itself a widget
         if (!kidDicts)
-            return [_annotation_PDFWidgetAnnotation__WEBPACK_IMPORTED_MODULE_3__.default.fromDict(this.dict)];
+            return [_annotation_PDFWidgetAnnotation__WEBPACK_IMPORTED_MODULE_3__["default"].fromDict(this.dict)];
         // This field's kids are its widgets
         var widgets = new Array(kidDicts.size());
         for (var idx = 0, len = kidDicts.size(); idx < len; idx++) {
-            var dict = kidDicts.lookup(idx, _objects_PDFDict__WEBPACK_IMPORTED_MODULE_0__.default);
-            widgets[idx] = _annotation_PDFWidgetAnnotation__WEBPACK_IMPORTED_MODULE_3__.default.fromDict(dict);
+            var dict = kidDicts.lookup(idx, _objects_PDFDict__WEBPACK_IMPORTED_MODULE_0__["default"]);
+            widgets[idx] = _annotation_PDFWidgetAnnotation__WEBPACK_IMPORTED_MODULE_3__["default"].fromDict(dict);
         }
         return widgets;
     };
@@ -18820,7 +18842,7 @@ var PDFAcroTerminal = /** @class */ (function (_super) {
         // for them.
         if (!Kids) {
             Kids = this.dict.context.obj([this.ref]);
-            this.dict.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_1__.default.of('Kids'), Kids);
+            this.dict.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_1__["default"].of('Kids'), Kids);
         }
         return { Kids: Kids };
     };
@@ -18828,7 +18850,7 @@ var PDFAcroTerminal = /** @class */ (function (_super) {
         return new PDFAcroTerminal(dict, ref);
     };
     return PDFAcroTerminal;
-}(_PDFAcroField__WEBPACK_IMPORTED_MODULE_2__.default));
+}(_PDFAcroField__WEBPACK_IMPORTED_MODULE_2__["default"]));
 /* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (PDFAcroTerminal);
 //# sourceMappingURL=PDFAcroTerminal.js.map
 
@@ -18870,47 +18892,47 @@ var PDFAcroField = /** @class */ (function () {
         this.ref = ref;
     }
     PDFAcroField.prototype.T = function () {
-        return this.dict.lookupMaybe(_objects_PDFName__WEBPACK_IMPORTED_MODULE_3__.default.of('T'), _objects_PDFString__WEBPACK_IMPORTED_MODULE_1__.default, _objects_PDFHexString__WEBPACK_IMPORTED_MODULE_2__.default);
+        return this.dict.lookupMaybe(_objects_PDFName__WEBPACK_IMPORTED_MODULE_3__["default"].of('T'), _objects_PDFString__WEBPACK_IMPORTED_MODULE_1__["default"], _objects_PDFHexString__WEBPACK_IMPORTED_MODULE_2__["default"]);
     };
     PDFAcroField.prototype.Ff = function () {
-        var numberOrRef = this.getInheritableAttribute(_objects_PDFName__WEBPACK_IMPORTED_MODULE_3__.default.of('Ff'));
-        return this.dict.context.lookupMaybe(numberOrRef, _objects_PDFNumber__WEBPACK_IMPORTED_MODULE_4__.default);
+        var numberOrRef = this.getInheritableAttribute(_objects_PDFName__WEBPACK_IMPORTED_MODULE_3__["default"].of('Ff'));
+        return this.dict.context.lookupMaybe(numberOrRef, _objects_PDFNumber__WEBPACK_IMPORTED_MODULE_4__["default"]);
     };
     PDFAcroField.prototype.V = function () {
-        var valueOrRef = this.getInheritableAttribute(_objects_PDFName__WEBPACK_IMPORTED_MODULE_3__.default.of('V'));
+        var valueOrRef = this.getInheritableAttribute(_objects_PDFName__WEBPACK_IMPORTED_MODULE_3__["default"].of('V'));
         return this.dict.context.lookup(valueOrRef);
     };
     PDFAcroField.prototype.Kids = function () {
-        return this.dict.lookupMaybe(_objects_PDFName__WEBPACK_IMPORTED_MODULE_3__.default.of('Kids'), _objects_PDFArray__WEBPACK_IMPORTED_MODULE_5__.default);
+        return this.dict.lookupMaybe(_objects_PDFName__WEBPACK_IMPORTED_MODULE_3__["default"].of('Kids'), _objects_PDFArray__WEBPACK_IMPORTED_MODULE_5__["default"]);
     };
     // Parent(): PDFDict | undefined {
     //   return this.dict.lookupMaybe(PDFName.of('Parent'), PDFDict);
     // }
     PDFAcroField.prototype.DA = function () {
-        var da = this.dict.lookup(_objects_PDFName__WEBPACK_IMPORTED_MODULE_3__.default.of('DA'));
-        if (da instanceof _objects_PDFString__WEBPACK_IMPORTED_MODULE_1__.default || da instanceof _objects_PDFHexString__WEBPACK_IMPORTED_MODULE_2__.default)
+        var da = this.dict.lookup(_objects_PDFName__WEBPACK_IMPORTED_MODULE_3__["default"].of('DA'));
+        if (da instanceof _objects_PDFString__WEBPACK_IMPORTED_MODULE_1__["default"] || da instanceof _objects_PDFHexString__WEBPACK_IMPORTED_MODULE_2__["default"])
             return da;
         return undefined;
     };
     PDFAcroField.prototype.setKids = function (kids) {
-        this.dict.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_3__.default.of('Kids'), this.dict.context.obj(kids));
+        this.dict.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_3__["default"].of('Kids'), this.dict.context.obj(kids));
     };
     PDFAcroField.prototype.getParent = function () {
         // const parent = this.Parent();
         // if (!parent) return undefined;
         // return new PDFAcroField(parent);
-        var parentRef = this.dict.get(_objects_PDFName__WEBPACK_IMPORTED_MODULE_3__.default.of('Parent'));
-        if (parentRef instanceof _objects_PDFRef__WEBPACK_IMPORTED_MODULE_6__.default) {
-            var parent_1 = this.dict.lookup(_objects_PDFName__WEBPACK_IMPORTED_MODULE_3__.default.of('Parent'), _objects_PDFDict__WEBPACK_IMPORTED_MODULE_0__.default);
+        var parentRef = this.dict.get(_objects_PDFName__WEBPACK_IMPORTED_MODULE_3__["default"].of('Parent'));
+        if (parentRef instanceof _objects_PDFRef__WEBPACK_IMPORTED_MODULE_6__["default"]) {
+            var parent_1 = this.dict.lookup(_objects_PDFName__WEBPACK_IMPORTED_MODULE_3__["default"].of('Parent'), _objects_PDFDict__WEBPACK_IMPORTED_MODULE_0__["default"]);
             return new PDFAcroField(parent_1, parentRef);
         }
         return undefined;
     };
     PDFAcroField.prototype.setParent = function (parent) {
         if (!parent)
-            this.dict.delete(_objects_PDFName__WEBPACK_IMPORTED_MODULE_3__.default.of('Parent'));
+            this.dict.delete(_objects_PDFName__WEBPACK_IMPORTED_MODULE_3__["default"].of('Parent'));
         else
-            this.dict.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_3__.default.of('Parent'), parent);
+            this.dict.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_3__["default"].of('Parent'), parent);
     };
     PDFAcroField.prototype.getFullyQualifiedName = function () {
         var parent = this.getParent();
@@ -18924,16 +18946,16 @@ var PDFAcroField = /** @class */ (function () {
     };
     PDFAcroField.prototype.setPartialName = function (partialName) {
         if (!partialName)
-            this.dict.delete(_objects_PDFName__WEBPACK_IMPORTED_MODULE_3__.default.of('T'));
+            this.dict.delete(_objects_PDFName__WEBPACK_IMPORTED_MODULE_3__["default"].of('T'));
         else
-            this.dict.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_3__.default.of('T'), _objects_PDFHexString__WEBPACK_IMPORTED_MODULE_2__.default.fromText(partialName));
+            this.dict.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_3__["default"].of('T'), _objects_PDFHexString__WEBPACK_IMPORTED_MODULE_2__["default"].fromText(partialName));
     };
     PDFAcroField.prototype.setDefaultAppearance = function (appearance) {
-        this.dict.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_3__.default.of('DA'), _objects_PDFString__WEBPACK_IMPORTED_MODULE_1__.default.of(appearance));
+        this.dict.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_3__["default"].of('DA'), _objects_PDFString__WEBPACK_IMPORTED_MODULE_1__["default"].of(appearance));
     };
     PDFAcroField.prototype.getDefaultAppearance = function () {
         var DA = this.DA();
-        if (DA instanceof _objects_PDFHexString__WEBPACK_IMPORTED_MODULE_2__.default) {
+        if (DA instanceof _objects_PDFHexString__WEBPACK_IMPORTED_MODULE_2__["default"]) {
             return DA.decodeText();
         }
         return DA === null || DA === void 0 ? void 0 : DA.asString();
@@ -18958,7 +18980,7 @@ var PDFAcroField = /** @class */ (function () {
         return (_b = (_a = this.Ff()) === null || _a === void 0 ? void 0 : _a.asNumber()) !== null && _b !== void 0 ? _b : 0;
     };
     PDFAcroField.prototype.setFlags = function (flags) {
-        this.dict.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_3__.default.of('Ff'), _objects_PDFNumber__WEBPACK_IMPORTED_MODULE_4__.default.of(flags));
+        this.dict.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_3__["default"].of('Ff'), _objects_PDFNumber__WEBPACK_IMPORTED_MODULE_4__["default"].of(flags));
     };
     PDFAcroField.prototype.hasFlag = function (flag) {
         var flags = this.getFlags();
@@ -19030,35 +19052,35 @@ var PDFWidgetAnnotation = /** @class */ (function (_super) {
         return _super !== null && _super.apply(this, arguments) || this;
     }
     PDFWidgetAnnotation.prototype.MK = function () {
-        var MK = this.dict.lookup(_objects_PDFName__WEBPACK_IMPORTED_MODULE_1__.default.of('MK'));
-        if (MK instanceof _objects_PDFDict__WEBPACK_IMPORTED_MODULE_0__.default)
+        var MK = this.dict.lookup(_objects_PDFName__WEBPACK_IMPORTED_MODULE_1__["default"].of('MK'));
+        if (MK instanceof _objects_PDFDict__WEBPACK_IMPORTED_MODULE_0__["default"])
             return MK;
         return undefined;
     };
     PDFWidgetAnnotation.prototype.BS = function () {
-        var BS = this.dict.lookup(_objects_PDFName__WEBPACK_IMPORTED_MODULE_1__.default.of('BS'));
-        if (BS instanceof _objects_PDFDict__WEBPACK_IMPORTED_MODULE_0__.default)
+        var BS = this.dict.lookup(_objects_PDFName__WEBPACK_IMPORTED_MODULE_1__["default"].of('BS'));
+        if (BS instanceof _objects_PDFDict__WEBPACK_IMPORTED_MODULE_0__["default"])
             return BS;
         return undefined;
     };
     PDFWidgetAnnotation.prototype.DA = function () {
-        var da = this.dict.lookup(_objects_PDFName__WEBPACK_IMPORTED_MODULE_1__.default.of('DA'));
-        if (da instanceof _objects_PDFString__WEBPACK_IMPORTED_MODULE_3__.default || da instanceof _objects_PDFHexString__WEBPACK_IMPORTED_MODULE_4__.default)
+        var da = this.dict.lookup(_objects_PDFName__WEBPACK_IMPORTED_MODULE_1__["default"].of('DA'));
+        if (da instanceof _objects_PDFString__WEBPACK_IMPORTED_MODULE_3__["default"] || da instanceof _objects_PDFHexString__WEBPACK_IMPORTED_MODULE_4__["default"])
             return da;
         return undefined;
     };
     PDFWidgetAnnotation.prototype.P = function () {
-        var P = this.dict.get(_objects_PDFName__WEBPACK_IMPORTED_MODULE_1__.default.of('P'));
-        if (P instanceof _objects_PDFRef__WEBPACK_IMPORTED_MODULE_2__.default)
+        var P = this.dict.get(_objects_PDFName__WEBPACK_IMPORTED_MODULE_1__["default"].of('P'));
+        if (P instanceof _objects_PDFRef__WEBPACK_IMPORTED_MODULE_2__["default"])
             return P;
         return undefined;
     };
     PDFWidgetAnnotation.prototype.setDefaultAppearance = function (appearance) {
-        this.dict.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_1__.default.of('DA'), _objects_PDFString__WEBPACK_IMPORTED_MODULE_3__.default.of(appearance));
+        this.dict.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_1__["default"].of('DA'), _objects_PDFString__WEBPACK_IMPORTED_MODULE_3__["default"].of(appearance));
     };
     PDFWidgetAnnotation.prototype.getDefaultAppearance = function () {
         var DA = this.DA();
-        if (DA instanceof _objects_PDFHexString__WEBPACK_IMPORTED_MODULE_4__.default) {
+        if (DA instanceof _objects_PDFHexString__WEBPACK_IMPORTED_MODULE_4__["default"]) {
             return DA.decodeText();
         }
         return DA === null || DA === void 0 ? void 0 : DA.asString();
@@ -19066,39 +19088,39 @@ var PDFWidgetAnnotation = /** @class */ (function (_super) {
     PDFWidgetAnnotation.prototype.getAppearanceCharacteristics = function () {
         var MK = this.MK();
         if (MK)
-            return _AppearanceCharacteristics__WEBPACK_IMPORTED_MODULE_7__.default.fromDict(MK);
+            return _AppearanceCharacteristics__WEBPACK_IMPORTED_MODULE_7__["default"].fromDict(MK);
         return undefined;
     };
     PDFWidgetAnnotation.prototype.getOrCreateAppearanceCharacteristics = function () {
         var MK = this.MK();
         if (MK)
-            return _AppearanceCharacteristics__WEBPACK_IMPORTED_MODULE_7__.default.fromDict(MK);
-        var ac = _AppearanceCharacteristics__WEBPACK_IMPORTED_MODULE_7__.default.fromDict(this.dict.context.obj({}));
-        this.dict.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_1__.default.of('MK'), ac.dict);
+            return _AppearanceCharacteristics__WEBPACK_IMPORTED_MODULE_7__["default"].fromDict(MK);
+        var ac = _AppearanceCharacteristics__WEBPACK_IMPORTED_MODULE_7__["default"].fromDict(this.dict.context.obj({}));
+        this.dict.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_1__["default"].of('MK'), ac.dict);
         return ac;
     };
     PDFWidgetAnnotation.prototype.getBorderStyle = function () {
         var BS = this.BS();
         if (BS)
-            return _BorderStyle__WEBPACK_IMPORTED_MODULE_5__.default.fromDict(BS);
+            return _BorderStyle__WEBPACK_IMPORTED_MODULE_5__["default"].fromDict(BS);
         return undefined;
     };
     PDFWidgetAnnotation.prototype.getOrCreateBorderStyle = function () {
         var BS = this.BS();
         if (BS)
-            return _BorderStyle__WEBPACK_IMPORTED_MODULE_5__.default.fromDict(BS);
-        var bs = _BorderStyle__WEBPACK_IMPORTED_MODULE_5__.default.fromDict(this.dict.context.obj({}));
-        this.dict.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_1__.default.of('BS'), bs.dict);
+            return _BorderStyle__WEBPACK_IMPORTED_MODULE_5__["default"].fromDict(BS);
+        var bs = _BorderStyle__WEBPACK_IMPORTED_MODULE_5__["default"].fromDict(this.dict.context.obj({}));
+        this.dict.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_1__["default"].of('BS'), bs.dict);
         return bs;
     };
     PDFWidgetAnnotation.prototype.getOnValue = function () {
         var _a;
         var normal = (_a = this.getAppearances()) === null || _a === void 0 ? void 0 : _a.normal;
-        if (normal instanceof _objects_PDFDict__WEBPACK_IMPORTED_MODULE_0__.default) {
+        if (normal instanceof _objects_PDFDict__WEBPACK_IMPORTED_MODULE_0__["default"]) {
             var keys = normal.keys();
             for (var idx = 0, len = keys.length; idx < len; idx++) {
                 var key = keys[idx];
-                if (key !== _objects_PDFName__WEBPACK_IMPORTED_MODULE_1__.default.of('Off'))
+                if (key !== _objects_PDFName__WEBPACK_IMPORTED_MODULE_1__["default"].of('Off'))
                     return key;
             }
         }
@@ -19117,7 +19139,7 @@ var PDFWidgetAnnotation = /** @class */ (function (_super) {
         return new PDFWidgetAnnotation(dict);
     };
     return PDFWidgetAnnotation;
-}(_PDFAnnotation__WEBPACK_IMPORTED_MODULE_6__.default));
+}(_PDFAnnotation__WEBPACK_IMPORTED_MODULE_6__["default"]));
 /* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (PDFWidgetAnnotation);
 //# sourceMappingURL=PDFWidgetAnnotation.js.map
 
@@ -19140,8 +19162,8 @@ var BorderStyle = /** @class */ (function () {
         this.dict = dict;
     }
     BorderStyle.prototype.W = function () {
-        var W = this.dict.lookup(_objects_PDFName__WEBPACK_IMPORTED_MODULE_0__.default.of('W'));
-        if (W instanceof _objects_PDFNumber__WEBPACK_IMPORTED_MODULE_1__.default)
+        var W = this.dict.lookup(_objects_PDFName__WEBPACK_IMPORTED_MODULE_0__["default"].of('W'));
+        if (W instanceof _objects_PDFNumber__WEBPACK_IMPORTED_MODULE_1__["default"])
             return W;
         return undefined;
     };
@@ -19151,7 +19173,7 @@ var BorderStyle = /** @class */ (function () {
     };
     BorderStyle.prototype.setWidth = function (width) {
         var W = this.dict.context.obj(width);
-        this.dict.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_0__.default.of('W'), W);
+        this.dict.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_0__["default"].of('W'), W);
     };
     BorderStyle.fromDict = function (dict) { return new BorderStyle(dict); };
     return BorderStyle;
@@ -19186,14 +19208,14 @@ var PDFAnnotation = /** @class */ (function () {
     }
     // This is technically required by the PDF spec
     PDFAnnotation.prototype.Rect = function () {
-        return this.dict.lookup(_objects_PDFName__WEBPACK_IMPORTED_MODULE_1__.default.of('Rect'), _objects_PDFArray__WEBPACK_IMPORTED_MODULE_3__.default);
+        return this.dict.lookup(_objects_PDFName__WEBPACK_IMPORTED_MODULE_1__["default"].of('Rect'), _objects_PDFArray__WEBPACK_IMPORTED_MODULE_3__["default"]);
     };
     PDFAnnotation.prototype.AP = function () {
-        return this.dict.lookupMaybe(_objects_PDFName__WEBPACK_IMPORTED_MODULE_1__.default.of('AP'), _objects_PDFDict__WEBPACK_IMPORTED_MODULE_0__.default);
+        return this.dict.lookupMaybe(_objects_PDFName__WEBPACK_IMPORTED_MODULE_1__["default"].of('AP'), _objects_PDFDict__WEBPACK_IMPORTED_MODULE_0__["default"]);
     };
     PDFAnnotation.prototype.F = function () {
-        var numberOrRef = this.dict.lookup(_objects_PDFName__WEBPACK_IMPORTED_MODULE_1__.default.of('F'));
-        return this.dict.context.lookupMaybe(numberOrRef, _objects_PDFNumber__WEBPACK_IMPORTED_MODULE_5__.default);
+        var numberOrRef = this.dict.lookup(_objects_PDFName__WEBPACK_IMPORTED_MODULE_1__["default"].of('F'));
+        return this.dict.context.lookupMaybe(numberOrRef, _objects_PDFNumber__WEBPACK_IMPORTED_MODULE_5__["default"]);
     };
     PDFAnnotation.prototype.getRectangle = function () {
         var _a;
@@ -19203,65 +19225,65 @@ var PDFAnnotation = /** @class */ (function () {
     PDFAnnotation.prototype.setRectangle = function (rect) {
         var x = rect.x, y = rect.y, width = rect.width, height = rect.height;
         var Rect = this.dict.context.obj([x, y, x + width, y + height]);
-        this.dict.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_1__.default.of('Rect'), Rect);
+        this.dict.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_1__["default"].of('Rect'), Rect);
     };
     PDFAnnotation.prototype.getAppearanceState = function () {
-        var AS = this.dict.lookup(_objects_PDFName__WEBPACK_IMPORTED_MODULE_1__.default.of('AS'));
-        if (AS instanceof _objects_PDFName__WEBPACK_IMPORTED_MODULE_1__.default)
+        var AS = this.dict.lookup(_objects_PDFName__WEBPACK_IMPORTED_MODULE_1__["default"].of('AS'));
+        if (AS instanceof _objects_PDFName__WEBPACK_IMPORTED_MODULE_1__["default"])
             return AS;
         return undefined;
     };
     PDFAnnotation.prototype.setAppearanceState = function (state) {
-        this.dict.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_1__.default.of('AS'), state);
+        this.dict.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_1__["default"].of('AS'), state);
     };
     PDFAnnotation.prototype.setAppearances = function (appearances) {
-        this.dict.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_1__.default.of('AP'), appearances);
+        this.dict.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_1__["default"].of('AP'), appearances);
     };
     PDFAnnotation.prototype.ensureAP = function () {
         var AP = this.AP();
         if (!AP) {
             AP = this.dict.context.obj({});
-            this.dict.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_1__.default.of('AP'), AP);
+            this.dict.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_1__["default"].of('AP'), AP);
         }
         return AP;
     };
     PDFAnnotation.prototype.getNormalAppearance = function () {
         var AP = this.ensureAP();
-        var N = AP.get(_objects_PDFName__WEBPACK_IMPORTED_MODULE_1__.default.of('N'));
-        if (N instanceof _objects_PDFRef__WEBPACK_IMPORTED_MODULE_4__.default || N instanceof _objects_PDFDict__WEBPACK_IMPORTED_MODULE_0__.default)
+        var N = AP.get(_objects_PDFName__WEBPACK_IMPORTED_MODULE_1__["default"].of('N'));
+        if (N instanceof _objects_PDFRef__WEBPACK_IMPORTED_MODULE_4__["default"] || N instanceof _objects_PDFDict__WEBPACK_IMPORTED_MODULE_0__["default"])
             return N;
         throw new Error("Unexpected N type: " + (N === null || N === void 0 ? void 0 : N.constructor.name));
     };
     /** @param appearance A PDFDict or PDFStream (direct or ref) */
     PDFAnnotation.prototype.setNormalAppearance = function (appearance) {
         var AP = this.ensureAP();
-        AP.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_1__.default.of('N'), appearance);
+        AP.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_1__["default"].of('N'), appearance);
     };
     /** @param appearance A PDFDict or PDFStream (direct or ref) */
     PDFAnnotation.prototype.setRolloverAppearance = function (appearance) {
         var AP = this.ensureAP();
-        AP.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_1__.default.of('R'), appearance);
+        AP.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_1__["default"].of('R'), appearance);
     };
     /** @param appearance A PDFDict or PDFStream (direct or ref) */
     PDFAnnotation.prototype.setDownAppearance = function (appearance) {
         var AP = this.ensureAP();
-        AP.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_1__.default.of('D'), appearance);
+        AP.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_1__["default"].of('D'), appearance);
     };
     PDFAnnotation.prototype.removeRolloverAppearance = function () {
         var AP = this.AP();
-        AP === null || AP === void 0 ? void 0 : AP.delete(_objects_PDFName__WEBPACK_IMPORTED_MODULE_1__.default.of('R'));
+        AP === null || AP === void 0 ? void 0 : AP.delete(_objects_PDFName__WEBPACK_IMPORTED_MODULE_1__["default"].of('R'));
     };
     PDFAnnotation.prototype.removeDownAppearance = function () {
         var AP = this.AP();
-        AP === null || AP === void 0 ? void 0 : AP.delete(_objects_PDFName__WEBPACK_IMPORTED_MODULE_1__.default.of('D'));
+        AP === null || AP === void 0 ? void 0 : AP.delete(_objects_PDFName__WEBPACK_IMPORTED_MODULE_1__["default"].of('D'));
     };
     PDFAnnotation.prototype.getAppearances = function () {
         var AP = this.AP();
         if (!AP)
             return undefined;
-        var N = AP.lookup(_objects_PDFName__WEBPACK_IMPORTED_MODULE_1__.default.of('N'), _objects_PDFDict__WEBPACK_IMPORTED_MODULE_0__.default, _objects_PDFStream__WEBPACK_IMPORTED_MODULE_2__.default);
-        var R = AP.lookupMaybe(_objects_PDFName__WEBPACK_IMPORTED_MODULE_1__.default.of('R'), _objects_PDFDict__WEBPACK_IMPORTED_MODULE_0__.default, _objects_PDFStream__WEBPACK_IMPORTED_MODULE_2__.default);
-        var D = AP.lookupMaybe(_objects_PDFName__WEBPACK_IMPORTED_MODULE_1__.default.of('D'), _objects_PDFDict__WEBPACK_IMPORTED_MODULE_0__.default, _objects_PDFStream__WEBPACK_IMPORTED_MODULE_2__.default);
+        var N = AP.lookup(_objects_PDFName__WEBPACK_IMPORTED_MODULE_1__["default"].of('N'), _objects_PDFDict__WEBPACK_IMPORTED_MODULE_0__["default"], _objects_PDFStream__WEBPACK_IMPORTED_MODULE_2__["default"]);
+        var R = AP.lookupMaybe(_objects_PDFName__WEBPACK_IMPORTED_MODULE_1__["default"].of('R'), _objects_PDFDict__WEBPACK_IMPORTED_MODULE_0__["default"], _objects_PDFStream__WEBPACK_IMPORTED_MODULE_2__["default"]);
+        var D = AP.lookupMaybe(_objects_PDFName__WEBPACK_IMPORTED_MODULE_1__["default"].of('D'), _objects_PDFDict__WEBPACK_IMPORTED_MODULE_0__["default"], _objects_PDFStream__WEBPACK_IMPORTED_MODULE_2__["default"]);
         return { normal: N, rollover: R, down: D };
     };
     PDFAnnotation.prototype.getFlags = function () {
@@ -19269,7 +19291,7 @@ var PDFAnnotation = /** @class */ (function () {
         return (_b = (_a = this.F()) === null || _a === void 0 ? void 0 : _a.asNumber()) !== null && _b !== void 0 ? _b : 0;
     };
     PDFAnnotation.prototype.setFlags = function (flags) {
-        this.dict.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_1__.default.of('F'), _objects_PDFNumber__WEBPACK_IMPORTED_MODULE_5__.default.of(flags));
+        this.dict.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_1__["default"].of('F'), _objects_PDFNumber__WEBPACK_IMPORTED_MODULE_5__["default"].of(flags));
     };
     PDFAnnotation.prototype.hasFlag = function (flag) {
         var flags = this.getFlags();
@@ -19319,38 +19341,38 @@ var AppearanceCharacteristics = /** @class */ (function () {
         this.dict = dict;
     }
     AppearanceCharacteristics.prototype.R = function () {
-        var R = this.dict.lookup(_objects_PDFName__WEBPACK_IMPORTED_MODULE_0__.default.of('R'));
-        if (R instanceof _objects_PDFNumber__WEBPACK_IMPORTED_MODULE_1__.default)
+        var R = this.dict.lookup(_objects_PDFName__WEBPACK_IMPORTED_MODULE_0__["default"].of('R'));
+        if (R instanceof _objects_PDFNumber__WEBPACK_IMPORTED_MODULE_1__["default"])
             return R;
         return undefined;
     };
     AppearanceCharacteristics.prototype.BC = function () {
-        var BC = this.dict.lookup(_objects_PDFName__WEBPACK_IMPORTED_MODULE_0__.default.of('BC'));
-        if (BC instanceof _objects_PDFArray__WEBPACK_IMPORTED_MODULE_2__.default)
+        var BC = this.dict.lookup(_objects_PDFName__WEBPACK_IMPORTED_MODULE_0__["default"].of('BC'));
+        if (BC instanceof _objects_PDFArray__WEBPACK_IMPORTED_MODULE_2__["default"])
             return BC;
         return undefined;
     };
     AppearanceCharacteristics.prototype.BG = function () {
-        var BG = this.dict.lookup(_objects_PDFName__WEBPACK_IMPORTED_MODULE_0__.default.of('BG'));
-        if (BG instanceof _objects_PDFArray__WEBPACK_IMPORTED_MODULE_2__.default)
+        var BG = this.dict.lookup(_objects_PDFName__WEBPACK_IMPORTED_MODULE_0__["default"].of('BG'));
+        if (BG instanceof _objects_PDFArray__WEBPACK_IMPORTED_MODULE_2__["default"])
             return BG;
         return undefined;
     };
     AppearanceCharacteristics.prototype.CA = function () {
-        var CA = this.dict.lookup(_objects_PDFName__WEBPACK_IMPORTED_MODULE_0__.default.of('CA'));
-        if (CA instanceof _objects_PDFHexString__WEBPACK_IMPORTED_MODULE_3__.default || CA instanceof _objects_PDFString__WEBPACK_IMPORTED_MODULE_4__.default)
+        var CA = this.dict.lookup(_objects_PDFName__WEBPACK_IMPORTED_MODULE_0__["default"].of('CA'));
+        if (CA instanceof _objects_PDFHexString__WEBPACK_IMPORTED_MODULE_3__["default"] || CA instanceof _objects_PDFString__WEBPACK_IMPORTED_MODULE_4__["default"])
             return CA;
         return undefined;
     };
     AppearanceCharacteristics.prototype.RC = function () {
-        var RC = this.dict.lookup(_objects_PDFName__WEBPACK_IMPORTED_MODULE_0__.default.of('RC'));
-        if (RC instanceof _objects_PDFHexString__WEBPACK_IMPORTED_MODULE_3__.default || RC instanceof _objects_PDFString__WEBPACK_IMPORTED_MODULE_4__.default)
+        var RC = this.dict.lookup(_objects_PDFName__WEBPACK_IMPORTED_MODULE_0__["default"].of('RC'));
+        if (RC instanceof _objects_PDFHexString__WEBPACK_IMPORTED_MODULE_3__["default"] || RC instanceof _objects_PDFString__WEBPACK_IMPORTED_MODULE_4__["default"])
             return RC;
         return undefined;
     };
     AppearanceCharacteristics.prototype.AC = function () {
-        var AC = this.dict.lookup(_objects_PDFName__WEBPACK_IMPORTED_MODULE_0__.default.of('AC'));
-        if (AC instanceof _objects_PDFHexString__WEBPACK_IMPORTED_MODULE_3__.default || AC instanceof _objects_PDFString__WEBPACK_IMPORTED_MODULE_4__.default)
+        var AC = this.dict.lookup(_objects_PDFName__WEBPACK_IMPORTED_MODULE_0__["default"].of('AC'));
+        if (AC instanceof _objects_PDFHexString__WEBPACK_IMPORTED_MODULE_3__["default"] || AC instanceof _objects_PDFString__WEBPACK_IMPORTED_MODULE_4__["default"])
             return AC;
         return undefined;
     };
@@ -19365,7 +19387,7 @@ var AppearanceCharacteristics = /** @class */ (function () {
         var components = [];
         for (var idx = 0, len = BC === null || BC === void 0 ? void 0 : BC.size(); idx < len; idx++) {
             var component = BC.get(idx);
-            if (component instanceof _objects_PDFNumber__WEBPACK_IMPORTED_MODULE_1__.default)
+            if (component instanceof _objects_PDFNumber__WEBPACK_IMPORTED_MODULE_1__["default"])
                 components.push(component.asNumber());
         }
         return components;
@@ -19377,7 +19399,7 @@ var AppearanceCharacteristics = /** @class */ (function () {
         var components = [];
         for (var idx = 0, len = BG === null || BG === void 0 ? void 0 : BG.size(); idx < len; idx++) {
             var component = BG.get(idx);
-            if (component instanceof _objects_PDFNumber__WEBPACK_IMPORTED_MODULE_1__.default)
+            if (component instanceof _objects_PDFNumber__WEBPACK_IMPORTED_MODULE_1__["default"])
                 components.push(component.asNumber());
         }
         return components;
@@ -19394,32 +19416,32 @@ var AppearanceCharacteristics = /** @class */ (function () {
     };
     AppearanceCharacteristics.prototype.setRotation = function (rotation) {
         var R = this.dict.context.obj(rotation);
-        this.dict.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_0__.default.of('R'), R);
+        this.dict.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_0__["default"].of('R'), R);
     };
     AppearanceCharacteristics.prototype.setBorderColor = function (color) {
         var BC = this.dict.context.obj(color);
-        this.dict.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_0__.default.of('BC'), BC);
+        this.dict.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_0__["default"].of('BC'), BC);
     };
     AppearanceCharacteristics.prototype.setBackgroundColor = function (color) {
         var BG = this.dict.context.obj(color);
-        this.dict.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_0__.default.of('BG'), BG);
+        this.dict.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_0__["default"].of('BG'), BG);
     };
     AppearanceCharacteristics.prototype.setCaptions = function (captions) {
-        var CA = _objects_PDFHexString__WEBPACK_IMPORTED_MODULE_3__.default.fromText(captions.normal);
-        this.dict.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_0__.default.of('CA'), CA);
+        var CA = _objects_PDFHexString__WEBPACK_IMPORTED_MODULE_3__["default"].fromText(captions.normal);
+        this.dict.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_0__["default"].of('CA'), CA);
         if (captions.rollover) {
-            var RC = _objects_PDFHexString__WEBPACK_IMPORTED_MODULE_3__.default.fromText(captions.rollover);
-            this.dict.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_0__.default.of('RC'), RC);
+            var RC = _objects_PDFHexString__WEBPACK_IMPORTED_MODULE_3__["default"].fromText(captions.rollover);
+            this.dict.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_0__["default"].of('RC'), RC);
         }
         else {
-            this.dict.delete(_objects_PDFName__WEBPACK_IMPORTED_MODULE_0__.default.of('RC'));
+            this.dict.delete(_objects_PDFName__WEBPACK_IMPORTED_MODULE_0__["default"].of('RC'));
         }
         if (captions.down) {
-            var AC = _objects_PDFHexString__WEBPACK_IMPORTED_MODULE_3__.default.fromText(captions.down);
-            this.dict.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_0__.default.of('AC'), AC);
+            var AC = _objects_PDFHexString__WEBPACK_IMPORTED_MODULE_3__["default"].fromText(captions.down);
+            this.dict.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_0__["default"].of('AC'), AC);
         }
         else {
-            this.dict.delete(_objects_PDFName__WEBPACK_IMPORTED_MODULE_0__.default.of('AC'));
+            this.dict.delete(_objects_PDFName__WEBPACK_IMPORTED_MODULE_0__["default"].of('AC'));
         }
     };
     AppearanceCharacteristics.fromDict = function (dict) {
@@ -19454,23 +19476,23 @@ var PDFAcroCheckBox = /** @class */ (function (_super) {
     }
     PDFAcroCheckBox.prototype.setValue = function (value) {
         var _a;
-        var onValue = (_a = this.getOnValue()) !== null && _a !== void 0 ? _a : _objects_PDFName__WEBPACK_IMPORTED_MODULE_0__.default.of('Yes');
-        if (value !== onValue && value !== _objects_PDFName__WEBPACK_IMPORTED_MODULE_0__.default.of('Off')) {
+        var onValue = (_a = this.getOnValue()) !== null && _a !== void 0 ? _a : _objects_PDFName__WEBPACK_IMPORTED_MODULE_0__["default"].of('Yes');
+        if (value !== onValue && value !== _objects_PDFName__WEBPACK_IMPORTED_MODULE_0__["default"].of('Off')) {
             throw new _errors__WEBPACK_IMPORTED_MODULE_2__.InvalidAcroFieldValueError();
         }
-        this.dict.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_0__.default.of('V'), value);
+        this.dict.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_0__["default"].of('V'), value);
         var widgets = this.getWidgets();
         for (var idx = 0, len = widgets.length; idx < len; idx++) {
             var widget = widgets[idx];
-            var state = widget.getOnValue() === value ? value : _objects_PDFName__WEBPACK_IMPORTED_MODULE_0__.default.of('Off');
+            var state = widget.getOnValue() === value ? value : _objects_PDFName__WEBPACK_IMPORTED_MODULE_0__["default"].of('Off');
             widget.setAppearanceState(state);
         }
     };
     PDFAcroCheckBox.prototype.getValue = function () {
         var v = this.V();
-        if (v instanceof _objects_PDFName__WEBPACK_IMPORTED_MODULE_0__.default)
+        if (v instanceof _objects_PDFName__WEBPACK_IMPORTED_MODULE_0__["default"])
             return v;
-        return _objects_PDFName__WEBPACK_IMPORTED_MODULE_0__.default.of('Off');
+        return _objects_PDFName__WEBPACK_IMPORTED_MODULE_0__["default"].of('Off');
     };
     PDFAcroCheckBox.prototype.getOnValue = function () {
         var widget = this.getWidgets()[0];
@@ -19488,7 +19510,7 @@ var PDFAcroCheckBox = /** @class */ (function (_super) {
         return new PDFAcroCheckBox(dict, ref);
     };
     return PDFAcroCheckBox;
-}(_PDFAcroButton__WEBPACK_IMPORTED_MODULE_1__.default));
+}(_PDFAcroButton__WEBPACK_IMPORTED_MODULE_1__["default"]));
 /* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (PDFAcroCheckBox);
 //# sourceMappingURL=PDFAcroCheckBox.js.map
 
@@ -19529,16 +19551,16 @@ var PDFAcroChoice = /** @class */ (function (_super) {
             throw new _errors__WEBPACK_IMPORTED_MODULE_6__.InvalidAcroFieldValueError();
         }
         if (values.length === 0) {
-            this.dict.delete(_objects_PDFName__WEBPACK_IMPORTED_MODULE_4__.default.of('V'));
+            this.dict.delete(_objects_PDFName__WEBPACK_IMPORTED_MODULE_4__["default"].of('V'));
         }
         if (values.length === 1) {
-            this.dict.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_4__.default.of('V'), values[0]);
+            this.dict.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_4__["default"].of('V'), values[0]);
         }
         if (values.length > 1) {
             if (!this.hasFlag(_flags__WEBPACK_IMPORTED_MODULE_5__.AcroChoiceFlags.MultiSelect)) {
                 throw new _errors__WEBPACK_IMPORTED_MODULE_6__.MultiSelectValueError();
             }
-            this.dict.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_4__.default.of('V'), this.dict.context.obj(values));
+            this.dict.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_4__["default"].of('V'), this.dict.context.obj(values));
         }
         this.updateSelectedIndices(values);
     };
@@ -19568,21 +19590,21 @@ var PDFAcroChoice = /** @class */ (function (_super) {
             for (var idx = 0, len = values.length; idx < len; idx++) {
                 _loop_2(idx, len);
             }
-            this.dict.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_4__.default.of('I'), this.dict.context.obj(indices.sort()));
+            this.dict.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_4__["default"].of('I'), this.dict.context.obj(indices.sort()));
         }
         else {
-            this.dict.delete(_objects_PDFName__WEBPACK_IMPORTED_MODULE_4__.default.of('I'));
+            this.dict.delete(_objects_PDFName__WEBPACK_IMPORTED_MODULE_4__["default"].of('I'));
         }
     };
     PDFAcroChoice.prototype.getValues = function () {
         var v = this.V();
-        if (v instanceof _objects_PDFString__WEBPACK_IMPORTED_MODULE_2__.default || v instanceof _objects_PDFHexString__WEBPACK_IMPORTED_MODULE_1__.default)
+        if (v instanceof _objects_PDFString__WEBPACK_IMPORTED_MODULE_2__["default"] || v instanceof _objects_PDFHexString__WEBPACK_IMPORTED_MODULE_1__["default"])
             return [v];
-        if (v instanceof _objects_PDFArray__WEBPACK_IMPORTED_MODULE_3__.default) {
+        if (v instanceof _objects_PDFArray__WEBPACK_IMPORTED_MODULE_3__["default"]) {
             var values = [];
             for (var idx = 0, len = v.size(); idx < len; idx++) {
                 var value = v.lookup(idx);
-                if (value instanceof _objects_PDFString__WEBPACK_IMPORTED_MODULE_2__.default || value instanceof _objects_PDFHexString__WEBPACK_IMPORTED_MODULE_1__.default) {
+                if (value instanceof _objects_PDFString__WEBPACK_IMPORTED_MODULE_2__["default"] || value instanceof _objects_PDFHexString__WEBPACK_IMPORTED_MODULE_1__["default"]) {
                     values.push(value);
                 }
             }
@@ -19591,7 +19613,7 @@ var PDFAcroChoice = /** @class */ (function (_super) {
         return [];
     };
     PDFAcroChoice.prototype.Opt = function () {
-        return this.dict.lookupMaybe(_objects_PDFName__WEBPACK_IMPORTED_MODULE_4__.default.of('Opt'), _objects_PDFString__WEBPACK_IMPORTED_MODULE_2__.default, _objects_PDFHexString__WEBPACK_IMPORTED_MODULE_1__.default, _objects_PDFArray__WEBPACK_IMPORTED_MODULE_3__.default);
+        return this.dict.lookupMaybe(_objects_PDFName__WEBPACK_IMPORTED_MODULE_4__["default"].of('Opt'), _objects_PDFString__WEBPACK_IMPORTED_MODULE_2__["default"], _objects_PDFHexString__WEBPACK_IMPORTED_MODULE_1__["default"], _objects_PDFArray__WEBPACK_IMPORTED_MODULE_3__["default"]);
     };
     PDFAcroChoice.prototype.setOptions = function (options) {
         var newOpt = new Array(options.length);
@@ -19599,29 +19621,29 @@ var PDFAcroChoice = /** @class */ (function (_super) {
             var _a = options[idx], value = _a.value, display = _a.display;
             newOpt[idx] = this.dict.context.obj([value, display || value]);
         }
-        this.dict.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_4__.default.of('Opt'), this.dict.context.obj(newOpt));
+        this.dict.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_4__["default"].of('Opt'), this.dict.context.obj(newOpt));
     };
     PDFAcroChoice.prototype.getOptions = function () {
         var Opt = this.Opt();
         // Not supposed to happen - Opt _should_ always be `PDFArray | undefined`
-        if (Opt instanceof _objects_PDFString__WEBPACK_IMPORTED_MODULE_2__.default || Opt instanceof _objects_PDFHexString__WEBPACK_IMPORTED_MODULE_1__.default) {
+        if (Opt instanceof _objects_PDFString__WEBPACK_IMPORTED_MODULE_2__["default"] || Opt instanceof _objects_PDFHexString__WEBPACK_IMPORTED_MODULE_1__["default"]) {
             return [{ value: Opt, display: Opt }];
         }
-        if (Opt instanceof _objects_PDFArray__WEBPACK_IMPORTED_MODULE_3__.default) {
+        if (Opt instanceof _objects_PDFArray__WEBPACK_IMPORTED_MODULE_3__["default"]) {
             var res = [];
             for (var idx = 0, len = Opt.size(); idx < len; idx++) {
                 var item = Opt.lookup(idx);
                 // If `item` is a string, use that as both the export and text value
-                if (item instanceof _objects_PDFString__WEBPACK_IMPORTED_MODULE_2__.default || item instanceof _objects_PDFHexString__WEBPACK_IMPORTED_MODULE_1__.default) {
+                if (item instanceof _objects_PDFString__WEBPACK_IMPORTED_MODULE_2__["default"] || item instanceof _objects_PDFHexString__WEBPACK_IMPORTED_MODULE_1__["default"]) {
                     res.push({ value: item, display: item });
                 }
                 // If `item` is an array of one, treat it the same as just a string,
                 // if it's an array of two then `item[0]` is the export value and
                 // `item[1]` is the text value
-                if (item instanceof _objects_PDFArray__WEBPACK_IMPORTED_MODULE_3__.default) {
+                if (item instanceof _objects_PDFArray__WEBPACK_IMPORTED_MODULE_3__["default"]) {
                     if (item.size() > 0) {
-                        var first = item.lookup(0, _objects_PDFString__WEBPACK_IMPORTED_MODULE_2__.default, _objects_PDFHexString__WEBPACK_IMPORTED_MODULE_1__.default);
-                        var second = item.lookupMaybe(1, _objects_PDFString__WEBPACK_IMPORTED_MODULE_2__.default, _objects_PDFHexString__WEBPACK_IMPORTED_MODULE_1__.default);
+                        var first = item.lookup(0, _objects_PDFString__WEBPACK_IMPORTED_MODULE_2__["default"], _objects_PDFHexString__WEBPACK_IMPORTED_MODULE_1__["default"]);
+                        var second = item.lookupMaybe(1, _objects_PDFString__WEBPACK_IMPORTED_MODULE_2__["default"], _objects_PDFHexString__WEBPACK_IMPORTED_MODULE_1__["default"]);
                         res.push({ value: first, display: second || first });
                     }
                 }
@@ -19631,7 +19653,7 @@ var PDFAcroChoice = /** @class */ (function (_super) {
         return [];
     };
     return PDFAcroChoice;
-}(_PDFAcroTerminal__WEBPACK_IMPORTED_MODULE_0__.default));
+}(_PDFAcroTerminal__WEBPACK_IMPORTED_MODULE_0__["default"]));
 /* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (PDFAcroChoice);
 //# sourceMappingURL=PDFAcroChoice.js.map
 
@@ -19828,7 +19850,7 @@ var PDFAcroComboBox = /** @class */ (function (_super) {
         return new PDFAcroComboBox(dict, ref);
     };
     return PDFAcroComboBox;
-}(_PDFAcroChoice__WEBPACK_IMPORTED_MODULE_0__.default));
+}(_PDFAcroChoice__WEBPACK_IMPORTED_MODULE_0__["default"]));
 /* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (PDFAcroComboBox);
 //# sourceMappingURL=PDFAcroComboBox.js.map
 
@@ -19856,8 +19878,8 @@ var PDFAcroForm = /** @class */ (function () {
         this.dict = dict;
     }
     PDFAcroForm.prototype.Fields = function () {
-        var fields = this.dict.lookup(_objects_PDFName__WEBPACK_IMPORTED_MODULE_2__.default.of('Fields'));
-        if (fields instanceof _objects_PDFArray__WEBPACK_IMPORTED_MODULE_1__.default)
+        var fields = this.dict.lookup(_objects_PDFName__WEBPACK_IMPORTED_MODULE_2__["default"].of('Fields'));
+        if (fields instanceof _objects_PDFArray__WEBPACK_IMPORTED_MODULE_1__["default"])
             return fields;
         return undefined;
     };
@@ -19866,7 +19888,7 @@ var PDFAcroForm = /** @class */ (function () {
         var fields = new Array(Fields.size());
         for (var idx = 0, len = Fields.size(); idx < len; idx++) {
             var ref = Fields.get(idx);
-            var dict = Fields.lookup(idx, _objects_PDFDict__WEBPACK_IMPORTED_MODULE_0__.default);
+            var dict = Fields.lookup(idx, _objects_PDFDict__WEBPACK_IMPORTED_MODULE_0__["default"]);
             fields[idx] = [(0,_utils__WEBPACK_IMPORTED_MODULE_4__.createPDFAcroField)(dict, ref), ref];
         }
         return fields;
@@ -19880,7 +19902,7 @@ var PDFAcroForm = /** @class */ (function () {
                 var field = fields[idx];
                 allFields.push(field);
                 var fieldModel = field[0];
-                if (fieldModel instanceof _PDFAcroNonTerminal__WEBPACK_IMPORTED_MODULE_3__.default) {
+                if (fieldModel instanceof _PDFAcroNonTerminal__WEBPACK_IMPORTED_MODULE_3__["default"]) {
                     pushFields((0,_utils__WEBPACK_IMPORTED_MODULE_4__.createPDFAcroFields)(fieldModel.Kids()));
                 }
             }
@@ -19908,7 +19930,7 @@ var PDFAcroForm = /** @class */ (function () {
         var Fields = this.Fields();
         if (!Fields) {
             Fields = this.dict.context.obj([]);
-            this.dict.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_2__.default.of('Fields'), Fields);
+            this.dict.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_2__["default"].of('Fields'), Fields);
         }
         return { Fields: Fields };
     };
@@ -19950,7 +19972,7 @@ var PDFAcroNonTerminal = /** @class */ (function (_super) {
         var Kids = this.Kids();
         if (!Kids) {
             Kids = this.dict.context.obj([]);
-            this.dict.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_0__.default.of('Kids'), Kids);
+            this.dict.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_0__["default"].of('Kids'), Kids);
         }
         return { Kids: Kids };
     };
@@ -19963,7 +19985,7 @@ var PDFAcroNonTerminal = /** @class */ (function (_super) {
         return new PDFAcroNonTerminal(dict, ref);
     };
     return PDFAcroNonTerminal;
-}(_PDFAcroField__WEBPACK_IMPORTED_MODULE_1__.default));
+}(_PDFAcroField__WEBPACK_IMPORTED_MODULE_1__["default"]));
 /* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (PDFAcroNonTerminal);
 //# sourceMappingURL=PDFAcroNonTerminal.js.map
 
@@ -20015,7 +20037,7 @@ var createPDFAcroFields = function (kidDicts) {
         var ref = kidDicts.get(idx);
         var dict = kidDicts.lookup(idx);
         // if (dict instanceof PDFDict) kids.push(PDFAcroField.fromDict(dict));
-        if (ref instanceof _objects_PDFRef__WEBPACK_IMPORTED_MODULE_4__.default && dict instanceof _objects_PDFDict__WEBPACK_IMPORTED_MODULE_1__.default) {
+        if (ref instanceof _objects_PDFRef__WEBPACK_IMPORTED_MODULE_4__["default"] && dict instanceof _objects_PDFDict__WEBPACK_IMPORTED_MODULE_1__["default"]) {
             kids.push([createPDFAcroField(dict, ref), ref]);
         }
     }
@@ -20024,7 +20046,7 @@ var createPDFAcroFields = function (kidDicts) {
 var createPDFAcroField = function (dict, ref) {
     var isNonTerminal = isNonTerminalAcroField(dict);
     if (isNonTerminal)
-        return _PDFAcroNonTerminal__WEBPACK_IMPORTED_MODULE_6__.default.fromDict(dict, ref);
+        return _PDFAcroNonTerminal__WEBPACK_IMPORTED_MODULE_6__["default"].fromDict(dict, ref);
     return createPDFAcroTerminal(dict, ref);
 };
 // TODO: Maybe just check if the dict is *not* a widget? That might be better.
@@ -20043,11 +20065,11 @@ var createPDFAcroField = function (dict, ref) {
 // optional for acrofields by the PDF spec. But in practice all acrofields seem
 // to have a `/T` entry defined.
 var isNonTerminalAcroField = function (dict) {
-    var kids = dict.lookup(_objects_PDFName__WEBPACK_IMPORTED_MODULE_2__.default.of('Kids'));
-    if (kids instanceof _objects_PDFArray__WEBPACK_IMPORTED_MODULE_3__.default) {
+    var kids = dict.lookup(_objects_PDFName__WEBPACK_IMPORTED_MODULE_2__["default"].of('Kids'));
+    if (kids instanceof _objects_PDFArray__WEBPACK_IMPORTED_MODULE_3__["default"]) {
         for (var idx = 0, len = kids.size(); idx < len; idx++) {
             var kid = kids.lookup(idx);
-            var kidIsField = kid instanceof _objects_PDFDict__WEBPACK_IMPORTED_MODULE_1__.default && kid.has(_objects_PDFName__WEBPACK_IMPORTED_MODULE_2__.default.of('T'));
+            var kidIsField = kid instanceof _objects_PDFDict__WEBPACK_IMPORTED_MODULE_1__["default"] && kid.has(_objects_PDFName__WEBPACK_IMPORTED_MODULE_2__["default"].of('T'));
             if (kidIsField)
                 return true;
         }
@@ -20055,46 +20077,46 @@ var isNonTerminalAcroField = function (dict) {
     return false;
 };
 var createPDFAcroTerminal = function (dict, ref) {
-    var ftNameOrRef = getInheritableAttribute(dict, _objects_PDFName__WEBPACK_IMPORTED_MODULE_2__.default.of('FT'));
-    var type = dict.context.lookup(ftNameOrRef, _objects_PDFName__WEBPACK_IMPORTED_MODULE_2__.default);
-    if (type === _objects_PDFName__WEBPACK_IMPORTED_MODULE_2__.default.of('Btn'))
+    var ftNameOrRef = getInheritableAttribute(dict, _objects_PDFName__WEBPACK_IMPORTED_MODULE_2__["default"].of('FT'));
+    var type = dict.context.lookup(ftNameOrRef, _objects_PDFName__WEBPACK_IMPORTED_MODULE_2__["default"]);
+    if (type === _objects_PDFName__WEBPACK_IMPORTED_MODULE_2__["default"].of('Btn'))
         return createPDFAcroButton(dict, ref);
-    if (type === _objects_PDFName__WEBPACK_IMPORTED_MODULE_2__.default.of('Ch'))
+    if (type === _objects_PDFName__WEBPACK_IMPORTED_MODULE_2__["default"].of('Ch'))
         return createPDFAcroChoice(dict, ref);
-    if (type === _objects_PDFName__WEBPACK_IMPORTED_MODULE_2__.default.of('Tx'))
-        return _PDFAcroText__WEBPACK_IMPORTED_MODULE_8__.default.fromDict(dict, ref);
-    if (type === _objects_PDFName__WEBPACK_IMPORTED_MODULE_2__.default.of('Sig'))
-        return _PDFAcroSignature__WEBPACK_IMPORTED_MODULE_7__.default.fromDict(dict, ref);
+    if (type === _objects_PDFName__WEBPACK_IMPORTED_MODULE_2__["default"].of('Tx'))
+        return _PDFAcroText__WEBPACK_IMPORTED_MODULE_8__["default"].fromDict(dict, ref);
+    if (type === _objects_PDFName__WEBPACK_IMPORTED_MODULE_2__["default"].of('Sig'))
+        return _PDFAcroSignature__WEBPACK_IMPORTED_MODULE_7__["default"].fromDict(dict, ref);
     // We should never reach this line. But there are a lot of weird PDFs out
     // there. So, just to be safe, we'll try to handle things gracefully instead
     // of throwing an error.
-    return _PDFAcroTerminal__WEBPACK_IMPORTED_MODULE_5__.default.fromDict(dict, ref);
+    return _PDFAcroTerminal__WEBPACK_IMPORTED_MODULE_5__["default"].fromDict(dict, ref);
 };
 var createPDFAcroButton = function (dict, ref) {
     var _a;
-    var ffNumberOrRef = getInheritableAttribute(dict, _objects_PDFName__WEBPACK_IMPORTED_MODULE_2__.default.of('Ff'));
-    var ffNumber = dict.context.lookupMaybe(ffNumberOrRef, _objects_PDFNumber__WEBPACK_IMPORTED_MODULE_0__.default);
+    var ffNumberOrRef = getInheritableAttribute(dict, _objects_PDFName__WEBPACK_IMPORTED_MODULE_2__["default"].of('Ff'));
+    var ffNumber = dict.context.lookupMaybe(ffNumberOrRef, _objects_PDFNumber__WEBPACK_IMPORTED_MODULE_0__["default"]);
     var flags = (_a = ffNumber === null || ffNumber === void 0 ? void 0 : ffNumber.asNumber()) !== null && _a !== void 0 ? _a : 0;
     if (flagIsSet(flags, _flags__WEBPACK_IMPORTED_MODULE_14__.AcroButtonFlags.PushButton)) {
-        return _PDFAcroPushButton__WEBPACK_IMPORTED_MODULE_9__.default.fromDict(dict, ref);
+        return _PDFAcroPushButton__WEBPACK_IMPORTED_MODULE_9__["default"].fromDict(dict, ref);
     }
     else if (flagIsSet(flags, _flags__WEBPACK_IMPORTED_MODULE_14__.AcroButtonFlags.Radio)) {
-        return _PDFAcroRadioButton__WEBPACK_IMPORTED_MODULE_10__.default.fromDict(dict, ref);
+        return _PDFAcroRadioButton__WEBPACK_IMPORTED_MODULE_10__["default"].fromDict(dict, ref);
     }
     else {
-        return _PDFAcroCheckBox__WEBPACK_IMPORTED_MODULE_11__.default.fromDict(dict, ref);
+        return _PDFAcroCheckBox__WEBPACK_IMPORTED_MODULE_11__["default"].fromDict(dict, ref);
     }
 };
 var createPDFAcroChoice = function (dict, ref) {
     var _a;
-    var ffNumberOrRef = getInheritableAttribute(dict, _objects_PDFName__WEBPACK_IMPORTED_MODULE_2__.default.of('Ff'));
-    var ffNumber = dict.context.lookupMaybe(ffNumberOrRef, _objects_PDFNumber__WEBPACK_IMPORTED_MODULE_0__.default);
+    var ffNumberOrRef = getInheritableAttribute(dict, _objects_PDFName__WEBPACK_IMPORTED_MODULE_2__["default"].of('Ff'));
+    var ffNumber = dict.context.lookupMaybe(ffNumberOrRef, _objects_PDFNumber__WEBPACK_IMPORTED_MODULE_0__["default"]);
     var flags = (_a = ffNumber === null || ffNumber === void 0 ? void 0 : ffNumber.asNumber()) !== null && _a !== void 0 ? _a : 0;
     if (flagIsSet(flags, _flags__WEBPACK_IMPORTED_MODULE_14__.AcroChoiceFlags.Combo)) {
-        return _PDFAcroComboBox__WEBPACK_IMPORTED_MODULE_12__.default.fromDict(dict, ref);
+        return _PDFAcroComboBox__WEBPACK_IMPORTED_MODULE_12__["default"].fromDict(dict, ref);
     }
     else {
-        return _PDFAcroListBox__WEBPACK_IMPORTED_MODULE_13__.default.fromDict(dict, ref);
+        return _PDFAcroListBox__WEBPACK_IMPORTED_MODULE_13__["default"].fromDict(dict, ref);
     }
 };
 var flagIsSet = function (flags, flag) {
@@ -20110,7 +20132,7 @@ var getInheritableAttribute = function (startNode, name) {
 };
 var ascend = function (startNode, visitor) {
     visitor(startNode);
-    var Parent = startNode.lookupMaybe(_objects_PDFName__WEBPACK_IMPORTED_MODULE_2__.default.of('Parent'), _objects_PDFDict__WEBPACK_IMPORTED_MODULE_1__.default);
+    var Parent = startNode.lookupMaybe(_objects_PDFName__WEBPACK_IMPORTED_MODULE_2__["default"].of('Parent'), _objects_PDFDict__WEBPACK_IMPORTED_MODULE_1__["default"]);
     if (Parent)
         ascend(Parent, visitor);
 };
@@ -20138,7 +20160,7 @@ var PDFAcroSignature = /** @class */ (function (_super) {
         return new PDFAcroSignature(dict, ref);
     };
     return PDFAcroSignature;
-}(_PDFAcroTerminal__WEBPACK_IMPORTED_MODULE_0__.default));
+}(_PDFAcroTerminal__WEBPACK_IMPORTED_MODULE_0__["default"]));
 /* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (PDFAcroSignature);
 //# sourceMappingURL=PDFAcroSignature.js.map
 
@@ -20169,36 +20191,36 @@ var PDFAcroText = /** @class */ (function (_super) {
         return _super !== null && _super.apply(this, arguments) || this;
     }
     PDFAcroText.prototype.MaxLen = function () {
-        var maxLen = this.dict.lookup(_objects_PDFName__WEBPACK_IMPORTED_MODULE_3__.default.of('MaxLen'));
-        if (maxLen instanceof _objects_PDFNumber__WEBPACK_IMPORTED_MODULE_0__.default)
+        var maxLen = this.dict.lookup(_objects_PDFName__WEBPACK_IMPORTED_MODULE_3__["default"].of('MaxLen'));
+        if (maxLen instanceof _objects_PDFNumber__WEBPACK_IMPORTED_MODULE_0__["default"])
             return maxLen;
         return undefined;
     };
     PDFAcroText.prototype.Q = function () {
-        var q = this.dict.lookup(_objects_PDFName__WEBPACK_IMPORTED_MODULE_3__.default.of('Q'));
-        if (q instanceof _objects_PDFNumber__WEBPACK_IMPORTED_MODULE_0__.default)
+        var q = this.dict.lookup(_objects_PDFName__WEBPACK_IMPORTED_MODULE_3__["default"].of('Q'));
+        if (q instanceof _objects_PDFNumber__WEBPACK_IMPORTED_MODULE_0__["default"])
             return q;
         return undefined;
     };
     PDFAcroText.prototype.setMaxLength = function (maxLength) {
-        this.dict.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_3__.default.of('MaxLen'), _objects_PDFNumber__WEBPACK_IMPORTED_MODULE_0__.default.of(maxLength));
+        this.dict.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_3__["default"].of('MaxLen'), _objects_PDFNumber__WEBPACK_IMPORTED_MODULE_0__["default"].of(maxLength));
     };
     PDFAcroText.prototype.removeMaxLength = function () {
-        this.dict.delete(_objects_PDFName__WEBPACK_IMPORTED_MODULE_3__.default.of('MaxLen'));
+        this.dict.delete(_objects_PDFName__WEBPACK_IMPORTED_MODULE_3__["default"].of('MaxLen'));
     };
     PDFAcroText.prototype.getMaxLength = function () {
         var _a;
         return (_a = this.MaxLen()) === null || _a === void 0 ? void 0 : _a.asNumber();
     };
     PDFAcroText.prototype.setQuadding = function (quadding) {
-        this.dict.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_3__.default.of('Q'), _objects_PDFNumber__WEBPACK_IMPORTED_MODULE_0__.default.of(quadding));
+        this.dict.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_3__["default"].of('Q'), _objects_PDFNumber__WEBPACK_IMPORTED_MODULE_0__["default"].of(quadding));
     };
     PDFAcroText.prototype.getQuadding = function () {
         var _a;
         return (_a = this.Q()) === null || _a === void 0 ? void 0 : _a.asNumber();
     };
     PDFAcroText.prototype.setValue = function (value) {
-        this.dict.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_3__.default.of('V'), value);
+        this.dict.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_3__["default"].of('V'), value);
         // const widgets = this.getWidgets();
         // for (let idx = 0, len = widgets.length; idx < len; idx++) {
         //   const widget = widgets[idx];
@@ -20207,11 +20229,11 @@ var PDFAcroText = /** @class */ (function (_super) {
         // }
     };
     PDFAcroText.prototype.removeValue = function () {
-        this.dict.delete(_objects_PDFName__WEBPACK_IMPORTED_MODULE_3__.default.of('V'));
+        this.dict.delete(_objects_PDFName__WEBPACK_IMPORTED_MODULE_3__["default"].of('V'));
     };
     PDFAcroText.prototype.getValue = function () {
         var v = this.V();
-        if (v instanceof _objects_PDFString__WEBPACK_IMPORTED_MODULE_1__.default || v instanceof _objects_PDFHexString__WEBPACK_IMPORTED_MODULE_2__.default)
+        if (v instanceof _objects_PDFString__WEBPACK_IMPORTED_MODULE_1__["default"] || v instanceof _objects_PDFHexString__WEBPACK_IMPORTED_MODULE_2__["default"])
             return v;
         return undefined;
     };
@@ -20225,7 +20247,7 @@ var PDFAcroText = /** @class */ (function (_super) {
         return new PDFAcroText(dict, ref);
     };
     return PDFAcroText;
-}(_PDFAcroTerminal__WEBPACK_IMPORTED_MODULE_4__.default));
+}(_PDFAcroTerminal__WEBPACK_IMPORTED_MODULE_4__["default"]));
 /* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (PDFAcroText);
 //# sourceMappingURL=PDFAcroText.js.map
 
@@ -20262,7 +20284,7 @@ var PDFAcroPushButton = /** @class */ (function (_super) {
         return new PDFAcroPushButton(dict, ref);
     };
     return PDFAcroPushButton;
-}(_PDFAcroButton__WEBPACK_IMPORTED_MODULE_0__.default));
+}(_PDFAcroButton__WEBPACK_IMPORTED_MODULE_0__["default"]));
 /* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (PDFAcroPushButton);
 //# sourceMappingURL=PDFAcroPushButton.js.map
 
@@ -20292,22 +20314,22 @@ var PDFAcroRadioButton = /** @class */ (function (_super) {
     }
     PDFAcroRadioButton.prototype.setValue = function (value) {
         var onValues = this.getOnValues();
-        if (!onValues.includes(value) && value !== _objects_PDFName__WEBPACK_IMPORTED_MODULE_0__.default.of('Off')) {
+        if (!onValues.includes(value) && value !== _objects_PDFName__WEBPACK_IMPORTED_MODULE_0__["default"].of('Off')) {
             throw new _errors__WEBPACK_IMPORTED_MODULE_3__.InvalidAcroFieldValueError();
         }
-        this.dict.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_0__.default.of('V'), value);
+        this.dict.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_0__["default"].of('V'), value);
         var widgets = this.getWidgets();
         for (var idx = 0, len = widgets.length; idx < len; idx++) {
             var widget = widgets[idx];
-            var state = widget.getOnValue() === value ? value : _objects_PDFName__WEBPACK_IMPORTED_MODULE_0__.default.of('Off');
+            var state = widget.getOnValue() === value ? value : _objects_PDFName__WEBPACK_IMPORTED_MODULE_0__["default"].of('Off');
             widget.setAppearanceState(state);
         }
     };
     PDFAcroRadioButton.prototype.getValue = function () {
         var v = this.V();
-        if (v instanceof _objects_PDFName__WEBPACK_IMPORTED_MODULE_0__.default)
+        if (v instanceof _objects_PDFName__WEBPACK_IMPORTED_MODULE_0__["default"])
             return v;
-        return _objects_PDFName__WEBPACK_IMPORTED_MODULE_0__.default.of('Off');
+        return _objects_PDFName__WEBPACK_IMPORTED_MODULE_0__["default"].of('Off');
     };
     PDFAcroRadioButton.prototype.getOnValues = function () {
         var widgets = this.getWidgets();
@@ -20332,7 +20354,7 @@ var PDFAcroRadioButton = /** @class */ (function (_super) {
         return new PDFAcroRadioButton(dict, ref);
     };
     return PDFAcroRadioButton;
-}(_PDFAcroButton__WEBPACK_IMPORTED_MODULE_1__.default));
+}(_PDFAcroButton__WEBPACK_IMPORTED_MODULE_1__["default"]));
 /* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (PDFAcroRadioButton);
 //# sourceMappingURL=PDFAcroRadioButton.js.map
 
@@ -20366,7 +20388,7 @@ var PDFAcroListBox = /** @class */ (function (_super) {
         return new PDFAcroListBox(dict, ref);
     };
     return PDFAcroListBox;
-}(_PDFAcroChoice__WEBPACK_IMPORTED_MODULE_0__.default));
+}(_PDFAcroChoice__WEBPACK_IMPORTED_MODULE_0__["default"]));
 /* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (PDFAcroListBox);
 //# sourceMappingURL=PDFAcroListBox.js.map
 
@@ -20399,13 +20421,13 @@ var PDFPageTree = /** @class */ (function (_super) {
         return _super !== null && _super.apply(this, arguments) || this;
     }
     PDFPageTree.prototype.Parent = function () {
-        return this.lookup(_objects_PDFName__WEBPACK_IMPORTED_MODULE_2__.default.of('Parent'));
+        return this.lookup(_objects_PDFName__WEBPACK_IMPORTED_MODULE_2__["default"].of('Parent'));
     };
     PDFPageTree.prototype.Kids = function () {
-        return this.lookup(_objects_PDFName__WEBPACK_IMPORTED_MODULE_2__.default.of('Kids'), _objects_PDFArray__WEBPACK_IMPORTED_MODULE_0__.default);
+        return this.lookup(_objects_PDFName__WEBPACK_IMPORTED_MODULE_2__["default"].of('Kids'), _objects_PDFArray__WEBPACK_IMPORTED_MODULE_0__["default"]);
     };
     PDFPageTree.prototype.Count = function () {
-        return this.lookup(_objects_PDFName__WEBPACK_IMPORTED_MODULE_2__.default.of('Count'), _objects_PDFNumber__WEBPACK_IMPORTED_MODULE_3__.default);
+        return this.lookup(_objects_PDFName__WEBPACK_IMPORTED_MODULE_2__["default"].of('Count'), _objects_PDFNumber__WEBPACK_IMPORTED_MODULE_3__["default"]);
     };
     PDFPageTree.prototype.pushTreeNode = function (treeRef) {
         var Kids = this.Kids();
@@ -20449,7 +20471,7 @@ var PDFPageTree = /** @class */ (function (_super) {
                     leafsRemainingUntilTarget -= kid.Count().asNumber();
                 }
             }
-            if (kid instanceof _PDFPageLeaf__WEBPACK_IMPORTED_MODULE_4__.default) {
+            if (kid instanceof _PDFPageLeaf__WEBPACK_IMPORTED_MODULE_4__["default"]) {
                 // Move on
                 leafsRemainingUntilTarget -= 1;
             }
@@ -20494,7 +20516,7 @@ var PDFPageTree = /** @class */ (function (_super) {
                     leafsRemainingUntilTarget -= kid.Count().asNumber();
                 }
             }
-            if (kid instanceof _PDFPageLeaf__WEBPACK_IMPORTED_MODULE_4__.default) {
+            if (kid instanceof _PDFPageLeaf__WEBPACK_IMPORTED_MODULE_4__["default"]) {
                 if (leafsRemainingUntilTarget === 0) {
                     // Remove page and return
                     this.removeKid(idx);
@@ -20530,35 +20552,35 @@ var PDFPageTree = /** @class */ (function (_super) {
         var Kids = this.Kids();
         this.ascend(function (node) {
             var newCount = node.Count().asNumber() + 1;
-            node.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_2__.default.of('Count'), _objects_PDFNumber__WEBPACK_IMPORTED_MODULE_3__.default.of(newCount));
+            node.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_2__["default"].of('Count'), _objects_PDFNumber__WEBPACK_IMPORTED_MODULE_3__["default"].of(newCount));
         });
         Kids.insert(kidIdx, leafRef);
     };
     PDFPageTree.prototype.removeKid = function (kidIdx) {
         var Kids = this.Kids();
         var kid = Kids.lookup(kidIdx);
-        if (kid instanceof _PDFPageLeaf__WEBPACK_IMPORTED_MODULE_4__.default) {
+        if (kid instanceof _PDFPageLeaf__WEBPACK_IMPORTED_MODULE_4__["default"]) {
             this.ascend(function (node) {
                 var newCount = node.Count().asNumber() - 1;
-                node.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_2__.default.of('Count'), _objects_PDFNumber__WEBPACK_IMPORTED_MODULE_3__.default.of(newCount));
+                node.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_2__["default"].of('Count'), _objects_PDFNumber__WEBPACK_IMPORTED_MODULE_3__["default"].of(newCount));
             });
         }
         Kids.remove(kidIdx);
     };
     PDFPageTree.withContext = function (context, parent) {
         var dict = new Map();
-        dict.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_2__.default.of('Type'), _objects_PDFName__WEBPACK_IMPORTED_MODULE_2__.default.of('Pages'));
-        dict.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_2__.default.of('Kids'), context.obj([]));
-        dict.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_2__.default.of('Count'), context.obj(0));
+        dict.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_2__["default"].of('Type'), _objects_PDFName__WEBPACK_IMPORTED_MODULE_2__["default"].of('Pages'));
+        dict.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_2__["default"].of('Kids'), context.obj([]));
+        dict.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_2__["default"].of('Count'), context.obj(0));
         if (parent)
-            dict.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_2__.default.of('Parent'), parent);
+            dict.set(_objects_PDFName__WEBPACK_IMPORTED_MODULE_2__["default"].of('Parent'), parent);
         return new PDFPageTree(dict, context);
     };
     PDFPageTree.fromMapWithContext = function (map, context) {
         return new PDFPageTree(map, context);
     };
     return PDFPageTree;
-}(_objects_PDFDict__WEBPACK_IMPORTED_MODULE_1__.default));
+}(_objects_PDFDict__WEBPACK_IMPORTED_MODULE_1__["default"]));
 /* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (PDFPageTree);
 //# sourceMappingURL=PDFPageTree.js.map
 
@@ -20629,24 +20651,24 @@ var PDFObjectParser = /** @class */ (function (_super) {
     // TODO: Is it possible to reduce duplicate parsing for ref lookaheads?
     PDFObjectParser.prototype.parseObject = function () {
         this.skipWhitespaceAndComments();
-        if (this.matchKeyword(_syntax_Keywords__WEBPACK_IMPORTED_MODULE_18__.Keywords.true))
-            return _objects_PDFBool__WEBPACK_IMPORTED_MODULE_2__.default.True;
-        if (this.matchKeyword(_syntax_Keywords__WEBPACK_IMPORTED_MODULE_18__.Keywords.false))
-            return _objects_PDFBool__WEBPACK_IMPORTED_MODULE_2__.default.False;
-        if (this.matchKeyword(_syntax_Keywords__WEBPACK_IMPORTED_MODULE_18__.Keywords.null))
-            return _objects_PDFNull__WEBPACK_IMPORTED_MODULE_6__.default;
+        if (this.matchKeyword(_syntax_Keywords__WEBPACK_IMPORTED_MODULE_18__.Keywords["true"]))
+            return _objects_PDFBool__WEBPACK_IMPORTED_MODULE_2__["default"].True;
+        if (this.matchKeyword(_syntax_Keywords__WEBPACK_IMPORTED_MODULE_18__.Keywords["false"]))
+            return _objects_PDFBool__WEBPACK_IMPORTED_MODULE_2__["default"].False;
+        if (this.matchKeyword(_syntax_Keywords__WEBPACK_IMPORTED_MODULE_18__.Keywords["null"]))
+            return _objects_PDFNull__WEBPACK_IMPORTED_MODULE_6__["default"];
         var byte = this.bytes.peek();
-        if (byte === _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_16__.default.LessThan &&
-            this.bytes.peekAhead(1) === _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_16__.default.LessThan) {
+        if (byte === _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_16__["default"].LessThan &&
+            this.bytes.peekAhead(1) === _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_16__["default"].LessThan) {
             return this.parseDictOrStream();
         }
-        if (byte === _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_16__.default.LessThan)
+        if (byte === _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_16__["default"].LessThan)
             return this.parseHexString();
-        if (byte === _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_16__.default.LeftParen)
+        if (byte === _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_16__["default"].LeftParen)
             return this.parseString();
-        if (byte === _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_16__.default.ForwardSlash)
+        if (byte === _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_16__["default"].ForwardSlash)
             return this.parseName();
-        if (byte === _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_16__.default.LeftSquareBracket)
+        if (byte === _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_16__["default"].LeftSquareBracket)
             return this.parseArray();
         if (_syntax_Numeric__WEBPACK_IMPORTED_MODULE_19__.IsNumeric[byte])
             return this.parseNumberOrRef();
@@ -20659,23 +20681,23 @@ var PDFObjectParser = /** @class */ (function (_super) {
         if (_syntax_Numeric__WEBPACK_IMPORTED_MODULE_19__.IsDigit[this.bytes.peek()]) {
             var secondNum = this.parseRawNumber();
             this.skipWhitespaceAndComments();
-            if (this.bytes.peek() === _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_16__.default.R) {
-                this.bytes.assertNext(_syntax_CharCodes__WEBPACK_IMPORTED_MODULE_16__.default.R);
-                return _objects_PDFRef__WEBPACK_IMPORTED_MODULE_9__.default.of(firstNum, secondNum);
+            if (this.bytes.peek() === _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_16__["default"].R) {
+                this.bytes.assertNext(_syntax_CharCodes__WEBPACK_IMPORTED_MODULE_16__["default"].R);
+                return _objects_PDFRef__WEBPACK_IMPORTED_MODULE_9__["default"].of(firstNum, secondNum);
             }
         }
         this.bytes.moveTo(lookaheadStart);
-        return _objects_PDFNumber__WEBPACK_IMPORTED_MODULE_7__.default.of(firstNum);
+        return _objects_PDFNumber__WEBPACK_IMPORTED_MODULE_7__["default"].of(firstNum);
     };
     // TODO: Maybe update PDFHexString.of() logic to remove whitespace and validate input?
     PDFObjectParser.prototype.parseHexString = function () {
         var value = '';
-        this.bytes.assertNext(_syntax_CharCodes__WEBPACK_IMPORTED_MODULE_16__.default.LessThan);
-        while (!this.bytes.done() && this.bytes.peek() !== _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_16__.default.GreaterThan) {
+        this.bytes.assertNext(_syntax_CharCodes__WEBPACK_IMPORTED_MODULE_16__["default"].LessThan);
+        while (!this.bytes.done() && this.bytes.peek() !== _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_16__["default"].GreaterThan) {
             value += (0,_utils__WEBPACK_IMPORTED_MODULE_21__.charFromCode)(this.bytes.next());
         }
-        this.bytes.assertNext(_syntax_CharCodes__WEBPACK_IMPORTED_MODULE_16__.default.GreaterThan);
-        return _objects_PDFHexString__WEBPACK_IMPORTED_MODULE_4__.default.of(value);
+        this.bytes.assertNext(_syntax_CharCodes__WEBPACK_IMPORTED_MODULE_16__["default"].GreaterThan);
+        return _objects_PDFHexString__WEBPACK_IMPORTED_MODULE_4__["default"].of(value);
     };
     PDFObjectParser.prototype.parseString = function () {
         var nestingLvl = 0;
@@ -20686,13 +20708,13 @@ var PDFObjectParser = /** @class */ (function (_super) {
             value += (0,_utils__WEBPACK_IMPORTED_MODULE_21__.charFromCode)(byte);
             // Check for unescaped parenthesis
             if (!isEscaped) {
-                if (byte === _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_16__.default.LeftParen)
+                if (byte === _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_16__["default"].LeftParen)
                     nestingLvl += 1;
-                if (byte === _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_16__.default.RightParen)
+                if (byte === _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_16__["default"].RightParen)
                     nestingLvl -= 1;
             }
             // Track whether current character is being escaped or not
-            if (byte === _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_16__.default.BackSlash) {
+            if (byte === _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_16__["default"].BackSlash) {
                 isEscaped = !isEscaped;
             }
             else if (isEscaped) {
@@ -20701,7 +20723,7 @@ var PDFObjectParser = /** @class */ (function (_super) {
             // Once (if) the unescaped parenthesis balance out, return their contents
             if (nestingLvl === 0) {
                 // Remove the outer parens so they aren't part of the contents
-                return _objects_PDFString__WEBPACK_IMPORTED_MODULE_10__.default.of(value.substring(1, value.length - 1));
+                return _objects_PDFString__WEBPACK_IMPORTED_MODULE_10__["default"].of(value.substring(1, value.length - 1));
             }
         }
         throw new _errors__WEBPACK_IMPORTED_MODULE_0__.UnbalancedParenthesisError(this.bytes.position());
@@ -20709,7 +20731,7 @@ var PDFObjectParser = /** @class */ (function (_super) {
     // TODO: Compare performance of string concatenation to charFromCode(...bytes)
     // TODO: Maybe preallocate small Uint8Array if can use charFromCode?
     PDFObjectParser.prototype.parseName = function () {
-        this.bytes.assertNext(_syntax_CharCodes__WEBPACK_IMPORTED_MODULE_16__.default.ForwardSlash);
+        this.bytes.assertNext(_syntax_CharCodes__WEBPACK_IMPORTED_MODULE_16__["default"].ForwardSlash);
         var name = '';
         while (!this.bytes.done()) {
             var byte = this.bytes.peek();
@@ -20718,48 +20740,48 @@ var PDFObjectParser = /** @class */ (function (_super) {
             name += (0,_utils__WEBPACK_IMPORTED_MODULE_21__.charFromCode)(byte);
             this.bytes.next();
         }
-        return _objects_PDFName__WEBPACK_IMPORTED_MODULE_5__.default.of(name);
+        return _objects_PDFName__WEBPACK_IMPORTED_MODULE_5__["default"].of(name);
     };
     PDFObjectParser.prototype.parseArray = function () {
-        this.bytes.assertNext(_syntax_CharCodes__WEBPACK_IMPORTED_MODULE_16__.default.LeftSquareBracket);
+        this.bytes.assertNext(_syntax_CharCodes__WEBPACK_IMPORTED_MODULE_16__["default"].LeftSquareBracket);
         this.skipWhitespaceAndComments();
-        var pdfArray = _objects_PDFArray__WEBPACK_IMPORTED_MODULE_1__.default.withContext(this.context);
-        while (this.bytes.peek() !== _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_16__.default.RightSquareBracket) {
+        var pdfArray = _objects_PDFArray__WEBPACK_IMPORTED_MODULE_1__["default"].withContext(this.context);
+        while (this.bytes.peek() !== _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_16__["default"].RightSquareBracket) {
             var element = this.parseObject();
             pdfArray.push(element);
             this.skipWhitespaceAndComments();
         }
-        this.bytes.assertNext(_syntax_CharCodes__WEBPACK_IMPORTED_MODULE_16__.default.RightSquareBracket);
+        this.bytes.assertNext(_syntax_CharCodes__WEBPACK_IMPORTED_MODULE_16__["default"].RightSquareBracket);
         return pdfArray;
     };
     PDFObjectParser.prototype.parseDict = function () {
-        this.bytes.assertNext(_syntax_CharCodes__WEBPACK_IMPORTED_MODULE_16__.default.LessThan);
-        this.bytes.assertNext(_syntax_CharCodes__WEBPACK_IMPORTED_MODULE_16__.default.LessThan);
+        this.bytes.assertNext(_syntax_CharCodes__WEBPACK_IMPORTED_MODULE_16__["default"].LessThan);
+        this.bytes.assertNext(_syntax_CharCodes__WEBPACK_IMPORTED_MODULE_16__["default"].LessThan);
         this.skipWhitespaceAndComments();
         var dict = new Map();
         while (!this.bytes.done() &&
-            this.bytes.peek() !== _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_16__.default.GreaterThan &&
-            this.bytes.peekAhead(1) !== _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_16__.default.GreaterThan) {
+            this.bytes.peek() !== _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_16__["default"].GreaterThan &&
+            this.bytes.peekAhead(1) !== _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_16__["default"].GreaterThan) {
             var key = this.parseName();
             var value = this.parseObject();
             dict.set(key, value);
             this.skipWhitespaceAndComments();
         }
         this.skipWhitespaceAndComments();
-        this.bytes.assertNext(_syntax_CharCodes__WEBPACK_IMPORTED_MODULE_16__.default.GreaterThan);
-        this.bytes.assertNext(_syntax_CharCodes__WEBPACK_IMPORTED_MODULE_16__.default.GreaterThan);
-        var Type = dict.get(_objects_PDFName__WEBPACK_IMPORTED_MODULE_5__.default.of('Type'));
-        if (Type === _objects_PDFName__WEBPACK_IMPORTED_MODULE_5__.default.of('Catalog')) {
-            return _structures_PDFCatalog__WEBPACK_IMPORTED_MODULE_13__.default.fromMapWithContext(dict, this.context);
+        this.bytes.assertNext(_syntax_CharCodes__WEBPACK_IMPORTED_MODULE_16__["default"].GreaterThan);
+        this.bytes.assertNext(_syntax_CharCodes__WEBPACK_IMPORTED_MODULE_16__["default"].GreaterThan);
+        var Type = dict.get(_objects_PDFName__WEBPACK_IMPORTED_MODULE_5__["default"].of('Type'));
+        if (Type === _objects_PDFName__WEBPACK_IMPORTED_MODULE_5__["default"].of('Catalog')) {
+            return _structures_PDFCatalog__WEBPACK_IMPORTED_MODULE_13__["default"].fromMapWithContext(dict, this.context);
         }
-        else if (Type === _objects_PDFName__WEBPACK_IMPORTED_MODULE_5__.default.of('Pages')) {
-            return _structures_PDFPageTree__WEBPACK_IMPORTED_MODULE_15__.default.fromMapWithContext(dict, this.context);
+        else if (Type === _objects_PDFName__WEBPACK_IMPORTED_MODULE_5__["default"].of('Pages')) {
+            return _structures_PDFPageTree__WEBPACK_IMPORTED_MODULE_15__["default"].fromMapWithContext(dict, this.context);
         }
-        else if (Type === _objects_PDFName__WEBPACK_IMPORTED_MODULE_5__.default.of('Page')) {
-            return _structures_PDFPageLeaf__WEBPACK_IMPORTED_MODULE_14__.default.fromMapWithContext(dict, this.context);
+        else if (Type === _objects_PDFName__WEBPACK_IMPORTED_MODULE_5__["default"].of('Page')) {
+            return _structures_PDFPageLeaf__WEBPACK_IMPORTED_MODULE_14__["default"].fromMapWithContext(dict, this.context);
         }
         else {
-            return _objects_PDFDict__WEBPACK_IMPORTED_MODULE_3__.default.fromMapWithContext(dict, this.context);
+            return _objects_PDFDict__WEBPACK_IMPORTED_MODULE_3__["default"].fromMapWithContext(dict, this.context);
         }
     };
     PDFObjectParser.prototype.parseDictOrStream = function () {
@@ -20775,8 +20797,8 @@ var PDFObjectParser = /** @class */ (function (_super) {
         }
         var start = this.bytes.offset();
         var end;
-        var Length = dict.get(_objects_PDFName__WEBPACK_IMPORTED_MODULE_5__.default.of('Length'));
-        if (Length instanceof _objects_PDFNumber__WEBPACK_IMPORTED_MODULE_7__.default) {
+        var Length = dict.get(_objects_PDFName__WEBPACK_IMPORTED_MODULE_5__["default"].of('Length'));
+        if (Length instanceof _objects_PDFNumber__WEBPACK_IMPORTED_MODULE_7__["default"]) {
             end = start + Length.asNumber();
             this.bytes.moveTo(end);
             this.skipWhitespaceAndComments();
@@ -20789,7 +20811,7 @@ var PDFObjectParser = /** @class */ (function (_super) {
             end = this.findEndOfStreamFallback(startPos);
         }
         var contents = this.bytes.slice(start, end);
-        return _objects_PDFRawStream__WEBPACK_IMPORTED_MODULE_8__.default.of(dict, contents);
+        return _objects_PDFRawStream__WEBPACK_IMPORTED_MODULE_8__["default"].of(dict, contents);
     };
     PDFObjectParser.prototype.findEndOfStreamFallback = function (startPos) {
         // Move to end of stream, while handling nested streams
@@ -20816,13 +20838,13 @@ var PDFObjectParser = /** @class */ (function (_super) {
             throw new _errors__WEBPACK_IMPORTED_MODULE_0__.PDFStreamParsingError(startPos);
         return end;
     };
-    PDFObjectParser.forBytes = function (bytes, context, capNumbers) { return new PDFObjectParser(_ByteStream__WEBPACK_IMPORTED_MODULE_12__.default.of(bytes), context, capNumbers); };
+    PDFObjectParser.forBytes = function (bytes, context, capNumbers) { return new PDFObjectParser(_ByteStream__WEBPACK_IMPORTED_MODULE_12__["default"].of(bytes), context, capNumbers); };
     PDFObjectParser.forByteStream = function (byteStream, context, capNumbers) {
         if (capNumbers === void 0) { capNumbers = false; }
         return new PDFObjectParser(byteStream, context, capNumbers);
     };
     return PDFObjectParser;
-}(_BaseParser__WEBPACK_IMPORTED_MODULE_11__.default));
+}(_BaseParser__WEBPACK_IMPORTED_MODULE_11__["default"]));
 /* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (PDFObjectParser);
 //# sourceMappingURL=PDFObjectParser.js.map
 
@@ -20845,7 +20867,7 @@ __webpack_require__.r(__webpack_exports__);
 
 
 
-var Newline = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_1__.default.Newline, CarriageReturn = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_1__.default.CarriageReturn;
+var Newline = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_1__["default"].Newline, CarriageReturn = _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_1__["default"].CarriageReturn;
 // TODO: Throw error if eof is reached before finishing object parse...
 var BaseParser = /** @class */ (function () {
     function BaseParser(bytes, capNumbers) {
@@ -20877,7 +20899,7 @@ var BaseParser = /** @class */ (function () {
             if (!_syntax_Numeric__WEBPACK_IMPORTED_MODULE_2__.IsNumeric[byte])
                 break;
             value += (0,_utils__WEBPACK_IMPORTED_MODULE_4__.charFromCode)(this.bytes.next());
-            if (byte === _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_1__.default.Period)
+            if (byte === _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_1__["default"].Period)
                 break;
         }
         // Parse decimal-part, the trailing (0-9)
@@ -20918,7 +20940,7 @@ var BaseParser = /** @class */ (function () {
         }
     };
     BaseParser.prototype.skipComment = function () {
-        if (this.bytes.peek() !== _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_1__.default.Percent)
+        if (this.bytes.peek() !== _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_1__["default"].Percent)
             return false;
         while (!this.bytes.done()) {
             var byte = this.bytes.peek();
@@ -20962,20 +20984,20 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var _CharCodes__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(60);
 
 var IsDigit = new Uint8Array(256);
-IsDigit[_CharCodes__WEBPACK_IMPORTED_MODULE_0__.default.Zero] = 1;
-IsDigit[_CharCodes__WEBPACK_IMPORTED_MODULE_0__.default.One] = 1;
-IsDigit[_CharCodes__WEBPACK_IMPORTED_MODULE_0__.default.Two] = 1;
-IsDigit[_CharCodes__WEBPACK_IMPORTED_MODULE_0__.default.Three] = 1;
-IsDigit[_CharCodes__WEBPACK_IMPORTED_MODULE_0__.default.Four] = 1;
-IsDigit[_CharCodes__WEBPACK_IMPORTED_MODULE_0__.default.Five] = 1;
-IsDigit[_CharCodes__WEBPACK_IMPORTED_MODULE_0__.default.Six] = 1;
-IsDigit[_CharCodes__WEBPACK_IMPORTED_MODULE_0__.default.Seven] = 1;
-IsDigit[_CharCodes__WEBPACK_IMPORTED_MODULE_0__.default.Eight] = 1;
-IsDigit[_CharCodes__WEBPACK_IMPORTED_MODULE_0__.default.Nine] = 1;
+IsDigit[_CharCodes__WEBPACK_IMPORTED_MODULE_0__["default"].Zero] = 1;
+IsDigit[_CharCodes__WEBPACK_IMPORTED_MODULE_0__["default"].One] = 1;
+IsDigit[_CharCodes__WEBPACK_IMPORTED_MODULE_0__["default"].Two] = 1;
+IsDigit[_CharCodes__WEBPACK_IMPORTED_MODULE_0__["default"].Three] = 1;
+IsDigit[_CharCodes__WEBPACK_IMPORTED_MODULE_0__["default"].Four] = 1;
+IsDigit[_CharCodes__WEBPACK_IMPORTED_MODULE_0__["default"].Five] = 1;
+IsDigit[_CharCodes__WEBPACK_IMPORTED_MODULE_0__["default"].Six] = 1;
+IsDigit[_CharCodes__WEBPACK_IMPORTED_MODULE_0__["default"].Seven] = 1;
+IsDigit[_CharCodes__WEBPACK_IMPORTED_MODULE_0__["default"].Eight] = 1;
+IsDigit[_CharCodes__WEBPACK_IMPORTED_MODULE_0__["default"].Nine] = 1;
 var IsNumericPrefix = new Uint8Array(256);
-IsNumericPrefix[_CharCodes__WEBPACK_IMPORTED_MODULE_0__.default.Period] = 1;
-IsNumericPrefix[_CharCodes__WEBPACK_IMPORTED_MODULE_0__.default.Plus] = 1;
-IsNumericPrefix[_CharCodes__WEBPACK_IMPORTED_MODULE_0__.default.Minus] = 1;
+IsNumericPrefix[_CharCodes__WEBPACK_IMPORTED_MODULE_0__["default"].Period] = 1;
+IsNumericPrefix[_CharCodes__WEBPACK_IMPORTED_MODULE_0__["default"].Plus] = 1;
+IsNumericPrefix[_CharCodes__WEBPACK_IMPORTED_MODULE_0__["default"].Minus] = 1;
 var IsNumeric = new Uint8Array(256);
 for (var idx = 0, len = 256; idx < len; idx++) {
     IsNumeric[idx] = IsDigit[idx] || IsNumericPrefix[idx] ? 1 : 0;
@@ -21011,7 +21033,7 @@ var ByteStream = /** @class */ (function () {
     };
     ByteStream.prototype.next = function () {
         var byte = this.bytes[this.idx++];
-        if (byte === _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_2__.default.Newline) {
+        if (byte === _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_2__["default"].Newline) {
             this.line += 1;
             this.column = 0;
         }
@@ -21069,74 +21091,74 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var _CharCodes__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(60);
 
 
-var Space = _CharCodes__WEBPACK_IMPORTED_MODULE_0__.default.Space, CarriageReturn = _CharCodes__WEBPACK_IMPORTED_MODULE_0__.default.CarriageReturn, Newline = _CharCodes__WEBPACK_IMPORTED_MODULE_0__.default.Newline;
+var Space = _CharCodes__WEBPACK_IMPORTED_MODULE_0__["default"].Space, CarriageReturn = _CharCodes__WEBPACK_IMPORTED_MODULE_0__["default"].CarriageReturn, Newline = _CharCodes__WEBPACK_IMPORTED_MODULE_0__["default"].Newline;
 var stream = [
-    _CharCodes__WEBPACK_IMPORTED_MODULE_0__.default.s,
-    _CharCodes__WEBPACK_IMPORTED_MODULE_0__.default.t,
-    _CharCodes__WEBPACK_IMPORTED_MODULE_0__.default.r,
-    _CharCodes__WEBPACK_IMPORTED_MODULE_0__.default.e,
-    _CharCodes__WEBPACK_IMPORTED_MODULE_0__.default.a,
-    _CharCodes__WEBPACK_IMPORTED_MODULE_0__.default.m,
+    _CharCodes__WEBPACK_IMPORTED_MODULE_0__["default"].s,
+    _CharCodes__WEBPACK_IMPORTED_MODULE_0__["default"].t,
+    _CharCodes__WEBPACK_IMPORTED_MODULE_0__["default"].r,
+    _CharCodes__WEBPACK_IMPORTED_MODULE_0__["default"].e,
+    _CharCodes__WEBPACK_IMPORTED_MODULE_0__["default"].a,
+    _CharCodes__WEBPACK_IMPORTED_MODULE_0__["default"].m,
 ];
 var endstream = [
-    _CharCodes__WEBPACK_IMPORTED_MODULE_0__.default.e,
-    _CharCodes__WEBPACK_IMPORTED_MODULE_0__.default.n,
-    _CharCodes__WEBPACK_IMPORTED_MODULE_0__.default.d,
-    _CharCodes__WEBPACK_IMPORTED_MODULE_0__.default.s,
-    _CharCodes__WEBPACK_IMPORTED_MODULE_0__.default.t,
-    _CharCodes__WEBPACK_IMPORTED_MODULE_0__.default.r,
-    _CharCodes__WEBPACK_IMPORTED_MODULE_0__.default.e,
-    _CharCodes__WEBPACK_IMPORTED_MODULE_0__.default.a,
-    _CharCodes__WEBPACK_IMPORTED_MODULE_0__.default.m,
+    _CharCodes__WEBPACK_IMPORTED_MODULE_0__["default"].e,
+    _CharCodes__WEBPACK_IMPORTED_MODULE_0__["default"].n,
+    _CharCodes__WEBPACK_IMPORTED_MODULE_0__["default"].d,
+    _CharCodes__WEBPACK_IMPORTED_MODULE_0__["default"].s,
+    _CharCodes__WEBPACK_IMPORTED_MODULE_0__["default"].t,
+    _CharCodes__WEBPACK_IMPORTED_MODULE_0__["default"].r,
+    _CharCodes__WEBPACK_IMPORTED_MODULE_0__["default"].e,
+    _CharCodes__WEBPACK_IMPORTED_MODULE_0__["default"].a,
+    _CharCodes__WEBPACK_IMPORTED_MODULE_0__["default"].m,
 ];
 var Keywords = {
     header: [
-        _CharCodes__WEBPACK_IMPORTED_MODULE_0__.default.Percent,
-        _CharCodes__WEBPACK_IMPORTED_MODULE_0__.default.P,
-        _CharCodes__WEBPACK_IMPORTED_MODULE_0__.default.D,
-        _CharCodes__WEBPACK_IMPORTED_MODULE_0__.default.F,
-        _CharCodes__WEBPACK_IMPORTED_MODULE_0__.default.Dash,
+        _CharCodes__WEBPACK_IMPORTED_MODULE_0__["default"].Percent,
+        _CharCodes__WEBPACK_IMPORTED_MODULE_0__["default"].P,
+        _CharCodes__WEBPACK_IMPORTED_MODULE_0__["default"].D,
+        _CharCodes__WEBPACK_IMPORTED_MODULE_0__["default"].F,
+        _CharCodes__WEBPACK_IMPORTED_MODULE_0__["default"].Dash,
     ],
     eof: [
-        _CharCodes__WEBPACK_IMPORTED_MODULE_0__.default.Percent,
-        _CharCodes__WEBPACK_IMPORTED_MODULE_0__.default.Percent,
-        _CharCodes__WEBPACK_IMPORTED_MODULE_0__.default.E,
-        _CharCodes__WEBPACK_IMPORTED_MODULE_0__.default.O,
-        _CharCodes__WEBPACK_IMPORTED_MODULE_0__.default.F,
+        _CharCodes__WEBPACK_IMPORTED_MODULE_0__["default"].Percent,
+        _CharCodes__WEBPACK_IMPORTED_MODULE_0__["default"].Percent,
+        _CharCodes__WEBPACK_IMPORTED_MODULE_0__["default"].E,
+        _CharCodes__WEBPACK_IMPORTED_MODULE_0__["default"].O,
+        _CharCodes__WEBPACK_IMPORTED_MODULE_0__["default"].F,
     ],
-    obj: [_CharCodes__WEBPACK_IMPORTED_MODULE_0__.default.o, _CharCodes__WEBPACK_IMPORTED_MODULE_0__.default.b, _CharCodes__WEBPACK_IMPORTED_MODULE_0__.default.j],
+    obj: [_CharCodes__WEBPACK_IMPORTED_MODULE_0__["default"].o, _CharCodes__WEBPACK_IMPORTED_MODULE_0__["default"].b, _CharCodes__WEBPACK_IMPORTED_MODULE_0__["default"].j],
     endobj: [
-        _CharCodes__WEBPACK_IMPORTED_MODULE_0__.default.e,
-        _CharCodes__WEBPACK_IMPORTED_MODULE_0__.default.n,
-        _CharCodes__WEBPACK_IMPORTED_MODULE_0__.default.d,
-        _CharCodes__WEBPACK_IMPORTED_MODULE_0__.default.o,
-        _CharCodes__WEBPACK_IMPORTED_MODULE_0__.default.b,
-        _CharCodes__WEBPACK_IMPORTED_MODULE_0__.default.j,
+        _CharCodes__WEBPACK_IMPORTED_MODULE_0__["default"].e,
+        _CharCodes__WEBPACK_IMPORTED_MODULE_0__["default"].n,
+        _CharCodes__WEBPACK_IMPORTED_MODULE_0__["default"].d,
+        _CharCodes__WEBPACK_IMPORTED_MODULE_0__["default"].o,
+        _CharCodes__WEBPACK_IMPORTED_MODULE_0__["default"].b,
+        _CharCodes__WEBPACK_IMPORTED_MODULE_0__["default"].j,
     ],
-    xref: [_CharCodes__WEBPACK_IMPORTED_MODULE_0__.default.x, _CharCodes__WEBPACK_IMPORTED_MODULE_0__.default.r, _CharCodes__WEBPACK_IMPORTED_MODULE_0__.default.e, _CharCodes__WEBPACK_IMPORTED_MODULE_0__.default.f],
+    xref: [_CharCodes__WEBPACK_IMPORTED_MODULE_0__["default"].x, _CharCodes__WEBPACK_IMPORTED_MODULE_0__["default"].r, _CharCodes__WEBPACK_IMPORTED_MODULE_0__["default"].e, _CharCodes__WEBPACK_IMPORTED_MODULE_0__["default"].f],
     trailer: [
-        _CharCodes__WEBPACK_IMPORTED_MODULE_0__.default.t,
-        _CharCodes__WEBPACK_IMPORTED_MODULE_0__.default.r,
-        _CharCodes__WEBPACK_IMPORTED_MODULE_0__.default.a,
-        _CharCodes__WEBPACK_IMPORTED_MODULE_0__.default.i,
-        _CharCodes__WEBPACK_IMPORTED_MODULE_0__.default.l,
-        _CharCodes__WEBPACK_IMPORTED_MODULE_0__.default.e,
-        _CharCodes__WEBPACK_IMPORTED_MODULE_0__.default.r,
+        _CharCodes__WEBPACK_IMPORTED_MODULE_0__["default"].t,
+        _CharCodes__WEBPACK_IMPORTED_MODULE_0__["default"].r,
+        _CharCodes__WEBPACK_IMPORTED_MODULE_0__["default"].a,
+        _CharCodes__WEBPACK_IMPORTED_MODULE_0__["default"].i,
+        _CharCodes__WEBPACK_IMPORTED_MODULE_0__["default"].l,
+        _CharCodes__WEBPACK_IMPORTED_MODULE_0__["default"].e,
+        _CharCodes__WEBPACK_IMPORTED_MODULE_0__["default"].r,
     ],
     startxref: [
-        _CharCodes__WEBPACK_IMPORTED_MODULE_0__.default.s,
-        _CharCodes__WEBPACK_IMPORTED_MODULE_0__.default.t,
-        _CharCodes__WEBPACK_IMPORTED_MODULE_0__.default.a,
-        _CharCodes__WEBPACK_IMPORTED_MODULE_0__.default.r,
-        _CharCodes__WEBPACK_IMPORTED_MODULE_0__.default.t,
-        _CharCodes__WEBPACK_IMPORTED_MODULE_0__.default.x,
-        _CharCodes__WEBPACK_IMPORTED_MODULE_0__.default.r,
-        _CharCodes__WEBPACK_IMPORTED_MODULE_0__.default.e,
-        _CharCodes__WEBPACK_IMPORTED_MODULE_0__.default.f,
+        _CharCodes__WEBPACK_IMPORTED_MODULE_0__["default"].s,
+        _CharCodes__WEBPACK_IMPORTED_MODULE_0__["default"].t,
+        _CharCodes__WEBPACK_IMPORTED_MODULE_0__["default"].a,
+        _CharCodes__WEBPACK_IMPORTED_MODULE_0__["default"].r,
+        _CharCodes__WEBPACK_IMPORTED_MODULE_0__["default"].t,
+        _CharCodes__WEBPACK_IMPORTED_MODULE_0__["default"].x,
+        _CharCodes__WEBPACK_IMPORTED_MODULE_0__["default"].r,
+        _CharCodes__WEBPACK_IMPORTED_MODULE_0__["default"].e,
+        _CharCodes__WEBPACK_IMPORTED_MODULE_0__["default"].f,
     ],
-    true: [_CharCodes__WEBPACK_IMPORTED_MODULE_0__.default.t, _CharCodes__WEBPACK_IMPORTED_MODULE_0__.default.r, _CharCodes__WEBPACK_IMPORTED_MODULE_0__.default.u, _CharCodes__WEBPACK_IMPORTED_MODULE_0__.default.e],
-    false: [_CharCodes__WEBPACK_IMPORTED_MODULE_0__.default.f, _CharCodes__WEBPACK_IMPORTED_MODULE_0__.default.a, _CharCodes__WEBPACK_IMPORTED_MODULE_0__.default.l, _CharCodes__WEBPACK_IMPORTED_MODULE_0__.default.s, _CharCodes__WEBPACK_IMPORTED_MODULE_0__.default.e],
-    null: [_CharCodes__WEBPACK_IMPORTED_MODULE_0__.default.n, _CharCodes__WEBPACK_IMPORTED_MODULE_0__.default.u, _CharCodes__WEBPACK_IMPORTED_MODULE_0__.default.l, _CharCodes__WEBPACK_IMPORTED_MODULE_0__.default.l],
+    true: [_CharCodes__WEBPACK_IMPORTED_MODULE_0__["default"].t, _CharCodes__WEBPACK_IMPORTED_MODULE_0__["default"].r, _CharCodes__WEBPACK_IMPORTED_MODULE_0__["default"].u, _CharCodes__WEBPACK_IMPORTED_MODULE_0__["default"].e],
+    false: [_CharCodes__WEBPACK_IMPORTED_MODULE_0__["default"].f, _CharCodes__WEBPACK_IMPORTED_MODULE_0__["default"].a, _CharCodes__WEBPACK_IMPORTED_MODULE_0__["default"].l, _CharCodes__WEBPACK_IMPORTED_MODULE_0__["default"].s, _CharCodes__WEBPACK_IMPORTED_MODULE_0__["default"].e],
+    null: [_CharCodes__WEBPACK_IMPORTED_MODULE_0__["default"].n, _CharCodes__WEBPACK_IMPORTED_MODULE_0__["default"].u, _CharCodes__WEBPACK_IMPORTED_MODULE_0__["default"].l, _CharCodes__WEBPACK_IMPORTED_MODULE_0__["default"].l],
     stream: stream,
     streamEOF1: (0,tslib__WEBPACK_IMPORTED_MODULE_1__.__spreadArrays)(stream, [Space, CarriageReturn, Newline]),
     streamEOF2: (0,tslib__WEBPACK_IMPORTED_MODULE_1__.__spreadArrays)(stream, [CarriageReturn, Newline]),
@@ -21177,12 +21199,12 @@ __webpack_require__.r(__webpack_exports__);
 var PDFObjectStreamParser = /** @class */ (function (_super) {
     (0,tslib__WEBPACK_IMPORTED_MODULE_7__.__extends)(PDFObjectStreamParser, _super);
     function PDFObjectStreamParser(rawStream, shouldWaitForTick) {
-        var _this = _super.call(this, _ByteStream__WEBPACK_IMPORTED_MODULE_4__.default.fromPDFRawStream(rawStream), rawStream.dict.context) || this;
+        var _this = _super.call(this, _ByteStream__WEBPACK_IMPORTED_MODULE_4__["default"].fromPDFRawStream(rawStream), rawStream.dict.context) || this;
         var dict = rawStream.dict;
         _this.alreadyParsed = false;
         _this.shouldWaitForTick = shouldWaitForTick || (function () { return false; });
-        _this.firstOffset = dict.lookup(_objects_PDFName__WEBPACK_IMPORTED_MODULE_1__.default.of('First'), _objects_PDFNumber__WEBPACK_IMPORTED_MODULE_2__.default).asNumber();
-        _this.objectCount = dict.lookup(_objects_PDFName__WEBPACK_IMPORTED_MODULE_1__.default.of('N'), _objects_PDFNumber__WEBPACK_IMPORTED_MODULE_2__.default).asNumber();
+        _this.firstOffset = dict.lookup(_objects_PDFName__WEBPACK_IMPORTED_MODULE_1__["default"].of('First'), _objects_PDFNumber__WEBPACK_IMPORTED_MODULE_2__["default"]).asNumber();
+        _this.objectCount = dict.lookup(_objects_PDFName__WEBPACK_IMPORTED_MODULE_1__["default"].of('N'), _objects_PDFNumber__WEBPACK_IMPORTED_MODULE_2__["default"]).asNumber();
         return _this;
     }
     PDFObjectStreamParser.prototype.parseIntoContext = function () {
@@ -21203,7 +21225,7 @@ var PDFObjectStreamParser = /** @class */ (function (_super) {
                         _a = offsetsAndObjectNumbers[idx], objectNumber = _a.objectNumber, offset = _a.offset;
                         this.bytes.moveTo(this.firstOffset + offset);
                         object = this.parseObject();
-                        ref = _objects_PDFRef__WEBPACK_IMPORTED_MODULE_3__.default.of(objectNumber, 0);
+                        ref = _objects_PDFRef__WEBPACK_IMPORTED_MODULE_3__["default"].of(objectNumber, 0);
                         this.context.assign(ref, object);
                         if (!this.shouldWaitForTick()) return [3 /*break*/, 3];
                         return [4 /*yield*/, (0,_utils__WEBPACK_IMPORTED_MODULE_6__.waitForTick)()];
@@ -21231,7 +21253,7 @@ var PDFObjectStreamParser = /** @class */ (function (_super) {
     };
     PDFObjectStreamParser.forStream = function (rawStream, shouldWaitForTick) { return new PDFObjectStreamParser(rawStream, shouldWaitForTick); };
     return PDFObjectStreamParser;
-}(_PDFObjectParser__WEBPACK_IMPORTED_MODULE_5__.default));
+}(_PDFObjectParser__WEBPACK_IMPORTED_MODULE_5__["default"]));
 /* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (PDFObjectStreamParser);
 //# sourceMappingURL=PDFObjectStreamParser.js.map
 
@@ -21288,7 +21310,7 @@ var PDFParser = /** @class */ (function (_super) {
         if (objectsPerTick === void 0) { objectsPerTick = Infinity; }
         if (throwOnInvalidObject === void 0) { throwOnInvalidObject = false; }
         if (capNumbers === void 0) { capNumbers = false; }
-        var _this = _super.call(this, _ByteStream__WEBPACK_IMPORTED_MODULE_9__.default.of(pdfBytes), _PDFContext__WEBPACK_IMPORTED_MODULE_13__.default.create(), capNumbers) || this;
+        var _this = _super.call(this, _ByteStream__WEBPACK_IMPORTED_MODULE_9__["default"].of(pdfBytes), _PDFContext__WEBPACK_IMPORTED_MODULE_13__["default"].create(), capNumbers) || this;
         _this.alreadyParsed = false;
         _this.parsedObjects = 0;
         _this.shouldWaitForTick = function () {
@@ -21324,9 +21346,9 @@ var PDFParser = /** @class */ (function (_super) {
                         return [3 /*break*/, 1];
                     case 3:
                         this.maybeRecoverRoot();
-                        if (this.context.lookup(_objects_PDFRef__WEBPACK_IMPORTED_MODULE_8__.default.of(0))) {
+                        if (this.context.lookup(_objects_PDFRef__WEBPACK_IMPORTED_MODULE_8__["default"].of(0))) {
                             console.warn('Removing parsed object: 0 0 R');
-                            this.context.delete(_objects_PDFRef__WEBPACK_IMPORTED_MODULE_8__.default.of(0));
+                            this.context.delete(_objects_PDFRef__WEBPACK_IMPORTED_MODULE_8__["default"].of(0));
                         }
                         return [2 /*return*/, this.context];
                 }
@@ -21335,8 +21357,8 @@ var PDFParser = /** @class */ (function (_super) {
     };
     PDFParser.prototype.maybeRecoverRoot = function () {
         var isValidCatalog = function (obj) {
-            return obj instanceof _objects_PDFDict__WEBPACK_IMPORTED_MODULE_4__.default &&
-                obj.lookup(_objects_PDFName__WEBPACK_IMPORTED_MODULE_6__.default.of('Type')) === _objects_PDFName__WEBPACK_IMPORTED_MODULE_6__.default.of('Catalog');
+            return obj instanceof _objects_PDFDict__WEBPACK_IMPORTED_MODULE_4__["default"] &&
+                obj.lookup(_objects_PDFName__WEBPACK_IMPORTED_MODULE_6__["default"].of('Type')) === _objects_PDFName__WEBPACK_IMPORTED_MODULE_6__["default"].of('Catalog');
         };
         var catalog = this.context.lookup(this.context.trailerInfo.Root);
         if (!isValidCatalog(catalog)) {
@@ -21353,9 +21375,9 @@ var PDFParser = /** @class */ (function (_super) {
         while (!this.bytes.done()) {
             if (this.matchKeyword(_syntax_Keywords__WEBPACK_IMPORTED_MODULE_15__.Keywords.header)) {
                 var major = this.parseRawInt();
-                this.bytes.assertNext(_syntax_CharCodes__WEBPACK_IMPORTED_MODULE_14__.default.Period);
+                this.bytes.assertNext(_syntax_CharCodes__WEBPACK_IMPORTED_MODULE_14__["default"].Period);
                 var minor = this.parseRawInt();
-                var header = _document_PDFHeader__WEBPACK_IMPORTED_MODULE_1__.default.forVersion(major, minor);
+                var header = _document_PDFHeader__WEBPACK_IMPORTED_MODULE_1__["default"].forVersion(major, minor);
                 this.skipBinaryHeaderComment();
                 return header;
             }
@@ -21372,7 +21394,7 @@ var PDFParser = /** @class */ (function (_super) {
         if (!this.matchKeyword(_syntax_Keywords__WEBPACK_IMPORTED_MODULE_15__.Keywords.obj)) {
             throw new _errors__WEBPACK_IMPORTED_MODULE_3__.MissingKeywordError(this.bytes.position(), _syntax_Keywords__WEBPACK_IMPORTED_MODULE_15__.Keywords.obj);
         }
-        return _objects_PDFRef__WEBPACK_IMPORTED_MODULE_8__.default.of(objectNumber, generationNumber);
+        return _objects_PDFRef__WEBPACK_IMPORTED_MODULE_8__["default"].of(objectNumber, generationNumber);
     };
     PDFParser.prototype.matchIndirectObjectHeader = function () {
         var initialOffset = this.bytes.offset();
@@ -21400,16 +21422,16 @@ var PDFParser = /** @class */ (function (_super) {
                         // }
                         // TODO: Log a warning if this fails...
                         this.matchKeyword(_syntax_Keywords__WEBPACK_IMPORTED_MODULE_15__.Keywords.endobj);
-                        if (!(object instanceof _objects_PDFRawStream__WEBPACK_IMPORTED_MODULE_7__.default &&
-                            object.dict.lookup(_objects_PDFName__WEBPACK_IMPORTED_MODULE_6__.default.of('Type')) === _objects_PDFName__WEBPACK_IMPORTED_MODULE_6__.default.of('ObjStm'))) return [3 /*break*/, 2];
-                        return [4 /*yield*/, _PDFObjectStreamParser__WEBPACK_IMPORTED_MODULE_11__.default.forStream(object, this.shouldWaitForTick).parseIntoContext()];
+                        if (!(object instanceof _objects_PDFRawStream__WEBPACK_IMPORTED_MODULE_7__["default"] &&
+                            object.dict.lookup(_objects_PDFName__WEBPACK_IMPORTED_MODULE_6__["default"].of('Type')) === _objects_PDFName__WEBPACK_IMPORTED_MODULE_6__["default"].of('ObjStm'))) return [3 /*break*/, 2];
+                        return [4 /*yield*/, _PDFObjectStreamParser__WEBPACK_IMPORTED_MODULE_11__["default"].forStream(object, this.shouldWaitForTick).parseIntoContext()];
                     case 1:
                         _a.sent();
                         return [3 /*break*/, 3];
                     case 2:
-                        if (object instanceof _objects_PDFRawStream__WEBPACK_IMPORTED_MODULE_7__.default &&
-                            object.dict.lookup(_objects_PDFName__WEBPACK_IMPORTED_MODULE_6__.default.of('Type')) === _objects_PDFName__WEBPACK_IMPORTED_MODULE_6__.default.of('XRef')) {
-                            _PDFXRefStreamParser__WEBPACK_IMPORTED_MODULE_12__.default.forStream(object).parseIntoContext();
+                        if (object instanceof _objects_PDFRawStream__WEBPACK_IMPORTED_MODULE_7__["default"] &&
+                            object.dict.lookup(_objects_PDFName__WEBPACK_IMPORTED_MODULE_6__["default"].of('Type')) === _objects_PDFName__WEBPACK_IMPORTED_MODULE_6__["default"].of('XRef')) {
+                            _PDFXRefStreamParser__WEBPACK_IMPORTED_MODULE_12__["default"].forStream(object).parseIntoContext();
                         }
                         else {
                             this.context.assign(ref, object);
@@ -21443,7 +21465,7 @@ var PDFParser = /** @class */ (function (_super) {
         if (failed)
             throw new _errors__WEBPACK_IMPORTED_MODULE_3__.PDFInvalidObjectParsingError(startPos);
         var end = this.bytes.offset() - _syntax_Keywords__WEBPACK_IMPORTED_MODULE_15__.Keywords.endobj.length;
-        var object = _objects_PDFInvalidObject__WEBPACK_IMPORTED_MODULE_5__.default.of(this.bytes.slice(start, end));
+        var object = _objects_PDFInvalidObject__WEBPACK_IMPORTED_MODULE_5__["default"].of(this.bytes.slice(start, end));
         this.context.assign(ref, object);
         return ref;
     };
@@ -21492,16 +21514,16 @@ var PDFParser = /** @class */ (function (_super) {
             return;
         this.skipWhitespaceAndComments();
         var objectNumber = -1;
-        var xref = _document_PDFCrossRefSection__WEBPACK_IMPORTED_MODULE_0__.default.createEmpty();
+        var xref = _document_PDFCrossRefSection__WEBPACK_IMPORTED_MODULE_0__["default"].createEmpty();
         while (!this.bytes.done() && _syntax_Numeric__WEBPACK_IMPORTED_MODULE_16__.IsDigit[this.bytes.peek()]) {
             var firstInt = this.parseRawInt();
             this.skipWhitespaceAndComments();
             var secondInt = this.parseRawInt();
             this.skipWhitespaceAndComments();
             var byte = this.bytes.peek();
-            if (byte === _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_14__.default.n || byte === _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_14__.default.f) {
-                var ref = _objects_PDFRef__WEBPACK_IMPORTED_MODULE_8__.default.of(objectNumber, secondInt);
-                if (this.bytes.next() === _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_14__.default.n) {
+            if (byte === _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_14__["default"].n || byte === _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_14__["default"].f) {
+                var ref = _objects_PDFRef__WEBPACK_IMPORTED_MODULE_8__["default"].of(objectNumber, secondInt);
+                if (this.bytes.next() === _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_14__["default"].n) {
                     xref.addEntry(ref, firstInt);
                 }
                 else {
@@ -21525,10 +21547,10 @@ var PDFParser = /** @class */ (function (_super) {
         var dict = this.parseDict();
         var context = this.context;
         context.trailerInfo = {
-            Root: dict.get(_objects_PDFName__WEBPACK_IMPORTED_MODULE_6__.default.of('Root')) || context.trailerInfo.Root,
-            Encrypt: dict.get(_objects_PDFName__WEBPACK_IMPORTED_MODULE_6__.default.of('Encrypt')) || context.trailerInfo.Encrypt,
-            Info: dict.get(_objects_PDFName__WEBPACK_IMPORTED_MODULE_6__.default.of('Info')) || context.trailerInfo.Info,
-            ID: dict.get(_objects_PDFName__WEBPACK_IMPORTED_MODULE_6__.default.of('ID')) || context.trailerInfo.ID,
+            Root: dict.get(_objects_PDFName__WEBPACK_IMPORTED_MODULE_6__["default"].of('Root')) || context.trailerInfo.Root,
+            Encrypt: dict.get(_objects_PDFName__WEBPACK_IMPORTED_MODULE_6__["default"].of('Encrypt')) || context.trailerInfo.Encrypt,
+            Info: dict.get(_objects_PDFName__WEBPACK_IMPORTED_MODULE_6__["default"].of('Info')) || context.trailerInfo.Info,
+            ID: dict.get(_objects_PDFName__WEBPACK_IMPORTED_MODULE_6__["default"].of('ID')) || context.trailerInfo.ID,
         };
     };
     PDFParser.prototype.maybeParseTrailer = function () {
@@ -21542,7 +21564,7 @@ var PDFParser = /** @class */ (function (_super) {
         this.skipWhitespaceAndComments();
         this.matchKeyword(_syntax_Keywords__WEBPACK_IMPORTED_MODULE_15__.Keywords.eof);
         this.skipWhitespaceAndComments();
-        return _document_PDFTrailer__WEBPACK_IMPORTED_MODULE_2__.default.forLastCrossRefSectionOffset(offset);
+        return _document_PDFTrailer__WEBPACK_IMPORTED_MODULE_2__["default"].forLastCrossRefSectionOffset(offset);
     };
     PDFParser.prototype.parseDocumentSection = function () {
         return (0,tslib__WEBPACK_IMPORTED_MODULE_18__.__awaiter)(this, void 0, void 0, function () {
@@ -21572,7 +21594,7 @@ var PDFParser = /** @class */ (function (_super) {
         while (!this.bytes.done()) {
             var initialOffset = this.bytes.offset();
             var byte = this.bytes.peek();
-            var isAlphaNumeric = byte >= _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_14__.default.Space && byte <= _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_14__.default.Tilde;
+            var isAlphaNumeric = byte >= _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_14__["default"].Space && byte <= _syntax_CharCodes__WEBPACK_IMPORTED_MODULE_14__["default"].Tilde;
             if (isAlphaNumeric) {
                 if (this.matchKeyword(_syntax_Keywords__WEBPACK_IMPORTED_MODULE_15__.Keywords.xref) ||
                     this.matchKeyword(_syntax_Keywords__WEBPACK_IMPORTED_MODULE_15__.Keywords.trailer) ||
@@ -21614,7 +21636,7 @@ var PDFParser = /** @class */ (function (_super) {
         return new PDFParser(pdfBytes, objectsPerTick, throwOnInvalidObject, capNumbers);
     };
     return PDFParser;
-}(_PDFObjectParser__WEBPACK_IMPORTED_MODULE_10__.default));
+}(_PDFObjectParser__WEBPACK_IMPORTED_MODULE_10__["default"]));
 /* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (PDFParser);
 //# sourceMappingURL=PDFParser.js.map
 
@@ -21643,25 +21665,25 @@ var PDFXRefStreamParser = /** @class */ (function () {
     function PDFXRefStreamParser(rawStream) {
         this.alreadyParsed = false;
         this.dict = rawStream.dict;
-        this.bytes = _ByteStream__WEBPACK_IMPORTED_MODULE_5__.default.fromPDFRawStream(rawStream);
+        this.bytes = _ByteStream__WEBPACK_IMPORTED_MODULE_5__["default"].fromPDFRawStream(rawStream);
         this.context = this.dict.context;
-        var Size = this.dict.lookup(_objects_PDFName__WEBPACK_IMPORTED_MODULE_2__.default.of('Size'), _objects_PDFNumber__WEBPACK_IMPORTED_MODULE_3__.default);
-        var Index = this.dict.lookup(_objects_PDFName__WEBPACK_IMPORTED_MODULE_2__.default.of('Index'));
-        if (Index instanceof _objects_PDFArray__WEBPACK_IMPORTED_MODULE_1__.default) {
+        var Size = this.dict.lookup(_objects_PDFName__WEBPACK_IMPORTED_MODULE_2__["default"].of('Size'), _objects_PDFNumber__WEBPACK_IMPORTED_MODULE_3__["default"]);
+        var Index = this.dict.lookup(_objects_PDFName__WEBPACK_IMPORTED_MODULE_2__["default"].of('Index'));
+        if (Index instanceof _objects_PDFArray__WEBPACK_IMPORTED_MODULE_1__["default"]) {
             this.subsections = [];
             for (var idx = 0, len = Index.size(); idx < len; idx += 2) {
-                var firstObjectNumber = Index.lookup(idx + 0, _objects_PDFNumber__WEBPACK_IMPORTED_MODULE_3__.default).asNumber();
-                var length_1 = Index.lookup(idx + 1, _objects_PDFNumber__WEBPACK_IMPORTED_MODULE_3__.default).asNumber();
+                var firstObjectNumber = Index.lookup(idx + 0, _objects_PDFNumber__WEBPACK_IMPORTED_MODULE_3__["default"]).asNumber();
+                var length_1 = Index.lookup(idx + 1, _objects_PDFNumber__WEBPACK_IMPORTED_MODULE_3__["default"]).asNumber();
                 this.subsections.push({ firstObjectNumber: firstObjectNumber, length: length_1 });
             }
         }
         else {
             this.subsections = [{ firstObjectNumber: 0, length: Size.asNumber() }];
         }
-        var W = this.dict.lookup(_objects_PDFName__WEBPACK_IMPORTED_MODULE_2__.default.of('W'), _objects_PDFArray__WEBPACK_IMPORTED_MODULE_1__.default);
+        var W = this.dict.lookup(_objects_PDFName__WEBPACK_IMPORTED_MODULE_2__["default"].of('W'), _objects_PDFArray__WEBPACK_IMPORTED_MODULE_1__["default"]);
         this.byteWidths = [-1, -1, -1];
         for (var idx = 0, len = W.size(); idx < len; idx++) {
-            this.byteWidths[idx] = W.lookup(idx, _objects_PDFNumber__WEBPACK_IMPORTED_MODULE_3__.default).asNumber();
+            this.byteWidths[idx] = W.lookup(idx, _objects_PDFNumber__WEBPACK_IMPORTED_MODULE_3__["default"]).asNumber();
         }
     }
     PDFXRefStreamParser.prototype.parseIntoContext = function () {
@@ -21670,10 +21692,10 @@ var PDFXRefStreamParser = /** @class */ (function () {
         }
         this.alreadyParsed = true;
         this.context.trailerInfo = {
-            Root: this.dict.get(_objects_PDFName__WEBPACK_IMPORTED_MODULE_2__.default.of('Root')),
-            Encrypt: this.dict.get(_objects_PDFName__WEBPACK_IMPORTED_MODULE_2__.default.of('Encrypt')),
-            Info: this.dict.get(_objects_PDFName__WEBPACK_IMPORTED_MODULE_2__.default.of('Info')),
-            ID: this.dict.get(_objects_PDFName__WEBPACK_IMPORTED_MODULE_2__.default.of('ID')),
+            Root: this.dict.get(_objects_PDFName__WEBPACK_IMPORTED_MODULE_2__["default"].of('Root')),
+            Encrypt: this.dict.get(_objects_PDFName__WEBPACK_IMPORTED_MODULE_2__["default"].of('Encrypt')),
+            Info: this.dict.get(_objects_PDFName__WEBPACK_IMPORTED_MODULE_2__["default"].of('Info')),
+            ID: this.dict.get(_objects_PDFName__WEBPACK_IMPORTED_MODULE_2__["default"].of('ID')),
         };
         var entries = this.parseEntries();
         // for (let idx = 0, len = entries.length; idx < len; idx++) {
@@ -21705,7 +21727,7 @@ var PDFXRefStreamParser = /** @class */ (function () {
                     type = 1;
                 var objectNumber = firstObjectNumber + objIdx;
                 var entry = {
-                    ref: _objects_PDFRef__WEBPACK_IMPORTED_MODULE_4__.default.of(objectNumber, generationNumber),
+                    ref: _objects_PDFRef__WEBPACK_IMPORTED_MODULE_4__["default"].of(objectNumber, generationNumber),
                     offset: offset,
                     deleted: type === 0,
                     inObjectStream: type === 2,
@@ -21730,9 +21752,9 @@ var PDFXRefStreamParser = /** @class */ (function () {
 "use strict";
 __webpack_require__.r(__webpack_exports__);
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
-/* harmony export */   "PDFAnnotation": () => (/* reexport safe */ _PDFAnnotation__WEBPACK_IMPORTED_MODULE_0__.default),
-/* harmony export */   "PDFWidgetAnnotation": () => (/* reexport safe */ _PDFWidgetAnnotation__WEBPACK_IMPORTED_MODULE_1__.default),
-/* harmony export */   "AppearanceCharacteristics": () => (/* reexport safe */ _AppearanceCharacteristics__WEBPACK_IMPORTED_MODULE_2__.default),
+/* harmony export */   "PDFAnnotation": () => (/* reexport safe */ _PDFAnnotation__WEBPACK_IMPORTED_MODULE_0__["default"]),
+/* harmony export */   "PDFWidgetAnnotation": () => (/* reexport safe */ _PDFWidgetAnnotation__WEBPACK_IMPORTED_MODULE_1__["default"]),
+/* harmony export */   "AppearanceCharacteristics": () => (/* reexport safe */ _AppearanceCharacteristics__WEBPACK_IMPORTED_MODULE_2__["default"]),
 /* harmony export */   "AnnotationFlags": () => (/* reexport safe */ _flags__WEBPACK_IMPORTED_MODULE_3__.AnnotationFlags)
 /* harmony export */ });
 /* harmony import */ var _PDFAnnotation__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(119);
@@ -22856,7 +22878,7 @@ var PDFButton = /** @class */ (function (_super) {
     text, page, options) {
         var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l;
         (0,_utils__WEBPACK_IMPORTED_MODULE_8__.assertOrUndefined)(text, 'text', ['string']);
-        (0,_utils__WEBPACK_IMPORTED_MODULE_8__.assertOrUndefined)(page, 'page', [[_PDFPage__WEBPACK_IMPORTED_MODULE_0__.default, 'PDFPage']]);
+        (0,_utils__WEBPACK_IMPORTED_MODULE_8__.assertOrUndefined)(page, 'page', [[_PDFPage__WEBPACK_IMPORTED_MODULE_0__["default"], 'PDFPage']]);
         (0,_PDFField__WEBPACK_IMPORTED_MODULE_4__.assertFieldAppearanceOptions)(options);
         // Create a widget for this button
         var widget = this.createWidget({
@@ -22914,7 +22936,7 @@ var PDFButton = /** @class */ (function (_super) {
      * @param font The font to be used for creating the appearance streams.
      */
     PDFButton.prototype.defaultUpdateAppearances = function (font) {
-        (0,_utils__WEBPACK_IMPORTED_MODULE_8__.assertIs)(font, 'font', [[_PDFFont__WEBPACK_IMPORTED_MODULE_1__.default, 'PDFFont']]);
+        (0,_utils__WEBPACK_IMPORTED_MODULE_8__.assertIs)(font, 'font', [[_PDFFont__WEBPACK_IMPORTED_MODULE_1__["default"], 'PDFFont']]);
         this.updateAppearances(font);
     };
     /**
@@ -22937,7 +22959,7 @@ var PDFButton = /** @class */ (function (_super) {
      *                 generating the contents of the appearance streams.
      */
     PDFButton.prototype.updateAppearances = function (font, provider) {
-        (0,_utils__WEBPACK_IMPORTED_MODULE_8__.assertIs)(font, 'font', [[_PDFFont__WEBPACK_IMPORTED_MODULE_1__.default, 'PDFFont']]);
+        (0,_utils__WEBPACK_IMPORTED_MODULE_8__.assertIs)(font, 'font', [[_PDFFont__WEBPACK_IMPORTED_MODULE_1__["default"], 'PDFFont']]);
         (0,_utils__WEBPACK_IMPORTED_MODULE_8__.assertOrUndefined)(provider, 'provider', [Function]);
         var widgets = this.acroField.getWidgets();
         for (var idx = 0, len = widgets.length; idx < len; idx++) {
@@ -22963,7 +22985,7 @@ var PDFButton = /** @class */ (function (_super) {
      */
     PDFButton.of = function (acroPushButton, ref, doc) { return new PDFButton(acroPushButton, ref, doc); };
     return PDFButton;
-}(_PDFField__WEBPACK_IMPORTED_MODULE_4__.default));
+}(_PDFField__WEBPACK_IMPORTED_MODULE_4__["default"]));
 /* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (PDFButton);
 //# sourceMappingURL=PDFButton.js.map
 
@@ -23014,7 +23036,7 @@ var PDFPage = /** @class */ (function () {
         this.y = 0;
         (0,_utils__WEBPACK_IMPORTED_MODULE_11__.assertIs)(leafNode, 'leafNode', [[_core__WEBPACK_IMPORTED_MODULE_10__.PDFPageLeaf, 'PDFPageLeaf']]);
         (0,_utils__WEBPACK_IMPORTED_MODULE_11__.assertIs)(ref, 'ref', [[_core__WEBPACK_IMPORTED_MODULE_10__.PDFRef, 'PDFRef']]);
-        (0,_utils__WEBPACK_IMPORTED_MODULE_11__.assertIs)(doc, 'doc', [[_PDFDocument__WEBPACK_IMPORTED_MODULE_3__.default, 'PDFDocument']]);
+        (0,_utils__WEBPACK_IMPORTED_MODULE_11__.assertIs)(doc, 'doc', [[_PDFDocument__WEBPACK_IMPORTED_MODULE_3__["default"], 'PDFDocument']]);
         this.node = leafNode;
         this.ref = ref;
         this.doc = doc;
@@ -23485,7 +23507,7 @@ var PDFPage = /** @class */ (function () {
      */
     PDFPage.prototype.setFont = function (font) {
         // TODO: Reuse image Font name if we've already added this image to Resources.Fonts
-        (0,_utils__WEBPACK_IMPORTED_MODULE_11__.assertIs)(font, 'font', [[_PDFFont__WEBPACK_IMPORTED_MODULE_5__.default, 'PDFFont']]);
+        (0,_utils__WEBPACK_IMPORTED_MODULE_11__.assertIs)(font, 'font', [[_PDFFont__WEBPACK_IMPORTED_MODULE_5__["default"], 'PDFFont']]);
         this.font = font;
         this.fontKey = (0,_utils__WEBPACK_IMPORTED_MODULE_11__.addRandomSuffix)(this.font.name);
         this.node.setFontDictionary(_core__WEBPACK_IMPORTED_MODULE_10__.PDFName.of(this.fontKey), this.font.ref);
@@ -23748,7 +23770,7 @@ var PDFPage = /** @class */ (function () {
         (0,_utils__WEBPACK_IMPORTED_MODULE_11__.assertIs)(text, 'text', ['string']);
         (0,_utils__WEBPACK_IMPORTED_MODULE_11__.assertOrUndefined)(options.color, 'options.color', [[Object, 'Color']]);
         (0,_utils__WEBPACK_IMPORTED_MODULE_11__.assertRangeOrUndefined)(options.opacity, 'opacity.opacity', 0, 1);
-        (0,_utils__WEBPACK_IMPORTED_MODULE_11__.assertOrUndefined)(options.font, 'options.font', [[_PDFFont__WEBPACK_IMPORTED_MODULE_5__.default, 'PDFFont']]);
+        (0,_utils__WEBPACK_IMPORTED_MODULE_11__.assertOrUndefined)(options.font, 'options.font', [[_PDFFont__WEBPACK_IMPORTED_MODULE_5__["default"], 'PDFFont']]);
         (0,_utils__WEBPACK_IMPORTED_MODULE_11__.assertOrUndefined)(options.size, 'options.size', ['number']);
         (0,_utils__WEBPACK_IMPORTED_MODULE_11__.assertOrUndefined)(options.rotate, 'options.rotate', [[Object, 'Rotation']]);
         (0,_utils__WEBPACK_IMPORTED_MODULE_11__.assertOrUndefined)(options.xSkew, 'options.xSkew', [[Object, 'Rotation']]);
@@ -23822,7 +23844,7 @@ var PDFPage = /** @class */ (function () {
         var _a, _b, _c, _d, _e, _f, _g;
         if (options === void 0) { options = {}; }
         // TODO: Reuse image XObject name if we've already added this image to Resources.XObjects
-        (0,_utils__WEBPACK_IMPORTED_MODULE_11__.assertIs)(image, 'image', [[_PDFImage__WEBPACK_IMPORTED_MODULE_6__.default, 'PDFImage']]);
+        (0,_utils__WEBPACK_IMPORTED_MODULE_11__.assertIs)(image, 'image', [[_PDFImage__WEBPACK_IMPORTED_MODULE_6__["default"], 'PDFImage']]);
         (0,_utils__WEBPACK_IMPORTED_MODULE_11__.assertOrUndefined)(options.x, 'options.x', ['number']);
         (0,_utils__WEBPACK_IMPORTED_MODULE_11__.assertOrUndefined)(options.y, 'options.y', ['number']);
         (0,_utils__WEBPACK_IMPORTED_MODULE_11__.assertOrUndefined)(options.width, 'options.width', ['number']);
@@ -23887,7 +23909,7 @@ var PDFPage = /** @class */ (function () {
         if (options === void 0) { options = {}; }
         // TODO: Reuse embeddedPage XObject name if we've already added this embeddedPage to Resources.XObjects
         (0,_utils__WEBPACK_IMPORTED_MODULE_11__.assertIs)(embeddedPage, 'embeddedPage', [
-            [_PDFEmbeddedPage__WEBPACK_IMPORTED_MODULE_4__.default, 'PDFEmbeddedPage'],
+            [_PDFEmbeddedPage__WEBPACK_IMPORTED_MODULE_4__["default"], 'PDFEmbeddedPage'],
         ]);
         (0,_utils__WEBPACK_IMPORTED_MODULE_11__.assertOrUndefined)(options.x, 'options.x', ['number']);
         (0,_utils__WEBPACK_IMPORTED_MODULE_11__.assertOrUndefined)(options.y, 'options.y', ['number']);
@@ -24314,7 +24336,7 @@ var PDFPage = /** @class */ (function () {
      * @param doc The document to which the page will belong.
      */
     PDFPage.create = function (doc) {
-        (0,_utils__WEBPACK_IMPORTED_MODULE_11__.assertIs)(doc, 'doc', [[_PDFDocument__WEBPACK_IMPORTED_MODULE_3__.default, 'PDFDocument']]);
+        (0,_utils__WEBPACK_IMPORTED_MODULE_11__.assertIs)(doc, 'doc', [[_PDFDocument__WEBPACK_IMPORTED_MODULE_3__["default"], 'PDFDocument']]);
         var dummyRef = _core__WEBPACK_IMPORTED_MODULE_10__.PDFRef.of(-1);
         var pageLeaf = _core__WEBPACK_IMPORTED_MODULE_10__.PDFPageLeaf.withContextAndParent(doc.context, dummyRef);
         var pageRef = doc.context.register(pageLeaf);
@@ -24378,7 +24400,7 @@ var PDFDocument = /** @class */ (function () {
                 if (node instanceof _core__WEBPACK_IMPORTED_MODULE_7__.PDFPageLeaf) {
                     var page = _this.pageMap.get(node);
                     if (!page) {
-                        page = _PDFPage__WEBPACK_IMPORTED_MODULE_4__.default.of(node, ref, _this);
+                        page = _PDFPage__WEBPACK_IMPORTED_MODULE_4__["default"].of(node, ref, _this);
                         _this.pageMap.set(node, page);
                     }
                     pages.push(page);
@@ -24388,7 +24410,7 @@ var PDFDocument = /** @class */ (function () {
         };
         this.getOrCreateForm = function () {
             var acroForm = _this.catalog.getOrCreateAcroForm();
-            return _form_PDFForm__WEBPACK_IMPORTED_MODULE_5__.default.of(acroForm, _this);
+            return _form_PDFForm__WEBPACK_IMPORTED_MODULE_5__["default"].of(acroForm, _this);
         };
         (0,_utils__WEBPACK_IMPORTED_MODULE_9__.assertIs)(context, 'context', [[_core__WEBPACK_IMPORTED_MODULE_7__.PDFContext, 'PDFContext']]);
         (0,_utils__WEBPACK_IMPORTED_MODULE_9__.assertIs)(ignoreEncryption, 'ignoreEncryption', ['boolean']);
@@ -24910,7 +24932,7 @@ var PDFDocument = /** @class */ (function () {
      * @returns The newly created (or existing) page.
      */
     PDFDocument.prototype.addPage = function (page) {
-        (0,_utils__WEBPACK_IMPORTED_MODULE_9__.assertIs)(page, 'page', ['undefined', [_PDFPage__WEBPACK_IMPORTED_MODULE_4__.default, 'PDFPage'], Array]);
+        (0,_utils__WEBPACK_IMPORTED_MODULE_9__.assertIs)(page, 'page', ['undefined', [_PDFPage__WEBPACK_IMPORTED_MODULE_4__["default"], 'PDFPage'], Array]);
         return this.insertPage(this.getPageCount(), page);
     };
     /**
@@ -24948,10 +24970,10 @@ var PDFDocument = /** @class */ (function () {
     PDFDocument.prototype.insertPage = function (index, page) {
         var pageCount = this.getPageCount();
         (0,_utils__WEBPACK_IMPORTED_MODULE_9__.assertRange)(index, 'index', 0, pageCount);
-        (0,_utils__WEBPACK_IMPORTED_MODULE_9__.assertIs)(page, 'page', ['undefined', [_PDFPage__WEBPACK_IMPORTED_MODULE_4__.default, 'PDFPage'], Array]);
+        (0,_utils__WEBPACK_IMPORTED_MODULE_9__.assertIs)(page, 'page', ['undefined', [_PDFPage__WEBPACK_IMPORTED_MODULE_4__["default"], 'PDFPage'], Array]);
         if (!page || Array.isArray(page)) {
             var dims = Array.isArray(page) ? page : _sizes__WEBPACK_IMPORTED_MODULE_6__.PageSizes.A4;
-            page = _PDFPage__WEBPACK_IMPORTED_MODULE_4__.default.create(this);
+            page = _PDFPage__WEBPACK_IMPORTED_MODULE_4__["default"].create(this);
             page.setSize.apply(page, dims);
         }
         else if (page.doc !== this) {
@@ -24993,14 +25015,14 @@ var PDFDocument = /** @class */ (function () {
                         return [4 /*yield*/, srcDoc.flush()];
                     case 1:
                         _a.sent();
-                        copier = _core__WEBPACK_IMPORTED_MODULE_7__.PDFObjectCopier.for(srcDoc.context, this.context);
+                        copier = _core__WEBPACK_IMPORTED_MODULE_7__.PDFObjectCopier["for"](srcDoc.context, this.context);
                         srcPages = srcDoc.getPages();
                         copiedPages = new Array(indices.length);
                         for (idx = 0, len = indices.length; idx < len; idx++) {
                             srcPage = srcPages[indices[idx]];
                             copiedPage = copier.copy(srcPage.node);
                             ref = this.context.register(copiedPage);
-                            copiedPages[idx] = _PDFPage__WEBPACK_IMPORTED_MODULE_4__.default.of(copiedPage, ref, this);
+                            copiedPages[idx] = _PDFPage__WEBPACK_IMPORTED_MODULE_4__["default"].of(copiedPage, ref, this);
                         }
                         return [2 /*return*/, copiedPages];
                 }
@@ -25034,9 +25056,9 @@ var PDFDocument = /** @class */ (function () {
     PDFDocument.prototype.addJavaScript = function (name, script) {
         (0,_utils__WEBPACK_IMPORTED_MODULE_9__.assertIs)(name, 'name', ['string']);
         (0,_utils__WEBPACK_IMPORTED_MODULE_9__.assertIs)(script, 'script', ['string']);
-        var embedder = _core_embedders_JavaScriptEmbedder__WEBPACK_IMPORTED_MODULE_13__.default.for(script, name);
+        var embedder = _core_embedders_JavaScriptEmbedder__WEBPACK_IMPORTED_MODULE_13__["default"]["for"](script, name);
         var ref = this.context.nextRef();
-        var javaScript = _PDFJavaScript__WEBPACK_IMPORTED_MODULE_12__.default.of(ref, this, embedder);
+        var javaScript = _PDFJavaScript__WEBPACK_IMPORTED_MODULE_12__["default"].of(ref, this, embedder);
         this.javaScripts.push(javaScript);
     };
     /**
@@ -25109,9 +25131,9 @@ var PDFDocument = /** @class */ (function () {
                 ]);
                 (0,_utils__WEBPACK_IMPORTED_MODULE_9__.assertIsOneOfOrUndefined)(options.afRelationship, 'options.afRelationship', _core_embedders_FileEmbedder__WEBPACK_IMPORTED_MODULE_10__.AFRelationship);
                 bytes = (0,_utils__WEBPACK_IMPORTED_MODULE_9__.toUint8Array)(attachment);
-                embedder = _core_embedders_FileEmbedder__WEBPACK_IMPORTED_MODULE_10__.default.for(bytes, name, options);
+                embedder = _core_embedders_FileEmbedder__WEBPACK_IMPORTED_MODULE_10__["default"]["for"](bytes, name, options);
                 ref = this.context.nextRef();
-                embeddedFile = _PDFEmbeddedFile__WEBPACK_IMPORTED_MODULE_11__.default.of(ref, this, embedder);
+                embeddedFile = _PDFEmbeddedFile__WEBPACK_IMPORTED_MODULE_11__["default"].of(ref, this, embedder);
                 this.embeddedFiles.push(embeddedFile);
                 return [2 /*return*/];
             });
@@ -25163,18 +25185,18 @@ var PDFDocument = /** @class */ (function () {
                         (0,_utils__WEBPACK_IMPORTED_MODULE_9__.assertIs)(font, 'font', ['string', Uint8Array, ArrayBuffer]);
                         (0,_utils__WEBPACK_IMPORTED_MODULE_9__.assertIs)(subset, 'subset', ['boolean']);
                         if (!(0,_utils__WEBPACK_IMPORTED_MODULE_9__.isStandardFont)(font)) return [3 /*break*/, 1];
-                        embedder = _core__WEBPACK_IMPORTED_MODULE_7__.StandardFontEmbedder.for(font, customName);
+                        embedder = _core__WEBPACK_IMPORTED_MODULE_7__.StandardFontEmbedder["for"](font, customName);
                         return [3 /*break*/, 7];
                     case 1:
                         if (!(0,_utils__WEBPACK_IMPORTED_MODULE_9__.canBeConvertedToUint8Array)(font)) return [3 /*break*/, 6];
                         bytes = (0,_utils__WEBPACK_IMPORTED_MODULE_9__.toUint8Array)(font);
                         fontkit = this.assertFontkit();
                         if (!subset) return [3 /*break*/, 3];
-                        return [4 /*yield*/, _core__WEBPACK_IMPORTED_MODULE_7__.CustomFontSubsetEmbedder.for(fontkit, bytes, customName, features)];
+                        return [4 /*yield*/, _core__WEBPACK_IMPORTED_MODULE_7__.CustomFontSubsetEmbedder["for"](fontkit, bytes, customName, features)];
                     case 2:
                         _b = _c.sent();
                         return [3 /*break*/, 5];
-                    case 3: return [4 /*yield*/, _core__WEBPACK_IMPORTED_MODULE_7__.CustomFontEmbedder.for(fontkit, bytes, customName, features)];
+                    case 3: return [4 /*yield*/, _core__WEBPACK_IMPORTED_MODULE_7__.CustomFontEmbedder["for"](fontkit, bytes, customName, features)];
                     case 4:
                         _b = _c.sent();
                         _c.label = 5;
@@ -25184,7 +25206,7 @@ var PDFDocument = /** @class */ (function () {
                     case 6: throw new TypeError('`font` must be one of `StandardFonts | string | Uint8Array | ArrayBuffer`');
                     case 7:
                         ref = this.context.nextRef();
-                        pdfFont = _PDFFont__WEBPACK_IMPORTED_MODULE_2__.default.of(ref, this, embedder);
+                        pdfFont = _PDFFont__WEBPACK_IMPORTED_MODULE_2__["default"].of(ref, this, embedder);
                         this.fonts.push(pdfFont);
                         return [2 /*return*/, pdfFont];
                 }
@@ -25207,9 +25229,9 @@ var PDFDocument = /** @class */ (function () {
         if (!(0,_utils__WEBPACK_IMPORTED_MODULE_9__.isStandardFont)(font)) {
             throw new TypeError('`font` must be one of type `StandardFonts`');
         }
-        var embedder = _core__WEBPACK_IMPORTED_MODULE_7__.StandardFontEmbedder.for(font, customName);
+        var embedder = _core__WEBPACK_IMPORTED_MODULE_7__.StandardFontEmbedder["for"](font, customName);
         var ref = this.context.nextRef();
-        var pdfFont = _PDFFont__WEBPACK_IMPORTED_MODULE_2__.default.of(ref, this, embedder);
+        var pdfFont = _PDFFont__WEBPACK_IMPORTED_MODULE_2__["default"].of(ref, this, embedder);
         this.fonts.push(pdfFont);
         return pdfFont;
     };
@@ -25251,11 +25273,11 @@ var PDFDocument = /** @class */ (function () {
                     case 0:
                         (0,_utils__WEBPACK_IMPORTED_MODULE_9__.assertIs)(jpg, 'jpg', ['string', Uint8Array, ArrayBuffer]);
                         bytes = (0,_utils__WEBPACK_IMPORTED_MODULE_9__.toUint8Array)(jpg);
-                        return [4 /*yield*/, _core__WEBPACK_IMPORTED_MODULE_7__.JpegEmbedder.for(bytes)];
+                        return [4 /*yield*/, _core__WEBPACK_IMPORTED_MODULE_7__.JpegEmbedder["for"](bytes)];
                     case 1:
                         embedder = _a.sent();
                         ref = this.context.nextRef();
-                        pdfImage = _PDFImage__WEBPACK_IMPORTED_MODULE_3__.default.of(ref, this, embedder);
+                        pdfImage = _PDFImage__WEBPACK_IMPORTED_MODULE_3__["default"].of(ref, this, embedder);
                         this.images.push(pdfImage);
                         return [2 /*return*/, pdfImage];
                 }
@@ -25300,11 +25322,11 @@ var PDFDocument = /** @class */ (function () {
                     case 0:
                         (0,_utils__WEBPACK_IMPORTED_MODULE_9__.assertIs)(png, 'png', ['string', Uint8Array, ArrayBuffer]);
                         bytes = (0,_utils__WEBPACK_IMPORTED_MODULE_9__.toUint8Array)(png);
-                        return [4 /*yield*/, _core__WEBPACK_IMPORTED_MODULE_7__.PngEmbedder.for(bytes)];
+                        return [4 /*yield*/, _core__WEBPACK_IMPORTED_MODULE_7__.PngEmbedder["for"](bytes)];
                     case 1:
                         embedder = _a.sent();
                         ref = this.context.nextRef();
-                        pdfImage = _PDFImage__WEBPACK_IMPORTED_MODULE_3__.default.of(ref, this, embedder);
+                        pdfImage = _PDFImage__WEBPACK_IMPORTED_MODULE_3__["default"].of(ref, this, embedder);
                         this.images.push(pdfImage);
                         return [2 /*return*/, pdfImage];
                 }
@@ -25398,7 +25420,7 @@ var PDFDocument = /** @class */ (function () {
             return (0,tslib__WEBPACK_IMPORTED_MODULE_14__.__generator)(this, function (_a) {
                 switch (_a.label) {
                     case 0:
-                        (0,_utils__WEBPACK_IMPORTED_MODULE_9__.assertIs)(page, 'page', [[_PDFPage__WEBPACK_IMPORTED_MODULE_4__.default, 'PDFPage']]);
+                        (0,_utils__WEBPACK_IMPORTED_MODULE_9__.assertIs)(page, 'page', [[_PDFPage__WEBPACK_IMPORTED_MODULE_4__["default"], 'PDFPage']]);
                         return [4 /*yield*/, this.embedPages([page], [boundingBox], [transformationMatrix])];
                     case 1:
                         embeddedPage = (_a.sent())[0];
@@ -25457,7 +25479,7 @@ var PDFDocument = /** @class */ (function () {
                         context = pages[0].node.context;
                         maybeCopyPage = context === this.context
                             ? function (p) { return p; }
-                            : _core__WEBPACK_IMPORTED_MODULE_7__.PDFObjectCopier.for(context, this.context).copy;
+                            : _core__WEBPACK_IMPORTED_MODULE_7__.PDFObjectCopier["for"](context, this.context).copy;
                         embeddedPages = new Array(pages.length);
                         idx = 0, len = pages.length;
                         _b.label = 1;
@@ -25466,11 +25488,11 @@ var PDFDocument = /** @class */ (function () {
                         page = maybeCopyPage(pages[idx].node);
                         box = boundingBoxes[idx];
                         matrix = transformationMatrices[idx];
-                        return [4 /*yield*/, _core__WEBPACK_IMPORTED_MODULE_7__.PDFPageEmbedder.for(page, box, matrix)];
+                        return [4 /*yield*/, _core__WEBPACK_IMPORTED_MODULE_7__.PDFPageEmbedder["for"](page, box, matrix)];
                     case 2:
                         embedder = _b.sent();
                         ref = this.context.nextRef();
-                        embeddedPages[idx] = _PDFEmbeddedPage__WEBPACK_IMPORTED_MODULE_1__.default.of(ref, this, embedder);
+                        embeddedPages[idx] = _PDFEmbeddedPage__WEBPACK_IMPORTED_MODULE_1__["default"].of(ref, this, embedder);
                         _b.label = 3;
                     case 3:
                         idx++;
@@ -25686,7 +25708,7 @@ var PDFEmbeddedPage = /** @class */ (function () {
     function PDFEmbeddedPage(ref, doc, embedder) {
         this.alreadyEmbedded = false;
         (0,_utils__WEBPACK_IMPORTED_MODULE_2__.assertIs)(ref, 'ref', [[_core__WEBPACK_IMPORTED_MODULE_1__.PDFRef, 'PDFRef']]);
-        (0,_utils__WEBPACK_IMPORTED_MODULE_2__.assertIs)(doc, 'doc', [[_PDFDocument__WEBPACK_IMPORTED_MODULE_0__.default, 'PDFDocument']]);
+        (0,_utils__WEBPACK_IMPORTED_MODULE_2__.assertIs)(doc, 'doc', [[_PDFDocument__WEBPACK_IMPORTED_MODULE_0__["default"], 'PDFDocument']]);
         (0,_utils__WEBPACK_IMPORTED_MODULE_2__.assertIs)(embedder, 'embedder', [[_core__WEBPACK_IMPORTED_MODULE_1__.PDFPageEmbedder, 'PDFPageEmbedder']]);
         this.ref = ref;
         this.doc = doc;
@@ -25793,7 +25815,7 @@ var PDFFont = /** @class */ (function () {
     function PDFFont(ref, doc, embedder) {
         this.modified = true;
         (0,_utils__WEBPACK_IMPORTED_MODULE_2__.assertIs)(ref, 'ref', [[_core__WEBPACK_IMPORTED_MODULE_1__.PDFRef, 'PDFRef']]);
-        (0,_utils__WEBPACK_IMPORTED_MODULE_2__.assertIs)(doc, 'doc', [[_PDFDocument__WEBPACK_IMPORTED_MODULE_0__.default, 'PDFDocument']]);
+        (0,_utils__WEBPACK_IMPORTED_MODULE_2__.assertIs)(doc, 'doc', [[_PDFDocument__WEBPACK_IMPORTED_MODULE_0__["default"], 'PDFDocument']]);
         (0,_utils__WEBPACK_IMPORTED_MODULE_2__.assertIs)(embedder, 'embedder', [
             [_core__WEBPACK_IMPORTED_MODULE_1__.CustomFontEmbedder, 'CustomFontEmbedder'],
             [_core__WEBPACK_IMPORTED_MODULE_1__.StandardFontEmbedder, 'StandardFontEmbedder'],
@@ -25948,7 +25970,7 @@ var PDFImage = /** @class */ (function () {
     function PDFImage(ref, doc, embedder) {
         this.alreadyEmbedded = false;
         (0,_utils__WEBPACK_IMPORTED_MODULE_2__.assertIs)(ref, 'ref', [[_core__WEBPACK_IMPORTED_MODULE_1__.PDFRef, 'PDFRef']]);
-        (0,_utils__WEBPACK_IMPORTED_MODULE_2__.assertIs)(doc, 'doc', [[_PDFDocument__WEBPACK_IMPORTED_MODULE_0__.default, 'PDFDocument']]);
+        (0,_utils__WEBPACK_IMPORTED_MODULE_2__.assertIs)(doc, 'doc', [[_PDFDocument__WEBPACK_IMPORTED_MODULE_0__["default"], 'PDFDocument']]);
         (0,_utils__WEBPACK_IMPORTED_MODULE_2__.assertIs)(embedder, 'embedder', [
             [_core__WEBPACK_IMPORTED_MODULE_1__.JpegEmbedder, 'JpegEmbedder'],
             [_core__WEBPACK_IMPORTED_MODULE_1__.PngEmbedder, 'PngEmbedder'],
@@ -26118,7 +26140,7 @@ var PDFForm = /** @class */ (function () {
             return _this.doc.embedStandardFont(_StandardFonts__WEBPACK_IMPORTED_MODULE_10__.StandardFonts.Helvetica);
         };
         (0,_utils__WEBPACK_IMPORTED_MODULE_14__.assertIs)(acroForm, 'acroForm', [[_core__WEBPACK_IMPORTED_MODULE_13__.PDFAcroForm, 'PDFAcroForm']]);
-        (0,_utils__WEBPACK_IMPORTED_MODULE_14__.assertIs)(doc, 'doc', [[_PDFDocument__WEBPACK_IMPORTED_MODULE_0__.default, 'PDFDocument']]);
+        (0,_utils__WEBPACK_IMPORTED_MODULE_14__.assertIs)(doc, 'doc', [[_PDFDocument__WEBPACK_IMPORTED_MODULE_0__["default"], 'PDFDocument']]);
         this.acroForm = acroForm;
         this.doc = doc;
         this.dirtyFields = new Set();
@@ -26230,9 +26252,9 @@ var PDFForm = /** @class */ (function () {
     PDFForm.prototype.getButton = function (name) {
         (0,_utils__WEBPACK_IMPORTED_MODULE_14__.assertIs)(name, 'name', ['string']);
         var field = this.getField(name);
-        if (field instanceof _PDFButton__WEBPACK_IMPORTED_MODULE_1__.default)
+        if (field instanceof _PDFButton__WEBPACK_IMPORTED_MODULE_1__["default"])
             return field;
-        throw new _errors__WEBPACK_IMPORTED_MODULE_8__.UnexpectedFieldTypeError(name, _PDFButton__WEBPACK_IMPORTED_MODULE_1__.default, field);
+        throw new _errors__WEBPACK_IMPORTED_MODULE_8__.UnexpectedFieldTypeError(name, _PDFButton__WEBPACK_IMPORTED_MODULE_1__["default"], field);
     };
     /**
      * Get the check box field in this [[PDFForm]] with the given name.
@@ -26250,9 +26272,9 @@ var PDFForm = /** @class */ (function () {
     PDFForm.prototype.getCheckBox = function (name) {
         (0,_utils__WEBPACK_IMPORTED_MODULE_14__.assertIs)(name, 'name', ['string']);
         var field = this.getField(name);
-        if (field instanceof _PDFCheckBox__WEBPACK_IMPORTED_MODULE_2__.default)
+        if (field instanceof _PDFCheckBox__WEBPACK_IMPORTED_MODULE_2__["default"])
             return field;
-        throw new _errors__WEBPACK_IMPORTED_MODULE_8__.UnexpectedFieldTypeError(name, _PDFCheckBox__WEBPACK_IMPORTED_MODULE_2__.default, field);
+        throw new _errors__WEBPACK_IMPORTED_MODULE_8__.UnexpectedFieldTypeError(name, _PDFCheckBox__WEBPACK_IMPORTED_MODULE_2__["default"], field);
     };
     /**
      * Get the dropdown field in this [[PDFForm]] with the given name.
@@ -26271,9 +26293,9 @@ var PDFForm = /** @class */ (function () {
     PDFForm.prototype.getDropdown = function (name) {
         (0,_utils__WEBPACK_IMPORTED_MODULE_14__.assertIs)(name, 'name', ['string']);
         var field = this.getField(name);
-        if (field instanceof _PDFDropdown__WEBPACK_IMPORTED_MODULE_3__.default)
+        if (field instanceof _PDFDropdown__WEBPACK_IMPORTED_MODULE_3__["default"])
             return field;
-        throw new _errors__WEBPACK_IMPORTED_MODULE_8__.UnexpectedFieldTypeError(name, _PDFDropdown__WEBPACK_IMPORTED_MODULE_3__.default, field);
+        throw new _errors__WEBPACK_IMPORTED_MODULE_8__.UnexpectedFieldTypeError(name, _PDFDropdown__WEBPACK_IMPORTED_MODULE_3__["default"], field);
     };
     /**
      * Get the option list field in this [[PDFForm]] with the given name.
@@ -26292,9 +26314,9 @@ var PDFForm = /** @class */ (function () {
     PDFForm.prototype.getOptionList = function (name) {
         (0,_utils__WEBPACK_IMPORTED_MODULE_14__.assertIs)(name, 'name', ['string']);
         var field = this.getField(name);
-        if (field instanceof _PDFOptionList__WEBPACK_IMPORTED_MODULE_4__.default)
+        if (field instanceof _PDFOptionList__WEBPACK_IMPORTED_MODULE_4__["default"])
             return field;
-        throw new _errors__WEBPACK_IMPORTED_MODULE_8__.UnexpectedFieldTypeError(name, _PDFOptionList__WEBPACK_IMPORTED_MODULE_4__.default, field);
+        throw new _errors__WEBPACK_IMPORTED_MODULE_8__.UnexpectedFieldTypeError(name, _PDFOptionList__WEBPACK_IMPORTED_MODULE_4__["default"], field);
     };
     /**
      * Get the radio group field in this [[PDFForm]] with the given name.
@@ -26313,9 +26335,9 @@ var PDFForm = /** @class */ (function () {
     PDFForm.prototype.getRadioGroup = function (name) {
         (0,_utils__WEBPACK_IMPORTED_MODULE_14__.assertIs)(name, 'name', ['string']);
         var field = this.getField(name);
-        if (field instanceof _PDFRadioGroup__WEBPACK_IMPORTED_MODULE_5__.default)
+        if (field instanceof _PDFRadioGroup__WEBPACK_IMPORTED_MODULE_5__["default"])
             return field;
-        throw new _errors__WEBPACK_IMPORTED_MODULE_8__.UnexpectedFieldTypeError(name, _PDFRadioGroup__WEBPACK_IMPORTED_MODULE_5__.default, field);
+        throw new _errors__WEBPACK_IMPORTED_MODULE_8__.UnexpectedFieldTypeError(name, _PDFRadioGroup__WEBPACK_IMPORTED_MODULE_5__["default"], field);
     };
     /**
      * Get the signature field in this [[PDFForm]] with the given name.
@@ -26332,9 +26354,9 @@ var PDFForm = /** @class */ (function () {
     PDFForm.prototype.getSignature = function (name) {
         (0,_utils__WEBPACK_IMPORTED_MODULE_14__.assertIs)(name, 'name', ['string']);
         var field = this.getField(name);
-        if (field instanceof _PDFSignature__WEBPACK_IMPORTED_MODULE_6__.default)
+        if (field instanceof _PDFSignature__WEBPACK_IMPORTED_MODULE_6__["default"])
             return field;
-        throw new _errors__WEBPACK_IMPORTED_MODULE_8__.UnexpectedFieldTypeError(name, _PDFSignature__WEBPACK_IMPORTED_MODULE_6__.default, field);
+        throw new _errors__WEBPACK_IMPORTED_MODULE_8__.UnexpectedFieldTypeError(name, _PDFSignature__WEBPACK_IMPORTED_MODULE_6__["default"], field);
     };
     /**
      * Get the text field in this [[PDFForm]] with the given name.
@@ -26352,9 +26374,9 @@ var PDFForm = /** @class */ (function () {
     PDFForm.prototype.getTextField = function (name) {
         (0,_utils__WEBPACK_IMPORTED_MODULE_14__.assertIs)(name, 'name', ['string']);
         var field = this.getField(name);
-        if (field instanceof _PDFTextField__WEBPACK_IMPORTED_MODULE_7__.default)
+        if (field instanceof _PDFTextField__WEBPACK_IMPORTED_MODULE_7__["default"])
             return field;
-        throw new _errors__WEBPACK_IMPORTED_MODULE_8__.UnexpectedFieldTypeError(name, _PDFTextField__WEBPACK_IMPORTED_MODULE_7__.default, field);
+        throw new _errors__WEBPACK_IMPORTED_MODULE_8__.UnexpectedFieldTypeError(name, _PDFTextField__WEBPACK_IMPORTED_MODULE_7__["default"], field);
     };
     /**
      * Create a new button field in this [[PDFForm]] with the given name.
@@ -26379,7 +26401,7 @@ var PDFForm = /** @class */ (function () {
         var button = _core__WEBPACK_IMPORTED_MODULE_13__.PDFAcroPushButton.create(this.doc.context);
         button.setPartialName(nameParts.terminal);
         addFieldToParent(parent, [button, button.ref], nameParts.terminal);
-        return _PDFButton__WEBPACK_IMPORTED_MODULE_1__.default.of(button, button.ref, this.doc);
+        return _PDFButton__WEBPACK_IMPORTED_MODULE_1__["default"].of(button, button.ref, this.doc);
     };
     /**
      * Create a new check box field in this [[PDFForm]] with the given name.
@@ -26404,7 +26426,7 @@ var PDFForm = /** @class */ (function () {
         var checkBox = _core__WEBPACK_IMPORTED_MODULE_13__.PDFAcroCheckBox.create(this.doc.context);
         checkBox.setPartialName(nameParts.terminal);
         addFieldToParent(parent, [checkBox, checkBox.ref], nameParts.terminal);
-        return _PDFCheckBox__WEBPACK_IMPORTED_MODULE_2__.default.of(checkBox, checkBox.ref, this.doc);
+        return _PDFCheckBox__WEBPACK_IMPORTED_MODULE_2__["default"].of(checkBox, checkBox.ref, this.doc);
     };
     /**
      * Create a new dropdown field in this [[PDFForm]] with the given name.
@@ -26429,7 +26451,7 @@ var PDFForm = /** @class */ (function () {
         var comboBox = _core__WEBPACK_IMPORTED_MODULE_13__.PDFAcroComboBox.create(this.doc.context);
         comboBox.setPartialName(nameParts.terminal);
         addFieldToParent(parent, [comboBox, comboBox.ref], nameParts.terminal);
-        return _PDFDropdown__WEBPACK_IMPORTED_MODULE_3__.default.of(comboBox, comboBox.ref, this.doc);
+        return _PDFDropdown__WEBPACK_IMPORTED_MODULE_3__["default"].of(comboBox, comboBox.ref, this.doc);
     };
     /**
      * Create a new option list field in this [[PDFForm]] with the given name.
@@ -26454,7 +26476,7 @@ var PDFForm = /** @class */ (function () {
         var listBox = _core__WEBPACK_IMPORTED_MODULE_13__.PDFAcroListBox.create(this.doc.context);
         listBox.setPartialName(nameParts.terminal);
         addFieldToParent(parent, [listBox, listBox.ref], nameParts.terminal);
-        return _PDFOptionList__WEBPACK_IMPORTED_MODULE_4__.default.of(listBox, listBox.ref, this.doc);
+        return _PDFOptionList__WEBPACK_IMPORTED_MODULE_4__["default"].of(listBox, listBox.ref, this.doc);
     };
     /**
      * Create a new radio group field in this [[PDFForm]] with the given name.
@@ -26480,7 +26502,7 @@ var PDFForm = /** @class */ (function () {
         var radioButton = _core__WEBPACK_IMPORTED_MODULE_13__.PDFAcroRadioButton.create(this.doc.context);
         radioButton.setPartialName(nameParts.terminal);
         addFieldToParent(parent, [radioButton, radioButton.ref], nameParts.terminal);
-        return _PDFRadioGroup__WEBPACK_IMPORTED_MODULE_5__.default.of(radioButton, radioButton.ref, this.doc);
+        return _PDFRadioGroup__WEBPACK_IMPORTED_MODULE_5__["default"].of(radioButton, radioButton.ref, this.doc);
     };
     /**
      * Create a new text field in this [[PDFForm]] with the given name.
@@ -26505,7 +26527,7 @@ var PDFForm = /** @class */ (function () {
         var text = _core__WEBPACK_IMPORTED_MODULE_13__.PDFAcroText.create(this.doc.context);
         text.setPartialName(nameParts.terminal);
         addFieldToParent(parent, [text, text.ref], nameParts.terminal);
-        return _PDFTextField__WEBPACK_IMPORTED_MODULE_7__.default.of(text, text.ref, this.doc);
+        return _PDFTextField__WEBPACK_IMPORTED_MODULE_7__["default"].of(text, text.ref, this.doc);
     };
     /**
      * Flatten all fields in this [[PDFForm]].
@@ -26610,7 +26632,7 @@ var PDFForm = /** @class */ (function () {
      * @param font Optionally, the font to use when creating new appearances.
      */
     PDFForm.prototype.updateFieldAppearances = function (font) {
-        (0,_utils__WEBPACK_IMPORTED_MODULE_14__.assertOrUndefined)(font, 'font', [[_PDFFont__WEBPACK_IMPORTED_MODULE_9__.default, 'PDFFont']]);
+        (0,_utils__WEBPACK_IMPORTED_MODULE_14__.assertOrUndefined)(font, 'font', [[_PDFFont__WEBPACK_IMPORTED_MODULE_9__["default"], 'PDFFont']]);
         font = font !== null && font !== void 0 ? font : this.getDefaultFont();
         var fields = this.getFields();
         for (var idx = 0, len = fields.length; idx < len; idx++) {
@@ -26684,7 +26706,7 @@ var PDFForm = /** @class */ (function () {
         var _a;
         var refOrDict = widget.getNormalAppearance();
         if (refOrDict instanceof _core__WEBPACK_IMPORTED_MODULE_13__.PDFDict &&
-            (field instanceof _PDFCheckBox__WEBPACK_IMPORTED_MODULE_2__.default || field instanceof _PDFRadioGroup__WEBPACK_IMPORTED_MODULE_5__.default)) {
+            (field instanceof _PDFCheckBox__WEBPACK_IMPORTED_MODULE_2__["default"] || field instanceof _PDFRadioGroup__WEBPACK_IMPORTED_MODULE_5__["default"])) {
             var value = field.acroField.getValue();
             var ref = (_a = refOrDict.get(value)) !== null && _a !== void 0 ? _a : refOrDict.get(_core__WEBPACK_IMPORTED_MODULE_13__.PDFName.of('Off'));
             if (ref instanceof _core__WEBPACK_IMPORTED_MODULE_13__.PDFRef) {
@@ -26753,20 +26775,20 @@ var PDFForm = /** @class */ (function () {
 /* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (PDFForm);
 var convertToPDFField = function (field, ref, doc) {
     if (field instanceof _core__WEBPACK_IMPORTED_MODULE_13__.PDFAcroPushButton)
-        return _PDFButton__WEBPACK_IMPORTED_MODULE_1__.default.of(field, ref, doc);
+        return _PDFButton__WEBPACK_IMPORTED_MODULE_1__["default"].of(field, ref, doc);
     if (field instanceof _core__WEBPACK_IMPORTED_MODULE_13__.PDFAcroCheckBox)
-        return _PDFCheckBox__WEBPACK_IMPORTED_MODULE_2__.default.of(field, ref, doc);
+        return _PDFCheckBox__WEBPACK_IMPORTED_MODULE_2__["default"].of(field, ref, doc);
     if (field instanceof _core__WEBPACK_IMPORTED_MODULE_13__.PDFAcroComboBox)
-        return _PDFDropdown__WEBPACK_IMPORTED_MODULE_3__.default.of(field, ref, doc);
+        return _PDFDropdown__WEBPACK_IMPORTED_MODULE_3__["default"].of(field, ref, doc);
     if (field instanceof _core__WEBPACK_IMPORTED_MODULE_13__.PDFAcroListBox)
-        return _PDFOptionList__WEBPACK_IMPORTED_MODULE_4__.default.of(field, ref, doc);
+        return _PDFOptionList__WEBPACK_IMPORTED_MODULE_4__["default"].of(field, ref, doc);
     if (field instanceof _core__WEBPACK_IMPORTED_MODULE_13__.PDFAcroText)
-        return _PDFTextField__WEBPACK_IMPORTED_MODULE_7__.default.of(field, ref, doc);
+        return _PDFTextField__WEBPACK_IMPORTED_MODULE_7__["default"].of(field, ref, doc);
     if (field instanceof _core__WEBPACK_IMPORTED_MODULE_13__.PDFAcroRadioButton) {
-        return _PDFRadioGroup__WEBPACK_IMPORTED_MODULE_5__.default.of(field, ref, doc);
+        return _PDFRadioGroup__WEBPACK_IMPORTED_MODULE_5__["default"].of(field, ref, doc);
     }
     if (field instanceof _core__WEBPACK_IMPORTED_MODULE_13__.PDFAcroSignature) {
-        return _PDFSignature__WEBPACK_IMPORTED_MODULE_6__.default.of(field, ref, doc);
+        return _PDFSignature__WEBPACK_IMPORTED_MODULE_6__["default"].of(field, ref, doc);
     }
     return undefined;
 };
@@ -26931,7 +26953,7 @@ var PDFCheckBox = /** @class */ (function (_super) {
      */
     PDFCheckBox.prototype.addToPage = function (page, options) {
         var _a, _b, _c, _d, _e, _f;
-        (0,_utils__WEBPACK_IMPORTED_MODULE_6__.assertIs)(page, 'page', [[_PDFPage__WEBPACK_IMPORTED_MODULE_0__.default, 'PDFPage']]);
+        (0,_utils__WEBPACK_IMPORTED_MODULE_6__.assertIs)(page, 'page', [[_PDFPage__WEBPACK_IMPORTED_MODULE_0__["default"], 'PDFPage']]);
         (0,_PDFField__WEBPACK_IMPORTED_MODULE_4__.assertFieldAppearanceOptions)(options);
         if (!options)
             options = {};
@@ -27049,7 +27071,7 @@ var PDFCheckBox = /** @class */ (function (_super) {
         return new PDFCheckBox(acroCheckBox, ref, doc);
     };
     return PDFCheckBox;
-}(_PDFField__WEBPACK_IMPORTED_MODULE_4__.default));
+}(_PDFField__WEBPACK_IMPORTED_MODULE_4__["default"]));
 /* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (PDFCheckBox);
 //# sourceMappingURL=PDFCheckBox.js.map
 
@@ -27120,7 +27142,7 @@ var PDFField = /** @class */ (function () {
     function PDFField(acroField, ref, doc) {
         (0,_utils__WEBPACK_IMPORTED_MODULE_4__.assertIs)(acroField, 'acroField', [[_core__WEBPACK_IMPORTED_MODULE_3__.PDFAcroTerminal, 'PDFAcroTerminal']]);
         (0,_utils__WEBPACK_IMPORTED_MODULE_4__.assertIs)(ref, 'ref', [[_core__WEBPACK_IMPORTED_MODULE_3__.PDFRef, 'PDFRef']]);
-        (0,_utils__WEBPACK_IMPORTED_MODULE_4__.assertIs)(doc, 'doc', [[_PDFDocument__WEBPACK_IMPORTED_MODULE_0__.default, 'PDFDocument']]);
+        (0,_utils__WEBPACK_IMPORTED_MODULE_4__.assertIs)(doc, 'doc', [[_PDFDocument__WEBPACK_IMPORTED_MODULE_0__["default"], 'PDFDocument']]);
         this.acroField = acroField;
         this.ref = ref;
         this.doc = doc;
@@ -27950,7 +27972,7 @@ var PDFDropdown = /** @class */ (function (_super) {
      */
     PDFDropdown.prototype.addToPage = function (page, options) {
         var _a, _b, _c, _d, _e, _f, _g;
-        (0,_utils__WEBPACK_IMPORTED_MODULE_7__.assertIs)(page, 'page', [[_PDFPage__WEBPACK_IMPORTED_MODULE_0__.default, 'PDFPage']]);
+        (0,_utils__WEBPACK_IMPORTED_MODULE_7__.assertIs)(page, 'page', [[_PDFPage__WEBPACK_IMPORTED_MODULE_0__["default"], 'PDFPage']]);
         (0,_PDFField__WEBPACK_IMPORTED_MODULE_2__.assertFieldAppearanceOptions)(options);
         if (!options)
             options = {};
@@ -28017,7 +28039,7 @@ var PDFDropdown = /** @class */ (function (_super) {
      * @param font The font to be used for creating the appearance streams.
      */
     PDFDropdown.prototype.defaultUpdateAppearances = function (font) {
-        (0,_utils__WEBPACK_IMPORTED_MODULE_7__.assertIs)(font, 'font', [[_PDFFont__WEBPACK_IMPORTED_MODULE_1__.default, 'PDFFont']]);
+        (0,_utils__WEBPACK_IMPORTED_MODULE_7__.assertIs)(font, 'font', [[_PDFFont__WEBPACK_IMPORTED_MODULE_1__["default"], 'PDFFont']]);
         this.updateAppearances(font);
     };
     /**
@@ -28037,7 +28059,7 @@ var PDFDropdown = /** @class */ (function (_super) {
      *                 generating the contents of the appearance streams.
      */
     PDFDropdown.prototype.updateAppearances = function (font, provider) {
-        (0,_utils__WEBPACK_IMPORTED_MODULE_7__.assertIs)(font, 'font', [[_PDFFont__WEBPACK_IMPORTED_MODULE_1__.default, 'PDFFont']]);
+        (0,_utils__WEBPACK_IMPORTED_MODULE_7__.assertIs)(font, 'font', [[_PDFFont__WEBPACK_IMPORTED_MODULE_1__["default"], 'PDFFont']]);
         (0,_utils__WEBPACK_IMPORTED_MODULE_7__.assertOrUndefined)(provider, 'provider', [Function]);
         var widgets = this.acroField.getWidgets();
         for (var idx = 0, len = widgets.length; idx < len; idx++) {
@@ -28072,7 +28094,7 @@ var PDFDropdown = /** @class */ (function (_super) {
         return new PDFDropdown(acroComboBox, ref, doc);
     };
     return PDFDropdown;
-}(_PDFField__WEBPACK_IMPORTED_MODULE_2__.default));
+}(_PDFField__WEBPACK_IMPORTED_MODULE_2__["default"]));
 /* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (PDFDropdown);
 //# sourceMappingURL=PDFDropdown.js.map
 
@@ -28464,7 +28486,7 @@ var PDFOptionList = /** @class */ (function (_super) {
      */
     PDFOptionList.prototype.addToPage = function (page, options) {
         var _a, _b, _c, _d, _e, _f, _g;
-        (0,_utils__WEBPACK_IMPORTED_MODULE_7__.assertIs)(page, 'page', [[_PDFPage__WEBPACK_IMPORTED_MODULE_0__.default, 'PDFPage']]);
+        (0,_utils__WEBPACK_IMPORTED_MODULE_7__.assertIs)(page, 'page', [[_PDFPage__WEBPACK_IMPORTED_MODULE_0__["default"], 'PDFPage']]);
         (0,_PDFField__WEBPACK_IMPORTED_MODULE_2__.assertFieldAppearanceOptions)(options);
         if (!options)
             options = {};
@@ -28531,7 +28553,7 @@ var PDFOptionList = /** @class */ (function (_super) {
      * @param font The font to be used for creating the appearance streams.
      */
     PDFOptionList.prototype.defaultUpdateAppearances = function (font) {
-        (0,_utils__WEBPACK_IMPORTED_MODULE_7__.assertIs)(font, 'font', [[_PDFFont__WEBPACK_IMPORTED_MODULE_1__.default, 'PDFFont']]);
+        (0,_utils__WEBPACK_IMPORTED_MODULE_7__.assertIs)(font, 'font', [[_PDFFont__WEBPACK_IMPORTED_MODULE_1__["default"], 'PDFFont']]);
         this.updateAppearances(font);
     };
     /**
@@ -28551,7 +28573,7 @@ var PDFOptionList = /** @class */ (function (_super) {
      *                 generating the contents of the appearance streams.
      */
     PDFOptionList.prototype.updateAppearances = function (font, provider) {
-        (0,_utils__WEBPACK_IMPORTED_MODULE_7__.assertIs)(font, 'font', [[_PDFFont__WEBPACK_IMPORTED_MODULE_1__.default, 'PDFFont']]);
+        (0,_utils__WEBPACK_IMPORTED_MODULE_7__.assertIs)(font, 'font', [[_PDFFont__WEBPACK_IMPORTED_MODULE_1__["default"], 'PDFFont']]);
         (0,_utils__WEBPACK_IMPORTED_MODULE_7__.assertOrUndefined)(provider, 'provider', [Function]);
         var widgets = this.acroField.getWidgets();
         for (var idx = 0, len = widgets.length; idx < len; idx++) {
@@ -28587,7 +28609,7 @@ var PDFOptionList = /** @class */ (function (_super) {
         return new PDFOptionList(acroListBox, ref, doc);
     };
     return PDFOptionList;
-}(_PDFField__WEBPACK_IMPORTED_MODULE_2__.default));
+}(_PDFField__WEBPACK_IMPORTED_MODULE_2__["default"]));
 /* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (PDFOptionList);
 //# sourceMappingURL=PDFOptionList.js.map
 
@@ -28906,7 +28928,7 @@ var PDFRadioGroup = /** @class */ (function (_super) {
     PDFRadioGroup.prototype.addOptionToPage = function (option, page, options) {
         var _a, _b, _c, _d, _e, _f, _g, _h, _j;
         (0,_utils__WEBPACK_IMPORTED_MODULE_6__.assertIs)(option, 'option', ['string']);
-        (0,_utils__WEBPACK_IMPORTED_MODULE_6__.assertIs)(page, 'page', [[_PDFPage__WEBPACK_IMPORTED_MODULE_0__.default, 'PDFPage']]);
+        (0,_utils__WEBPACK_IMPORTED_MODULE_6__.assertIs)(page, 'page', [[_PDFPage__WEBPACK_IMPORTED_MODULE_0__["default"], 'PDFPage']]);
         (0,_PDFField__WEBPACK_IMPORTED_MODULE_1__.assertFieldAppearanceOptions)(options);
         // Create a widget for this radio button
         var widget = this.createWidget({
@@ -29017,7 +29039,7 @@ var PDFRadioGroup = /** @class */ (function (_super) {
      */
     PDFRadioGroup.of = function (acroRadioButton, ref, doc) { return new PDFRadioGroup(acroRadioButton, ref, doc); };
     return PDFRadioGroup;
-}(_PDFField__WEBPACK_IMPORTED_MODULE_1__.default));
+}(_PDFField__WEBPACK_IMPORTED_MODULE_1__["default"]));
 /* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (PDFRadioGroup);
 //# sourceMappingURL=PDFRadioGroup.js.map
 
@@ -29072,7 +29094,7 @@ var PDFSignature = /** @class */ (function (_super) {
      */
     PDFSignature.of = function (acroSignature, ref, doc) { return new PDFSignature(acroSignature, ref, doc); };
     return PDFSignature;
-}(_PDFField__WEBPACK_IMPORTED_MODULE_0__.default));
+}(_PDFField__WEBPACK_IMPORTED_MODULE_0__["default"]));
 /* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (PDFSignature);
 //# sourceMappingURL=PDFSignature.js.map
 
@@ -29714,7 +29736,7 @@ var PDFTextField = /** @class */ (function (_super) {
      */
     PDFTextField.prototype.addToPage = function (page, options) {
         var _a, _b, _c, _d, _e, _f, _g;
-        (0,_utils__WEBPACK_IMPORTED_MODULE_10__.assertIs)(page, 'page', [[_PDFPage__WEBPACK_IMPORTED_MODULE_0__.default, 'PDFPage']]);
+        (0,_utils__WEBPACK_IMPORTED_MODULE_10__.assertIs)(page, 'page', [[_PDFPage__WEBPACK_IMPORTED_MODULE_0__["default"], 'PDFPage']]);
         (0,_PDFField__WEBPACK_IMPORTED_MODULE_2__.assertFieldAppearanceOptions)(options);
         if (!options)
             options = {};
@@ -29781,7 +29803,7 @@ var PDFTextField = /** @class */ (function (_super) {
      * @param font The font to be used for creating the appearance streams.
      */
     PDFTextField.prototype.defaultUpdateAppearances = function (font) {
-        (0,_utils__WEBPACK_IMPORTED_MODULE_10__.assertIs)(font, 'font', [[_PDFFont__WEBPACK_IMPORTED_MODULE_1__.default, 'PDFFont']]);
+        (0,_utils__WEBPACK_IMPORTED_MODULE_10__.assertIs)(font, 'font', [[_PDFFont__WEBPACK_IMPORTED_MODULE_1__["default"], 'PDFFont']]);
         this.updateAppearances(font);
     };
     /**
@@ -29801,7 +29823,7 @@ var PDFTextField = /** @class */ (function (_super) {
      *                 generating the contents of the appearance streams.
      */
     PDFTextField.prototype.updateAppearances = function (font, provider) {
-        (0,_utils__WEBPACK_IMPORTED_MODULE_10__.assertIs)(font, 'font', [[_PDFFont__WEBPACK_IMPORTED_MODULE_1__.default, 'PDFFont']]);
+        (0,_utils__WEBPACK_IMPORTED_MODULE_10__.assertIs)(font, 'font', [[_PDFFont__WEBPACK_IMPORTED_MODULE_1__["default"], 'PDFFont']]);
         (0,_utils__WEBPACK_IMPORTED_MODULE_10__.assertOrUndefined)(provider, 'provider', [Function]);
         var widgets = this.acroField.getWidgets();
         for (var idx = 0, len = widgets.length; idx < len; idx++) {
@@ -29830,7 +29852,7 @@ var PDFTextField = /** @class */ (function (_super) {
         return new PDFTextField(acroText, ref, doc);
     };
     return PDFTextField;
-}(_PDFField__WEBPACK_IMPORTED_MODULE_2__.default));
+}(_PDFField__WEBPACK_IMPORTED_MODULE_2__["default"]));
 /* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (PDFTextField);
 //# sourceMappingURL=PDFTextField.js.map
 
@@ -30148,7 +30170,7 @@ var JavaScriptEmbedder = /** @class */ (function () {
                 jsActionDict = context.obj({
                     Type: 'Action',
                     S: 'JavaScript',
-                    JS: _objects_PDFHexString__WEBPACK_IMPORTED_MODULE_0__.default.fromText(this.script),
+                    JS: _objects_PDFHexString__WEBPACK_IMPORTED_MODULE_0__["default"].fromText(this.script),
                 });
                 if (ref) {
                     context.assign(ref, jsActionDict);
@@ -30430,6 +30452,7 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony export */   "PAGE_LAYOUTS": () => (/* binding */ PAGE_LAYOUTS),
 /* harmony export */   "BOOKLET_LAYOUTS": () => (/* binding */ BOOKLET_LAYOUTS)
 /* harmony export */ });
+/** units in "pt" */
 const PAGE_SIZES = {
     LETTER: [612, 792],
     NOTE: [540, 720],
@@ -30634,10 +30657,11 @@ __webpack_require__.r(__webpack_exports__);
  * The builder functions are the entry points to the different layouts. 
  */
 class WackyImposition{
-    constructor(pages, duplex,format) {
+    constructor(pages, duplex,format, isPacked) {
       this.duplex=duplex;
       this.sigconfig=[]  // sig_count looks at the length of this array, sig_arrange joins them together with a ,;
       this.pagelist = [[]];
+      this.isPacked = isPacked;
       console.log("Constructor sees ", pages)
       // for UI estimates
       this.sheets = Math.ceil(pages.length / 20.0); 
@@ -30648,9 +30672,12 @@ class WackyImposition{
       } else if (format == "a10_6_10s") {
         this.sheets = Math.ceil(pages.length/120.0);
         this.sigconfig = Array(Math.ceil(pages.length/20.0) * 2)
-      } else if (format == "A7_32") {
-        this.sheets = Math.ceil(pages.length/32.0);
-        this.sigconfig = Array(Math.ceil(pages.length/32.0))
+      } else if (format == "a_4_8s") {
+        this.sheets = Math.ceil(pages.length/64.0);
+        this.sigconfig = Array(Math.ceil(pages.length/16.0) * 2)
+      } else if (format == "a_3_6s") {
+        this.sheets = Math.ceil(pages.length/36.0);
+        this.sigconfig = Array(Math.ceil(pages.length/12))
       } else if (format == "A7_2_16s") {
         this.sheets = Math.ceil(pages.length/32.0);
         this.sigconfig = Array(this.sheets * 2)
@@ -30662,7 +30689,7 @@ class WackyImposition{
             sheetMaker: this.build_1_3rd_sheetList.bind(this),
             lineMaker: this.build_1_3rd_lineFunction.bind(this),
             isLandscape: false,
-            fileNameMod: "one_third"
+            fileNameMod: "one_third" + ((this.isPacked) ? "_packed" : "_spread")
         }
     }
 
@@ -30671,7 +30698,7 @@ class WackyImposition{
             sheetMaker: this.build_3_3_4_sheetList.bind(this),
             lineMaker: this.build_3_3_4_lineFunction.bind(this),
             isLandscape: false,
-            fileNameMod: "little"
+            fileNameMod: "little"+ ((this.isPacked) ? "_packed" : "_spread")
         }
     }
 
@@ -30680,15 +30707,25 @@ class WackyImposition{
             sheetMaker: this.build_6_10s_sheetList.bind(this),
             lineMaker: this.build_6_10s_lineFunction.bind(this),
             isLandscape: true,
-            fileNameMod: "mini"
+            fileNameMod: "mini"+ ((this.isPacked) ? "_packed" : "_spread")
         }
     }
-    a7_32_builder() {
+
+    a_3_6s_builder() {
         return {
-            sheetMaker: this.build_32_sheetList.bind(this),
-            lineMaker: this.build_32_lineFunction.bind(this),
-            isLandscape: false,
-            fileNameMod: "4_by_4_single_signature"
+            sheetMaker: this.build_3_6s_sheetList.bind(this),
+            lineMaker: this.build_strip_lineFunction.bind(this, 3, 6),
+            isLandscape: true,
+            fileNameMod: "3_by_6"+ ((this.isPacked) ? "_packed" : "_spread")
+        }
+    }
+
+    a_4_8s_builder() {
+        return {
+            sheetMaker: this.build_4_8s_sheetList.bind(this),
+            lineMaker: this.build_strip_lineFunction.bind(this, 4, 8),
+            isLandscape: true,
+            fileNameMod: "4_by_8"+ ((this.isPacked) ? "_packed" : "_spread")
         }
     }
 
@@ -30697,7 +30734,7 @@ class WackyImposition{
             sheetMaker: this.build_2_16s_sheetList.bind(this),
             lineMaker: this.build_2_16s_lineFunction.bind(this),
             isLandscape: false,
-            fileNameMod: "4_by_4_two_signatures"
+            fileNameMod: "4_by_4_two_signatures"+ ((this.isPacked) ? "_packed" : "_spread")
         }
     }
 
@@ -30741,32 +30778,32 @@ class WackyImposition{
      *           renderPageSize: [width, height],
      *           paperSize: [width, height],
      *           isFront: boolean,
+     *           isPacked: boolean
      *       }
      *       and returns: a list of lines, as described by PDF-lib.js's `PDFPageDrawLineOptions` object
      */
     build_1_3rd_lineFunction() {
         return info => {
+            let vGap = row => { return (info.isPacked) ? info.gap[1] : info.gap[1] * row}
+            let hGap = col => { return (info.isPacked) ? info.gap[0] : info.gap[0] * col}
             let foldMarks = [];
             [0,1,2,3].forEach( row => {
                 [0,1,2].forEach( page => {
                     foldMarks = foldMarks.concat(this.crosshairMark(
-                        info.gap[0] + info.renderPageSize[0] * page,
-                        info.gap[1] + info.renderPageSize[1] * row,
+                        hGap(page) + info.renderPageSize[0] * page,
+                        vGap(row) + info.renderPageSize[1] * row,
                         5
                         ));
                 });
             });
             return [
-                this.foldHorizontal(info.paperSize[0], info.gap[1] + info.renderPageSize[1]),
-                this.foldHorizontal(info.paperSize[0], info.gap[1] + info.renderPageSize[1] * 2),
-                this.cutHorizontal(info.paperSize[0], info.gap[1] + info.renderPageSize[1] * 3),
+                this.foldHorizontal(info.paperSize[0], vGap(1) + info.renderPageSize[1]),
+                this.foldHorizontal(info.paperSize[0],vGap(2) + info.renderPageSize[1] * 2),
+                this.cutHorizontal(info.paperSize[0], vGap(3) + info.renderPageSize[1] * 3),
             ]
             .concat(foldMarks);
         };
     }
-
-
-
 
     /**
      * Produces two 3 folio foldup signatures and a 4 folio foldup signature.
@@ -30815,41 +30852,45 @@ class WackyImposition{
      *           renderPageSize: [width, height],
      *           paperSize: [width, height],
      *           isFront: boolean,
+     *           isPacked: boolean
      *       }
      *       and returns: a list of lines, as described by PDF-lib.js's `PDFPageDrawLineOptions` object
      */
     build_3_3_4_lineFunction() {
         return info => {
+            let vGap = row => { return (info.isPacked) ? info.gap[1] : info.gap[1] * row};
+            let hGap = col => { return (info.isPacked) ? info.gap[0] : info.gap[0] * col};
             let cutBetweenTheThrees = {
-                start: { x: info.gap[0] + 2 * info.renderPageSize[0], y: info.renderPageSize[1] * 2 + info.gap[1] },
-                end: { x: info.gap[0] + 2 * info.renderPageSize[0], y: info.paperSize[1] },
+                start: { x: hGap(2) + 2 * info.renderPageSize[0], y: info.renderPageSize[1] * 2 + info.gap[1] },
+                end: { x: hGap(2) + 2 * info.renderPageSize[0], y: info.paperSize[1] },
                 thickness: 0.25,
                 opacity: 0.4,
             };
             let foldBetweenTheFours = {
-                start: { x: info.gap[0] + 2 * info.renderPageSize[0], y: info.renderPageSize[1] * 2 + info.gap[1] },
-                end: { x: info.gap[0] + 2 * info.renderPageSize[0], y: 0 },
+                start: { x: hGap(2) + 2 * info.renderPageSize[0], y: info.renderPageSize[1] * 2 + info.gap[1] },
+                end: { x: hGap(2) + 2 * info.renderPageSize[0], y: 0 },
                 thickness: 0.5,
                 opacity: 0.4,
                 dashArray: [2, 5]
             };
             let foldMarks = [];
+
             [0,1,2,3,4,5].forEach( row => {
                 [0,1,2,3,4].forEach( page => {
                     foldMarks = foldMarks.concat(this.crosshairMark(
-                        info.gap[0] + info.renderPageSize[0] * page,
-                        info.gap[1] + info.renderPageSize[1] * row,
+                        hGap(page) + info.renderPageSize[0] * page,
+                        vGap(row) + info.renderPageSize[1] * row,
                         5
                         ));
                 });
             });
             return [
-                this.foldHorizontal(info.paperSize[0], info.gap[1] + info.renderPageSize[1]),
-                this.cutHorizontal(info.paperSize[0], info.gap[1] + info.renderPageSize[1] * 2),
-                this.foldHorizontal(info.paperSize[0], info.gap[1] + info.renderPageSize[1] * 3),
-                this.foldHorizontal(info.paperSize[0], info.gap[1] + info.renderPageSize[1] * 4),
-                this.cutVertical(info.paperSize[1], info.gap[0]),
-                this.cutVertical(info.paperSize[1], info.gap[0] + info.renderPageSize[0] * 4),
+                this.foldHorizontal(info.paperSize[0], vGap(1) + info.renderPageSize[1]),
+                this.cutHorizontal(info.paperSize[0], vGap(2) + info.renderPageSize[1] * 2),
+                this.foldHorizontal(info.paperSize[0], vGap(3) + info.renderPageSize[1] * 3),
+                this.foldHorizontal(info.paperSize[0], vGap(4) + info.renderPageSize[1] * 4),
+                this.cutVertical(info.paperSize[1], hGap(0)),
+                this.cutVertical(info.paperSize[1], hGap(4) + info.renderPageSize[0] * 4),
                 cutBetweenTheThrees,
                 foldBetweenTheFours
             ].concat(foldMarks);
@@ -30857,21 +30898,93 @@ class WackyImposition{
     }
 
     /**
+     * @return a FUNCTION. The function takes as it's parameter:
+     *       Object definition: {
+     *           gap: [leftGap, topGap],
+     *           renderPageSize: [width, height],
+     *           paperSize: [width, height],
+     *           isFront: boolean,
+     *           isPacked: boolean
+     *       }
+     *       and returns: a list of lines, as described by PDF-lib.js's `PDFPageDrawLineOptions` object
+     */
+    build_6_10s_lineFunction() {
+        return info => {
+            let cutOffset = (!this.duplex || info.isFront) ? 4 : 6;
+            let vGap = row => { return (info.isPacked) ? info.gap[1] : info.gap[1] * (2 * row); };
+            let hGap = col => { return (info.isPacked) ? info.gap[0] : col * info.gap[0]};
+            let baseCuts = [
+                //this.cutHorizontal(info.paperSize[0], vGap(0)),
+                this.cutHorizontal(info.paperSize[0], vGap(0) + info.renderPageSize[1] * 0),
+                this.cutHorizontal(info.paperSize[0], vGap(1) + info.renderPageSize[1] * 1),
+                this.cutHorizontal(info.paperSize[0], vGap(2) + info.renderPageSize[1] * 2),
+                this.cutHorizontal(info.paperSize[0], vGap(3) + info.renderPageSize[1] * 3),
+                this.cutHorizontal(info.paperSize[0], vGap(4) + info.renderPageSize[1] * 4),
+                this.cutHorizontal(info.paperSize[0], vGap(5) + info.renderPageSize[1] * 5),
+                this.cutHorizontal(info.paperSize[0], vGap(6) + info.renderPageSize[1] * 6),
+
+                // this.foldVertical(info.paperSize[1], info.gap[0] + info.renderPageSize[0] * 2),
+                this.cutVertical(info.paperSize[1], hGap(cutOffset) + info.renderPageSize[0] * cutOffset),
+                // this.foldVertical(info.paperSize[1], info.gap[0] + info.renderPageSize[0] * 6),
+                // this.foldVertical(info.paperSize[1], info.gap[0] + info.renderPageSize[0] * 8),
+                this.cutVertical(info.paperSize[1], hGap(0)),
+                this.cutVertical(info.paperSize[1], hGap(10) + info.renderPageSize[0] * 10),
+            ];
+            let foldMarks = [];
+            [0,1,2,3,4,5,6].forEach( row => {
+                [...Array(10).keys()].forEach( page => {
+                    foldMarks = foldMarks.concat(this.crosshairMark(
+                        hGap(page) + info.renderPageSize[0] * page,
+                        vGap(row) + info.renderPageSize[1] * row,
+                        5
+                        ));
+                });
+            });
+            console.log("Providing lines: \nbase cuts: ",baseCuts,"\nfold marks: ",foldMarks,"\ntotal: ",baseCuts.concat(foldMarks))
+            return baseCuts.concat(foldMarks)
+        };
+    }
+
+    build_3_6s_sheetList(pageCount) {
+        let page = this.page;
+        let frontFunc = i => {return [page(i+2),page(i+11),page(i+10),page(i+3),page(i+6),page(i+7)];};
+        let backFunc = i => {return [page(i+8),page(i+5),page(i+4),page(i+9),page(i+12),page(i+1)];};
+        return this.build_strips_sheetList(3, 3, pageCount, frontFunc, backFunc);
+    }
+    build_4_8s_sheetList(pageCount) {
+        let page = this.page;
+        let frontFunc = i => {return [page(i+2),page(i+15),page(i+14),page(i+3),page(i+6),page(i+11),page(i+10),page(i+7)];};
+        let backFunc = i => {return [page(i+8),page(i+9),page(i+12),page(i+5),page(i+4),page(i+13),page(i+16),page(i+1)];};
+        return this.build_strips_sheetList(4, 4, pageCount, frontFunc, backFunc);
+    }
+    build_6_10s_sheetList(pageCount) {
+        let page = this.page;
+        let frontFunc = i => {return [page(i+6),page(i+3),page(i+2),page(i+7),page(i+10),page(i+19),page(i+18),page(i+11),page(i+14),page(i+15)];};
+        let backFunc = i => {return [page(i+16),page(i+13),page(i+12),page(i+17),page(i+20),page(i+9),page(i+8),page(i+1),page(i+4),page(i+5)];};
+        return this.build_strips_sheetList(4, 4, pageCount, frontFunc, backFunc);
+    }
+
+    /**
+     * @param rows - number of rows for page
+     * @param folioPerRow - number of folios per row (not pages!)
      * @param pageCount - total pages in document
+     * @param frontPageFunc - function (takes page number i to start (0)) that lays out the front pages as an array of pages
+     * @param backPageFunc - function (takes page number i to start (0)) that lays out the back pages as an array of pages
      * @return an array of sheets. Assumes 1st is "front", 2nd is "back", 3rd is "front", etc. 
      *      Each sheet is an array of rows, containing a list of page objects
      */
-    build_6_10s_sheetList(pageCount) {
+    build_strips_sheetList(rows, folioPerRow, pageCount, frontPageFunc, backPageFunc) {
         let fronts = []
         let backs = []
         let page = this.page;
         let blank = this.blankPage;
-        let rowCount = Math.ceil(pageCount / 20.0);
-        console.log("Building the 6 rows of 10 pages. Given ",pageCount," page count, there will be ",rowCount," rows...");
+        let totalPagesPerRow = folioPerRow * 4;
+        let rowCount = Math.ceil(pageCount / totalPagesPerRow);
+        console.log("Building the ",rows," rows of ",(folioPerRow * 2)," pages. Given ",pageCount," page count, there will be ",rowCount," rows...");
         for (let row=0; row < rowCount; ++row ) {
-            let i = row * 20 - 1;
-            let front = [page(i+6),page(i+3),page(i+2),page(i+7),page(i+10),page(i+19),page(i+18),page(i+11),page(i+14),page(i+15)];
-            let back = [page(i+16),page(i+13),page(i+12),page(i+17),page(i+20),page(i+9),page(i+8),page(i+1),page(i+4),page(i+5)];
+            let i = row * totalPagesPerRow - 1;
+            let front = frontPageFunc(i);
+            let back = backPageFunc(i);
             if (!this.duplex) {
                 console.log("in duplex mode, reversing")
                 back.reverse();
@@ -30882,8 +30995,8 @@ class WackyImposition{
         }
         let sheets = [];
         for (let row=0; row < rowCount; ++row ) {
-            let sheet = Math.floor(row/6);
-            if (row % 6 == 0 ) {
+            let sheet = Math.floor(row/rows);
+            if (row % rows == 0 ) {
                 sheets[sheet*2] = [];
                 sheets[sheet*2 + 1] = [];
                 console.log(sheets)
@@ -30892,15 +31005,18 @@ class WackyImposition{
             sheets[sheet*2 + 1].unshift(backs[row]);
             console.log(" -> row ",row," => sheet ", sheet, " grabs front ",fronts[row]," and back ",backs[row])
         }
-        if (sheets[sheets.length - 1].length < 6){
-            for (let filler = 0; filler < 6 - rowCount % 6; ++filler) {
-                let sheet = Math.floor(rowCount/6);
+        if (sheets[sheets.length - 1].length < rows){
+            let rowOfBlanks = new Array(folioPerRow * 2)
+            for(let j = 0; j < rowOfBlanks.length; ++j) { rowOfBlanks[j] = blank()}
+            console.log("I present you my blanks! [for ",folioPerRow,"] : ", rowOfBlanks)
+            for (let filler = 0; filler < rows - rowCount % rows; ++filler) {
+                let sheet = Math.floor(rowCount/rows);
                 if (filler % 2 == 0) {
-                    sheets[sheet*2].unshift([blank(),blank(),blank(),blank(),blank(),blank(),blank(),blank(),blank(),blank()]);
-                    sheets[sheet*2 + 1].unshift([blank(),blank(),blank(),blank(),blank(),blank(),blank(),blank(),blank(),blank()]);
+                    sheets[sheet*2].unshift(rowOfBlanks);
+                    sheets[sheet*2 + 1].unshift(rowOfBlanks);
                 } else {
-                    sheets[sheet*2].push([blank(),blank(),blank(),blank(),blank(),blank(),blank(),blank(),blank(),blank()]);
-                    sheets[sheet*2 + 1].push([blank(),blank(),blank(),blank(),blank(),blank(),blank(),blank(),blank(),blank()]);
+                    sheets[sheet*2].push(rowOfBlanks);
+                    sheets[sheet*2 + 1].push(rowOfBlanks);
                 }
             }
         }
@@ -30918,103 +31034,41 @@ class WackyImposition{
     }
 
     /**
+     * @param rowCount - how many rows expected to be cut out
+     * @param colCount - how many column fold lines
      * @return a FUNCTION. The function takes as it's parameter:
      *       Object definition: {
      *           gap: [leftGap, topGap],
      *           renderPageSize: [width, height],
      *           paperSize: [width, height],
      *           isFront: boolean,
+     *           isPacked: boolean
      *       }
      *       and returns: a list of lines, as described by PDF-lib.js's `PDFPageDrawLineOptions` object
      */
-    build_6_10s_lineFunction() {
+    build_strip_lineFunction(rowCount, colCount) {
         return info => {
-            let cutOffset = (!this.duplex || info.isFront) ? 4 : 6
+            let vGap = row => { return (info.isPacked) ? info.gap[1] : info.gap[1] * (2 * row); };
+            let hGap = col => { return (info.isPacked) ? info.gap[0] : col * info.gap[0]};
             let baseCuts = [
-                this.cutHorizontal(info.paperSize[0], info.gap[1]),
-                this.cutHorizontal(info.paperSize[0], info.gap[1] + info.renderPageSize[1]),
-                this.cutHorizontal(info.paperSize[0], info.gap[1] + info.renderPageSize[1] * 1),
-                this.cutHorizontal(info.paperSize[0], info.gap[1] + info.renderPageSize[1] * 2),
-                this.cutHorizontal(info.paperSize[0], info.gap[1] + info.renderPageSize[1] * 3),
-                this.cutHorizontal(info.paperSize[0], info.gap[1] + info.renderPageSize[1] * 4),
-                this.cutHorizontal(info.paperSize[0], info.gap[1] + info.renderPageSize[1] * 5),
-                this.cutHorizontal(info.paperSize[0], info.gap[1] + info.renderPageSize[1] * 6),
-
-                // this.foldVertical(info.paperSize[1], info.gap[0] + info.renderPageSize[0] * 2),
-                this.cutVertical(info.paperSize[1], info.gap[0] + info.renderPageSize[0] * cutOffset),
-                // this.foldVertical(info.paperSize[1], info.gap[0] + info.renderPageSize[0] * 6),
-                // this.foldVertical(info.paperSize[1], info.gap[0] + info.renderPageSize[0] * 8),
-                this.cutVertical(info.paperSize[1], info.gap[0]),
-                this.cutVertical(info.paperSize[1], info.gap[0] + info.renderPageSize[0] * 10),
+                this.cutVertical(info.paperSize[1], hGap(0)),
+                this.cutVertical(info.paperSize[1], hGap(colCount) + info.renderPageSize[0] * colCount),
             ];
+            for (let i = 0; i <= rowCount; ++i) {
+                baseCuts.push(this.cutHorizontal(info.paperSize[0], vGap(i) + info.renderPageSize[1] * i));
+            }
             let foldMarks = [];
-            [0,1,2,3,4,5,6].forEach( row => {
-                [...Array(10).keys()].forEach( page => {
+            [...Array(rowCount).keys()].forEach( row => {
+                [...Array(colCount).keys()].forEach( page => {
                     foldMarks = foldMarks.concat(this.crosshairMark(
-                        info.gap[0] + info.renderPageSize[0] * page,
-                        info.gap[1] + info.renderPageSize[1] * row,
+                        hGap(page) + info.renderPageSize[0] * page,
+                        vGap(row) + info.renderPageSize[1] * row,
                         5
                         ));
                 });
             });
             console.log("Providing lines: \nbase cuts: ",baseCuts,"\nfold marks: ",foldMarks,"\ntotal: ",baseCuts.concat(foldMarks))
             return baseCuts.concat(foldMarks)
-        };
-    }
-
-    /**
-     * @param pageCount - total pages in document
-     * @return an array of sheets. Assumes 1st is "front", 2nd is "back", 3rd is "front", etc. 
-     *      Each sheet is an array of rows, containing a list of page objects
-     */
-    build_32_sheetList(pageCount) {
-        let p = this.page;
-        let sheets = [];
-        let sheetCount = Math.ceil(pageCount / 32.0);
-        console.log("Building the 32 pages. Given ",pageCount," page count, there will be ",sheetCount," sheets...");
-        for (let sheet=0; sheet < sheetCount; ++sheet ) {
-            let i = sheet * 32 - 1;
-            let front = [
-                this.auditForBlanks([p(i+20), p(i+13),   p(i+18), p(i+15)], pageCount),
-                this.auditForBlanks([p(i+24), p(i+9),   p(i+22), p(i+11)], pageCount),
-                this.auditForBlanks([p(i+28), p(i+5),    p(i+26), p(i+7)], pageCount),
-                this.auditForBlanks([p(i+32), p(i+1),   p(i+30), p(i+3)], pageCount),
-            ];
-            let back = [
-                this.auditForBlanks([p(i+16), p(i+17),  p(i+14), p(i+19)], pageCount),
-                this.auditForBlanks([p(i+12), p(i+21),  p(i+10), p(i+23)], pageCount),
-                this.auditForBlanks([p(i+8), p(i+25),  p(i+6), p(i+27)], pageCount),
-                this.auditForBlanks([p(i+4), p(i+29),  p(i+2), p(i+31)], pageCount),
-            ]
-            sheets.push(front);
-            sheets.push(back);
-        }
-        return sheets
-    }
-
-    /**
-     * @return a FUNCTION. The function takes as it's parameter:
-     *       Object definition: {
-     *           gap: [leftGap, topGap],
-     *           renderPageSize: [width, height],
-     *           paperSize: [width, height],
-     *           isFront: boolean,
-     *       }
-     *       and returns: a list of lines, as described by PDF-lib.js's `PDFPageDrawLineOptions` object
-     */
-    build_32_lineFunction() {
-        return info => {
-            let foldMarks = [];
-            [0,1,2,3,4].forEach( row => {
-                [0,2,4].forEach( page => {
-                    foldMarks = foldMarks.concat(this.crosshairMark(
-                        info.gap[0] + info.renderPageSize[0] * page,
-                        info.gap[1] + info.renderPageSize[1] * row,
-                        5
-                        ));
-                });
-            });
-            return foldMarks
         };
     }
 
@@ -31056,17 +31110,20 @@ class WackyImposition{
      *           renderPageSize: [width, height],
      *           paperSize: [width, height],
      *           isFront: boolean,
+     *           isPacked: boolean
      *       }
      *       and returns: a list of lines, as described by PDF-lib.js's `PDFPageDrawLineOptions` object
      */
     build_2_16s_lineFunction() {
         return info => {
+            let vGap = row => { return (info.isPacked) ? info.gap[1] : info.gap[1] * (2 * row); };
+            let hGap = col => { return (info.isPacked) ? info.gap[0] : col * info.gap[0]};
             let foldMarks = [];
             [0,1,2,3,4].forEach( row => {
                 [0,1,2,3,4].forEach( page => {
                     foldMarks = foldMarks.concat(this.crosshairMark(
-                        info.gap[0] + info.renderPageSize[0] * page,
-                        info.gap[1] + info.renderPageSize[1] * row,
+                        hGap(page) + info.renderPageSize[0] * page,
+                        vGap(row) + info.renderPageSize[1] * row,
                         5
                         ));
                 });
@@ -31079,7 +31136,6 @@ class WackyImposition{
             ].concat(foldMarks);
         };
     }
-
 
     // ---------------- drawing lines helpers
 
@@ -31327,8 +31383,9 @@ function renderWacky() {
     const isWacky =
         document.getElementById('a9_3_3_4').checked ||
         document.getElementById('a10_6_10s').checked ||
+        document.getElementById('a_3_6s').checked ||
+        document.getElementById('a_4_8s').checked ||
         document.getElementById('A7_2_16s').checked ||
-        document.getElementById('A7_32').checked ||
         document.getElementById('1_3rd').checked;
     console.log('Is a wacky layout? ', isWacky);
     document

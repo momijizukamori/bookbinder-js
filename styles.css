@@ -58,3 +58,7 @@ body, .wrapper, #bookbinder {
 #generate {
     font-size: 1.5em;
 }
+
+.instruction-indent {
+    margin-left:  25px;
+}
