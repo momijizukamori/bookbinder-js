@@ -39,8 +39,9 @@ export function renderWacky() {
     const isWacky =
         document.getElementById('a9_3_3_4').checked ||
         document.getElementById('a10_6_10s').checked ||
+        document.getElementById('a_3_6s').checked ||
+        document.getElementById('a_4_8s').checked ||
         document.getElementById('A7_2_16s').checked ||
-        document.getElementById('A7_32').checked ||
         document.getElementById('1_3rd').checked;
     console.log('Is a wacky layout? ', isWacky);
     document
