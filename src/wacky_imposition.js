@@ -308,7 +308,7 @@ export class WackyImposition{
         let page = this.page;
         let frontFunc = i => {return [page(i+6),page(i+3),page(i+2),page(i+7),page(i+10),page(i+19),page(i+18),page(i+11),page(i+14),page(i+15)];};
         let backFunc = i => {return [page(i+16),page(i+13),page(i+12),page(i+17),page(i+20),page(i+9),page(i+8),page(i+1),page(i+4),page(i+5)];};
-        return this.build_strips_sheetList(4, 4, pageCount, frontFunc, backFunc);
+        return this.build_strips_sheetList(6, 5, pageCount, frontFunc, backFunc);
     }
 
     /**
