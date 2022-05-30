@@ -558,6 +558,10 @@ export class Book {
         console.log(pagelist)
         console.log("Hitting that write_single_page : isPacked[",this.pack_pages,"] || (front ",isFront,"/ first ",isFirst,") [",pagelist.length,",",pagelist[0].length,"]")
         pagelist.forEach(row => { row.forEach( page => { if (!page.isBlank) filteredList.push(page.num) }) });
+        if (filteredList.length == 0) {
+            console.warn("All the pages are empty! : ",pagelist);
+            return;
+        }
         let embeddedPages = await outPDF.embedPdf(this.currentdoc, filteredList);
         // TODO : make sure the max dimen is correct here...
         let papersize = isLandscape ? [this.papersize[1], this.papersize[0]] : [this.papersize[0], this.papersize[1]]
