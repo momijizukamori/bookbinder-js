@@ -93,6 +93,14 @@
                     <select name="page_scaling" id="page_scaling">
                         <option value="lockratio" selected>Keep proportional</option>
                         <option value="stretch">Stretch to fit</option>
+                        <option value="centered">Original</option>
+                    </select>
+                </span>
+
+                <span class="row"> <label for="page_scaling">Page Positioning</label>
+                    <select name="page_positioning" id="page_scaling">
+                        <option value="centered" selected>Centered</option>
+                        <option value="binding_alinged">Snug against binding edge</option>
                     </select>
                 </span>
 
@@ -102,6 +110,14 @@
                         <option value="center">Center</option>
                     </select>
                     <span data-balloon-length="medium" aria-label="If you have designed your input pdf with the intention of trimming printed pages down, you may wish to preserve the spine margin." data-balloon-pos="up">🛈</span>
+                </span>
+
+                <span class="row">
+                    White Space Manipulation. All values are in points, relative to XXX document. 1 point = 1/72 inch<BR>
+                    Fore-Edge Margin: <input type="number" id="main_fore_edge_padding_pt" name="main_fore_edge_padding_pt" style="width: 5em;margin-left: 15px;"> pt<BR>
+                    Binding Margin: <input type="number" id="binding_edge_padding_pt" name="binding_edge_padding_pt" style="width: 5em;margin-left: 15px;"> pt<BR>
+                    Top Margin: <input type="number" id="top_edge_padding_pt" name="top_edge_padding_pt" style="width: 5em;margin-left: 15px;"> pt<BR>
+                    Bottom Margin: <input type="number" id="bottom_edge_padding_pt" name="bottom_edge_padding_pt" style="width: 5em;margin-left: 15px;"> pt<BR>
                 </span>
 
             </div>
