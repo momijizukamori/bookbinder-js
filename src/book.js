@@ -16,13 +16,14 @@ export class Book {
         this.papersize = PAGE_SIZES.A4;   //  default for europe
 
         this.page_scaling = 'lockratio';
+        this.page_positioning = 'centered';
         this.flyleaf = false;
         this.spineoffset = false;
         this.format = 'standardsig';
         this.booksize = [null, null];
         this.sigsize = 4;       //  preferred signature size
         this.customsig = null;
-        this.signatureconfig = [];	//  signature configuration
+        this.signatureconfig = [];  //  signature configuration
 
         this.input = null;    //  opened pdf file
         this.currentdoc = null;    //  Itext PDFReader object
@@ -49,6 +50,7 @@ export class Book {
         this.duplexrotate = form.has('rotate_page');
         this.papersize = PAGE_SIZES[form.get('paper_size')];
         this.page_scaling = form.get("page_scaling");
+        this.page_positioning = form.get("page_positioning");
         this.flyleaf = form.has('flyleaf');
         this.cropmarks = form.has('cropmarks');
         this.cutmarks = form.has('cutmarks');
@@ -183,8 +185,8 @@ export class Book {
     }
 
     async createoutputfiles() {
-        //	create a directory named after the input pdf and fill it with
-        //	the signatures
+        //  create a directory named after the input pdf and fill it with
+        //  the signatures
 
         this.zip = new JSZip();
 
@@ -394,8 +396,9 @@ export class Book {
 
 
     /**
-     * When considering page size, don't forget to take into account this.padding_pt's ['top','bottom','binding','fore_edge'] values
-
+     * When considering page size, don't forget to take into account 
+     *  this.padding_pt's ['top','bottom','binding','fore_edge'] values
+     *
      * @return an array of objects in the form {rotation: col, sx: sx, sy: sy, x: x, y: y}
      */
     calculatelayout(alt_folio){
@@ -415,8 +418,9 @@ export class Book {
        
         // if pages are rotated a quarter-turn in this layout, we need to swap the width and height measurements
         if (layout.landscape) {
-            pagex = this.cropbox.height;
-            pagey = this.cropbox.width;
+            let temp = pagex;
+            pagex = pagey;
+            pagey = temp;
         }
 
         let sx = 1;
@@ -443,10 +447,11 @@ export class Book {
 
         let positions = []
 
-        console.log("Laying out page w/ scaling option [",this.page_scaling,"] -"+
-            "\n\tcrop box: [",this.cropbox.x,", ",this.cropbox.y,"]"+
-            "\n\tsource size: [",pagex,", ",pagey,"]"+
-            "\n\tprinted paper size: [",sheetwidth,", ",sheetheight,"]"+
+        console.log("Laying out page w/ scaling option [",this.page_scaling,"] & position option [",this.page_positioning,"] -"+
+            "\n\tcrop box (x,y): [",this.cropbox.x,", ",this.cropbox.y,"]"+
+            "\n\tcrop box (width,height): [",this.cropbox.width,", ",this.cropbox.height,"]"+
+            "\n\tsource size + padding (page): [",pagex,", ",pagey,"]"+
+            "\n\tprinted paper size (sheetwidth): [",sheetwidth,", ",sheetheight,"]"+
             "\n\tcols/rows: [",layout.cols,", ",layout.rows,"]"+
             "\n\tmax space to work with (final): [",finalx,", ",finaly,"]"+
             "\n\tscaling: [",sx,", ",sy,"]"+
@@ -459,8 +464,15 @@ export class Book {
 
         layout.rotations.forEach((row, i) => {
             row.forEach((col, j) => {
-                // j % 2 == 0 means page on 'left' side
-                let x = (j * finalx) + ((j % 2 == 0 ) ? xpad * 2  - this.padding_pt['binding']: this.padding_pt['binding']) ;// + xoffset;
+                // page_positioning has 2 options: centered, binding_alinged
+
+                // amount to inset by, relative to fore edge, on left side of book
+                let xForeEdgeShift = this.padding_pt['fore_edge'] * sx + ((this.page_positioning == 'centered' ) ? xpad : 2 * xpad);
+                // amount to inset by, relative to binding, on right side of book
+                let xBindingShift = this.padding_pt['binding'] * sx + ((this.page_positioning == 'centered' ) ? xpad : 0);
+
+                // j % 2 == 0 means page on 'left' side of book
+                let x = (j * finalx) + ((j % 2 == 0 ) ? xForeEdgeShift : xBindingShift);
                 let y = (i * finaly) + ypad + this.padding_pt['bottom'];// + yoffset);
 
                 if ([-90, -180].includes(col)) {
@@ -469,10 +481,11 @@ export class Book {
 
                 if ([-180, 90].includes(col)) {
                     // j % 2 == 1 page on 'left' (right side on screen)
-                    x = finalx + (j * finalx) + ((j % 2 == 1 ) ? xpad * -2 + this.padding_pt['binding']: this.padding_pt['binding']) ;
+                    //x = finalx + (j * finalx) + ((j % 2 == 1 ) ? xpad
+                    x = finalx + (j * finalx) - ((j % 2 == 0) ? xBindingShift : xForeEdgeShift);
                 }
 
-                console.log(">> (", i, ",",j,")[",col,"] : [",x,", ",y,"]");
+                console.log(">> (", i, ",",j,")[",col,"] : [",x,", ",y,"] :: [xForeEdgeShift: ",xForeEdgeShift,"][xBindingShift: ",xBindingShift,"]");
                 positions.push({rotation: col, sx: sx, sy: sy, x: x, y: y})
             })
         })
