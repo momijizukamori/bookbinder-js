@@ -98,6 +98,7 @@ export class Book {
         this.currentdoc = await PDFDocument.load(this.input);
         //TODO: handle pw-protected PDFs
         const pages = this.currentdoc.getPages();
+        this.cropbox = null;
 
         //FIXME: dumb hack because you can't embed blank pdf pages without errors.
         pages.forEach(page => {
