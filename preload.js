@@ -119,6 +119,7 @@ class Book {
         this.currentdoc = await pdf_lib__WEBPACK_IMPORTED_MODULE_0__.PDFDocument.load(this.input);
         //TODO: handle pw-protected PDFs
         const pages = this.currentdoc.getPages();
+        this.cropbox = null;
 
         //FIXME: dumb hack because you can't embed blank pdf pages without errors.
         pages.forEach(page => {
@@ -494,10 +495,10 @@ class Book {
 
                 // j % 2 == 0 means page on 'left' side of book
                 let x = (j * finalx) + ((j % 2 == 0 ) ? xForeEdgeShift : xBindingShift);
-                let y = (i * finaly) + ypad + this.padding_pt['bottom'];// + yoffset);
+                let y = (i * finaly) + ypad + (this.padding_pt['bottom'] * sy);// + yoffset);
 
                 if ([-90, -180].includes(col)) {
-                    y = finaly + (i * finaly) + ypad + this.padding_pt['bottom'];
+                    y = finaly + (i * finaly) + ypad - (this.padding_pt['bottom'] * sy);
                 }
 
                 if ([-180, 90].includes(col)) {
