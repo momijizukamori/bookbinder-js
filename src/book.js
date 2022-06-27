@@ -476,14 +476,32 @@ export class Book {
                 let x = (j * finalx) + ((j % 2 == 0 ) ? xForeEdgeShift : xBindingShift);
                 let y = (i * finaly) + ypad + (this.padding_pt['bottom'] * sy);// + yoffset);
 
-                if ([-90, -180].includes(col)) {
+                // if ([-90, -180].includes(col)) {
+                //     y = finaly + (i * finaly) + ypad - (this.padding_pt['bottom'] * sy);
+                // }
+
+                // if ([-180, 90].includes(col)) {
+                //     // j % 2 == 1 page on 'left' (right side on screen)
+                //     //x = finalx + (j * finalx) + ((j % 2 == 1 ) ? xpad
+                //     x = finalx + (j * finalx) - ((j % 2 == 0) ? xBindingShift : xForeEdgeShift);
+                // }
+
+
+                if ([-180].includes(col)) {
+                    // j % 2 == 1 page on 'left' (right side on screen)
                     y = finaly + (i * finaly) + ypad - (this.padding_pt['bottom'] * sy);
+                    x = finalx + (j * finalx) - ((j % 2 == 0) ? xBindingShift : xForeEdgeShift);
                 }
 
-                if ([-180, 90].includes(col)) {
-                    // j % 2 == 1 page on 'left' (right side on screen)
-                    //x = finalx + (j * finalx) + ((j % 2 == 1 ) ? xpad
-                    x = finalx + (j * finalx) - ((j % 2 == 0) ? xBindingShift : xForeEdgeShift);
+                let isLeftPage = i % 2 == 0;
+                if ([90].includes(col)) {   // head of page against the fold, right side of screen
+                    x = (1 + j) * finalx + ((isLeftPage) ? this.padding_pt['top'] * sy : 0);
+                    y = y - ypad + ((isLeftPage) ? 2 * ypad : 0);
+                }
+                if ([-90].includes(col)) {  // head of page aginst the fold, left sight of screen
+                    console.log("Struggling.... ",y);
+                    x = j * finalx - ((isLeftPage) ? this.padding_pt['top'] * sy : 0);
+                    y = y - ypad + finaly - ((isLeftPage) ? 0 : 2 * ypad);
                 }
 
                 console.log(">> (", i, ",",j,")[",col,"] : [",x,", ",y,"] :: [xForeEdgeShift: ",xForeEdgeShift,"][xBindingShift: ",xBindingShift,"]");
