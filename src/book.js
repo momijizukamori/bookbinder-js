@@ -416,7 +416,8 @@ export class Book {
         // Calculate the size of each page box on the sheet
         let finalx = sheetwidth / layout.cols;
         let finaly = sheetheight / layout.rows;
-       
+
+
         // if pages are rotated a quarter-turn in this layout, we need to swap the width and height measurements
         if (layout.landscape) {
             let temp = pagex;
@@ -446,6 +447,21 @@ export class Book {
         let xoffset = this.cropbox.x * sx;
         let yoffset = this.cropbox.y * sy;
 
+        let padding = {
+            'fore_edge' : this.padding_pt['fore_edge'] * sx,
+            'binding' : this.padding_pt['binding'] * sx,
+            'bottom' : this.padding_pt['bottom'] * sy,
+            'top' : this.padding_pt['top'] * sy
+        };
+        // if (layout.landscape) {
+        //     padding = {
+        //         'fore_edge' : this.padding_pt['fore_edge'] * sx,
+        //         'binding' : this.padding_pt['binding'] * sx,
+        //         'bottom' : this.padding_pt['bottom'] * sy,
+        //         'top' : this.padding_pt['top'] * sy
+        //     };
+        // }
+       
         let positions = []
 
         console.log("Laying out page w/ scaling option [",this.page_scaling,"] & position option [",this.page_positioning,"] -"+
@@ -459,7 +475,7 @@ export class Book {
             "\n\tbookheight: [",bookwidth,", ",bookheight,"]"+
             "\n\tpadding: [",xpad,", ",ypad,"]"+
             "\n\toffset: [",xoffset,", ",yoffset,"]" +
-            "\n\tpadding (bottom/binding/top/fore edge): [",this.padding_pt['bottom'],", ",this.padding_pt['binding'],",",this.padding_pt['top'],", ",this.padding_pt['fore_edge'],"]" 
+            "\n\tpadding (bottom/binding/top/fore edge): [",padding['bottom'],", ",padding['binding'],",",padding['top'],", ",padding['fore_edge'],"]" 
             +"");
 
 
@@ -467,41 +483,33 @@ export class Book {
             row.forEach((col, j) => {
                 // page_positioning has 2 options: centered, binding_alinged
 
+                // value tracking white space to left and right of an open book/page spread
+                let leftRightPageGap = ([90,-90].includes(col)) ? ypad : xpad;
+
                 // amount to inset by, relative to fore edge, on left side of book
-                let xForeEdgeShift = this.padding_pt['fore_edge'] * sx + ((this.page_positioning == 'centered' ) ? xpad : 2 * xpad);
+                let xForeEdgeShift = padding['fore_edge'] + ((this.page_positioning == 'centered' ) ? leftRightPageGap : 2 * leftRightPageGap);
                 // amount to inset by, relative to binding, on right side of book
-                let xBindingShift = this.padding_pt['binding'] * sx + ((this.page_positioning == 'centered' ) ? xpad : 0);
+                let xBindingShift = padding['binding'] + ((this.page_positioning == 'centered' ) ? leftRightPageGap : 0);
 
-                // j % 2 == 0 means page on 'left' side of book
+                let isLeftPage = j % 2 == 0; //page on 'left' side of open book
                 let x = (j * finalx) + ((j % 2 == 0 ) ? xForeEdgeShift : xBindingShift);
-                let y = (i * finaly) + ypad + (this.padding_pt['bottom'] * sy);// + yoffset);
+                let y = (i * finaly) + ypad + padding['bottom'] * sy;// + yoff
 
-                // if ([-90, -180].includes(col)) {
-                //     y = finaly + (i * finaly) + ypad - (this.padding_pt['bottom'] * sy);
-                // }
-
-                // if ([-180, 90].includes(col)) {
-                //     // j % 2 == 1 page on 'left' (right side on screen)
-                //     //x = finalx + (j * finalx) + ((j % 2 == 1 ) ? xpad
-                //     x = finalx + (j * finalx) - ((j % 2 == 0) ? xBindingShift : xForeEdgeShift);
-                // }
-
-
-                if ([-180].includes(col)) {
-                    // j % 2 == 1 page on 'left' (right side on screen)
-                    y = finaly + (i * finaly) + ypad - (this.padding_pt['bottom'] * sy);
+                if ([-180].includes(col)) { // upside-down page
+                    let isLeftPage = j % 2 == 1; //page on 'left' (right side on screen)
+                    y = finaly + (i * finaly) + ypad - padding['bottom'] * sy;
                     x = finalx + (j * finalx) - ((j % 2 == 0) ? xBindingShift : xForeEdgeShift);
                 }
 
-                let isLeftPage = i % 2 == 0;
-                if ([90].includes(col)) {   // head of page against the fold, right side of screen
-                    x = (1 + j) * finalx + ((isLeftPage) ? this.padding_pt['top'] * sy : 0);
-                    y = y - ypad + ((isLeftPage) ? 2 * ypad : 0);
+                if ([90].includes(col)) {   // 'top' of page is on left, right side of screen
+                    let isLeftPage = i % 2 == 0; // page is on 'left' (top side of screen)
+                    x = (1 + j) * finalx - padding['bottom'] - xpad;// + padding['top'];
+                    y = (i * finaly) + ((isLeftPage) ? xForeEdgeShift : xBindingShift);// + ((isLeftPage) ? 2 * ypad : 0);//(this.padding_pt['binding'] * sx * 2));
                 }
-                if ([-90].includes(col)) {  // head of page aginst the fold, left sight of screen
-                    console.log("Struggling.... ",y);
-                    x = j * finalx - ((isLeftPage) ? this.padding_pt['top'] * sy : 0);
-                    y = y - ypad + finaly - ((isLeftPage) ? 0 : 2 * ypad);
+                if ([-90].includes(col)) {  // 'top' of page is on the right, left sight of screen
+                    let isLeftPage = i % 2 == 1; // page is on 'left' (bottom side of screen)
+                    x = j * finalx + padding['bottom'] + xpad;
+                    y = ((1+i) * finaly) - ((isLeftPage) ? xForeEdgeShift : xBindingShift);// - ((isLeftPage) ? 0 + this.padding_pt['binding'] * sx : (2 * ypad) - (this.padding_pt['binding'] * sx));
                 }
 
                 console.log(">> (", i, ",",j,")[",col,"] : [",x,", ",y,"] :: [xForeEdgeShift: ",xForeEdgeShift,"][xBindingShift: ",xBindingShift,"]");
