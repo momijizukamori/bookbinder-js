@@ -70,21 +70,21 @@ export function renderFormFromSettings(bookSettings) {
             .removeAttribute('selected');
     }
 
-    if (bookSettings.lockratio) {
-        document
-            .querySelector('option[value="lockratio"]')
-            .setAttribute('selected', '');
-        document
-            .querySelector('option[value="stretch"]')
-            .removeAttribute('selected');
-    } else {
-        document
-            .querySelector('option[value="stretch"]')
-            .setAttribute('selected', '');
-        document
-            .querySelector('option[value="lockratio"]')
-            .removeAttribute('selected');
-    }
+    // if (bookSettings.lockratio) {
+    //     document
+    //         .querySelector('option[value="lockratio"]')
+    //         .setAttribute('selected', '');
+    //     document
+    //         .querySelector('option[value="stretch"]')
+    //         .removeAttribute('selected');
+    // } else {
+    //     document
+    //         .querySelector('option[value="stretch"]')
+    //         .setAttribute('selected', '');
+    //     document
+    //         .querySelector('option[value="lockratio"]')
+    //         .removeAttribute('selected');
+    // }
 
     if (bookSettings.duplexrotate) {
         document
