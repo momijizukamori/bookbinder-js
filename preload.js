@@ -189,25 +189,30 @@ class Book {
     async createoutputfiles() {
         //	create a directory named after the input pdf and fill it with
         //	the signatures
-
         this.zip = new (jszip__WEBPACK_IMPORTED_MODULE_7___default())();
-
         this.filename = this.inputpdf.replace(/\s|,|\.pdf/, '');
-
 
         if (this.format == 'booklet') {
             await this.createsignatures(this.rearrangedpages, 'booklet');
         } else if (this.format == 'perfect') {
             await this.createsignatures(this.rearrangedpages, 'perfect');
         } else if (this.format == 'standardsig' || this.format == 'customsig') {
+            const aggregatePdf = await pdf_lib__WEBPACK_IMPORTED_MODULE_0__.PDFDocument.create();
             const forLoop = async _ => {
                 for (let i = 0; i < this.rearrangedpages.length; i++) {
                     let page = this.rearrangedpages[i];
-                    await this.createsignatures(page, `signature${i}`);
+                    const newPDF = await this.createsignatures(page, `signature${i}`);
+                    if (newPDF != null) {
+                        const dupPages = await aggregatePdf.copyPages(newPDF, newPDF.getPageIndices());
+                        dupPages.forEach( page => { aggregatePdf.addPage(page); });
+                    }
                 }
-
             }
             await forLoop();
+            if (this.duplex && this.rearrangedpages.length > 1) {
+                await aggregatePdf.save().then(pdfBytes => { this.zip.file('aggregate_book.pdf', pdfBytes); });
+            }
+
            //return forLoop().then(_ => this.saveZip());
         } else if (this.format == 'a9_3_3_4') {
             await this.buildSheets(this.filename, this.book.a9_3_3_4_builder());
@@ -225,6 +230,9 @@ class Book {
         return this.saveZip();
     }
 
+    /**
+     * @return reference to the new PDF created
+     */
     async writepages(outname, pagelist, back, alt) {
         const outPDF = await pdf_lib__WEBPACK_IMPORTED_MODULE_0__.PDFDocument.create();
         let currPage = null;
@@ -284,12 +292,8 @@ class Book {
             block_end += offset;
         }
 
-        return outPDF.save().then(pdfBytes => {
-            this.zip.file(outname, pdfBytes);
-
-        }
-        );
-
+        await outPDF.save().then(pdfBytes => { this.zip.file(outname, pdfBytes); });
+        return outPDF;
     }
 
     draw_cropmarks(currPage, side2flag) {
@@ -473,20 +477,25 @@ class Book {
         return positions;
     }
 
+    /**
+     * @param pages - a nested list of original source document pages. Single list of list for duplex, two entries for non-duplex
+     *
+     * @return returns a newly created PDF if duplex or null
+     */
     async createsignatures(pages, id) {
+        let result = null;
         //      duplex printers print both sides of the sheet, 
         if (this.duplex) {
             // let outduplex = this.outputpath + '/' + id + 'duplex' + '.pdf';
             let outduplex = id + 'duplex' + '.pdf';
-            await this.writepages(outduplex, pages[0], false, true);
-
+            result = await this.writepages(outduplex, pages[0], false, true);
             this.filelist.push(outduplex);
         } else {
             //      for non-duplex printers we have two files, print the first, flip 
             //      the sheets over, then print the second. damned inconvenient
             let outname1 = id + 'side1.pdf';
             let outname2 = id + 'side2.pdf';
-
+ 
             await this.writepages(outname1, pages[0], false, false);
             await this.writepages(outname2, pages[1], true, false);
 
@@ -494,7 +503,7 @@ class Book {
             this.filelist.push(outname2);
         }
         console.log("After creating signatures, our filelist looks like: ",this.filelist)
-
+        return result;
     }
 
     saveZip() {
