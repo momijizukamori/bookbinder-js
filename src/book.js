@@ -161,6 +161,14 @@ export class Book {
             this.rearrangedpages = this.book.pagelist;
         } else if (this.format == 'a9_3_3_4' || this.format == 'a10_6_10s' || this.format == 'A7_2_16s' || this.format == '1_3rd' || this.format == 'a_3_6s' || this.format == 'a_4_8s') {
             this.book = new WackyImposition(this.orderedpages, this.duplex, this.format, this.pack_pages)
+        } else if (this.format == 'partsheetsigstandard' || this.format =='partsheetsigcustom') {
+            this.book = new PartialSheetSignatures(this.orderedpages, this.duplex, this.sigsize, this.per_sheet, this.duplexrotate);
+            
+            if (this.partsheetsigcustom) {
+                this.book.setsigconfig(this.signatureconfig);
+            } else {
+                this.book.createsigconfig();
+            }
         }
         console.log("Created pages for : ",this.book)
     }
@@ -175,7 +183,7 @@ export class Book {
             await this.createsignatures(this.rearrangedpages, 'booklet');
         } else if (this.format == 'perfect') {
             await this.createsignatures(this.rearrangedpages, 'perfect');
-        } else if (this.format == 'standardsig' || this.format == 'customsig') {
+        } else if (this.format == 'standardsig' || this.format == 'customsig' || this.format == 'partsheetsigstandard' || this.format =='partsheetsigcustom') {
             const aggregatePdf = await PDFDocument.create();
             const forLoop = async _ => {
                 for (let i = 0; i < this.rearrangedpages.length; i++) {
