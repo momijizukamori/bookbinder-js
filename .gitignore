@@ -102,3 +102,11 @@ dist
 
 # TernJS port file
 .tern-port
+
+# Latex generated output
+docs/*.log
+docs/*.gz
+docs/*.aux
+
+# Mac's Finder's DS_Store files
+**/.DS_Store
