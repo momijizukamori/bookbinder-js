@@ -497,11 +497,11 @@ export class Book {
 
                 let isLeftPage = j % 2 == 0; //page on 'left' side of open book
                 let x = (j * finalx) + ((j % 2 == 0 ) ? xForeEdgeShift : xBindingShift);
-                let y = (i * finaly) + ypad + padding['bottom'] * sy;// + yoff
+                let y = (i * finaly) + ypad + padding['bottom'] * sy;
 
                 if ([-180].includes(col)) { // upside-down page
                     let isLeftPage = j % 2 == 1; //page on 'left' (right side on screen)
-                    y = finaly + (i * finaly) + ypad - padding['bottom'] * sy;
+                    y = finaly + (i * finaly) - ypad - padding['bottom'] * sy;
                     x = finalx + (j * finalx) - ((j % 2 == 0) ? xBindingShift : xForeEdgeShift);
                 }
 
