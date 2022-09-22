@@ -519,12 +519,10 @@ class Book {
                 let isLeftPage = j % 2 == 0; //page on 'left' side of open book
                 let x = (j * finalx) + ((j % 2 == 0 ) ? xForeEdgeShift : xBindingShift);
                 let y = (i * finaly) + ypad + padding['bottom'] * sy;
-                console.log(" b~~ y ",y,"  :::  ypad ", ypad, " : padding bottom ", padding['bottom']," : sy ",sy)
 
                 if ([-180].includes(col)) { // upside-down page
                     let isLeftPage = j % 2 == 1; //page on 'left' (right side on screen)
                     y = finaly + (i * finaly) - ypad - padding['bottom'] * sy;
-                    console.log(" a~~ y ",y,"  :::  ypad ", ypad, " : padding bottom ", padding['bottom']," : sy ",sy)
                     x = finalx + (j * finalx) - ((j % 2 == 0) ? xBindingShift : xForeEdgeShift);
                 }
 
@@ -30675,7 +30673,7 @@ const BOOKLET_LAYOUTS = {
     },
     32: {
         front: [30, 3, 6, 27, 19, 14, 11, 22, 18, 15, 10, 23, 31, 2, 7, 26],
-        back: [32, 1, 8, 15, 17, 16, 9, 24, 20, 13, 12, 21, 29, 4, 5, 28],
+        back: [32, 1, 8, 25, 17, 16, 9, 24, 20, 13, 12, 21, 29, 4, 5, 28],
         rotate: [28, 5, 4, 29, 21, 12, 13, 20, 24, 9, 16, 17, 25, 8, 1, 32],
     },
 };
