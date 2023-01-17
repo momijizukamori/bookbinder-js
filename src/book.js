@@ -5,6 +5,7 @@ import { Booklet } from './booklet.js';
 import { PerfectBound } from './perfectbound.js';
 import { WackyImposition } from './wacky_imposition.js';
 import { PAGE_LAYOUTS, PAGE_SIZES, TARGET_BOOK_SIZE, LINE_LEN } from './constants.js';
+import { updatePaperSelectOptionsUnits, updateAddOrRemoveCustomPaperOption} from './utils/renderUtils.js';
 import JSZip from 'jszip';
 export class Book {
     constructor() {
@@ -84,6 +85,8 @@ export class Book {
             'binding': this.extractIntFromForm(form, 'binding_edge_padding_pt'),
             'fore_edge': this.extractIntFromForm(form, 'main_fore_edge_padding_pt')
         };
+        updateAddOrRemoveCustomPaperOption()
+        updatePaperSelectOptionsUnits() // make sure this goes AFTER the Custom update!
         console.log("Rebecca! Our stuff? ",this.padding_pt);
     }
 
