@@ -1,0 +1,30 @@
+\documentclass[showtrims]{memoir}
+
+\usepackage{pgffor}  
+\usepackage[margin=0in]{geometry}
+
+\setstocksize{6cm}{4cm} 
+\settrimmedsize{6cm}{4cm}{*}
+%\addtolength{\textwidth}{8cm}
+%\addtolength{\textheight}{8cm}
+
+\setbinding{0cm} 
+\setlrmarginsandblock{0cm}{0cm}{*} 
+\setulmarginsandblock{0cm}{0cm}{*}
+
+\begin{document}
+
+\pagenumbering{gobble}
+
+\begin{center}
+
+\HUGE
+
+\foreach \n in {1,...,120}{
+	\vspace*{1.5cm} \underline{\n} \newpage
+}
+
+\end{center}
+
+
+\end{document}
