@@ -43,13 +43,27 @@
                 <span class="row"><label for="paper_size">Paper size</label>
                     <select name="paper_size" id="paper_size">
                     </select></span>
+                <span class="row" style="padding-left: 20pt;font-style: italic;">
+                    <label for="paper_size_unit">display unit for paper selection </label>
+                    <select name="paper_size_unit" id="paper_size_unit">
+                        <option label="Points" value="pt"/>
+                        <option label="Inches" value="in"/>
+                        <option label="Centimeters" value="cm"/>
+                    </select>
+                </span>
+                <span class="row" style="padding-left: 20pt;font-style: italic;">
+                    <label for="paper_size_unit">dimensions for CUSTOM: </label>
+                    <input type="number" id="paper_size_custom_width" name="paper_size_custom_width" style="width:4em;"> x 
+                    <input type="number" id="paper_size_custom_height" name="paper_size_custom_height" style="width:4em;"> (in Points) <span data-balloon-length="medium" aria-label="The CUSTOM option in drop down will only appear if valid dimensions are provided. Points are the unit the system/code works in. Luckily Google can help you convert cm or inches into Points quite easily!" data-balloon-pos="up">ℹ️</span>
+                </span>
 
                 <span class="row"><label for="printer_type">Printer type</label>
                     <select name="printer_type" id="printer_type">
                         <option value="single" selected>Single-Sided</option>
                         <option value="duplex">Duplex</option>
                     </select>
-                    <span data-balloon-length="medium" aria-label="Duplex will alternate front and backs of sheets in a single file; Single-sided will split fronts and backs into seperate files." data-balloon-pos="up">🛈</span></span>
+                    <span data-balloon-length="medium" aria-label="Duplex will alternate front and backs of sheets in a single file; Single-sided will split fronts and backs into seperate files." data-balloon-pos="up">ℹ️</span>
+                </span>
 
                 <span class="row"> <label>Alternate Page Rotation (AKA Flip on Long Side)<input type="checkbox" name="rotate_page"></label> <span id="folio_warning"><b>NOTE:</b> Not currently working for folios, sorry! Use the <a href="old/">old version</a> for now.</a></span></span>
                 
@@ -68,10 +82,10 @@
                     <label for="sextodecimo">Sextodecimo (sixteen pages per side of sheet)</label></span>
                 
                 <span class="row"> <label>Add Foldlines <input type="checkbox" name="cropmarks"></label>
-                    <span data-balloon-length="medium" aria-label="Adds folding guidelines (ordered from thickest to thinnest)" data-balloon-pos="up">🛈</span>
+                    <span data-balloon-length="medium" aria-label="Adds folding guidelines (ordered from thickest to thinnest)" data-balloon-pos="up">ℹ️</span>
                 </span> 
                 <span class="row"> <label>Add Cutlines <input type="checkbox" name="cutmarks"></label>
-                    <span data-balloon-length="medium" aria-label="Adds cutting guidelines" data-balloon-pos="up">🛈</span>
+                    <span data-balloon-length="medium" aria-label="Adds cutting guidelines" data-balloon-pos="up">ℹ️</span>
                 </span> 
 
                 <span class="row">
@@ -100,8 +114,8 @@
 
                 <span class="row"> <label for="page_scaling">Page Positioning</label>
                     <select name="page_positioning" id="page_scaling">
-                        <option value="centered">Centered</option>
-                        <option value="binding_alinged" selected>Snug against binding edge</option>
+                        <option value="centered" selected>Centered</option>
+                        <option value="binding_alinged">Snug against binding edge</option>
                     </select>
                 </span>
 
@@ -110,7 +124,7 @@
                         <option value="spine" selected>Preserve spine fold margin</option>
                         <option value="center">Center</option>
                     </select>
-                    <span data-balloon-length="medium" aria-label="If you have designed your input pdf with the intention of trimming printed pages down, you may wish to preserve the spine margin." data-balloon-pos="up">🛈</span>
+                    <span data-balloon-length="medium" aria-label="If you have designed your input pdf with the intention of trimming printed pages down, you may wish to preserve the spine margin." data-balloon-pos="up">ℹ️</span>
                 </span>
 
                 <span class="row">
@@ -126,7 +140,7 @@
             <div class="section" id="flyleaf_info">
                 <h2>Flyleaf</h2>
                 <span class="row"> <label>Add flyleaf <input type="checkbox" name="flyleaf"></label>
-                    <span data-balloon-length="medium" aria-label="An extra blank page at the start and end of the book" data-balloon-pos="up">🛈</span>
+                    <span data-balloon-length="medium" aria-label="An extra blank page at the start and end of the book" data-balloon-pos="up">ℹ️</span>
                 </span> 
 
             </div>
@@ -142,10 +156,10 @@
                 <span class="row"> <input type="radio" id="standardsig" name="sig_format" value="standardsig" checked>
                     <label for="standardsig">Standard signatures</label> - length </label><input type="number" value="8"
                         name="sig_length"></label> 
-                        <span data-balloon-length="medium" aria-label="Number of sheets per signature" data-balloon-pos="up">🛈</span></span>
+                        <span data-balloon-length="medium" aria-label="Number of sheets per signature" data-balloon-pos="up">ℹ️</span></span>
                 <span class="row"> <input type="radio" id="customsig" name="sig_format" value="customsig">
                     <label for="customsig">Custom signatures</label> <input type="text" name="custom_sig">
-                    <span data-balloon-length="medium" aria-label="Specify as a set of numbers seperated by commas, such as: 10, 10, 8" data-balloon-pos="up">🛈</span>
+                    <span data-balloon-length="medium" aria-label="Specify as a set of numbers seperated by commas, such as: 10, 10, 8" data-balloon-pos="up">ℹ️</span>
                     <span class="row">
                     <details>
                         <summary>A note on calculating signature lengths</summary>
@@ -197,7 +211,7 @@
                     <details>
                         <summary>Instructions</summary>
                         <p>
-                        <b> THIS IS A LANDSCAPE LAYOUT. IT MUST BE PRINTED AND "flipped on the short size" (the non-typical flipping)</b>
+                        <b> THIS IS A LANDSCAPE LAYOUT. IT MUST BE PRINTED AND "flipped on the short side" (the non-typical flipping)</b>
                         <br>
                         Remember to do a single-sheet test print if it's your first time to make sure duplex/mirroring is correct!
                         </p><p>
@@ -225,7 +239,7 @@
                     <details>
                         <summary>Instructions</summary>
                         <p>
-                        <b> THIS IS A LANDSCAPE LAYOUT. IT MUST BE PRINTED AND "flipped on the short size" (the non-typical flipping)</b>
+                        <b> THIS IS A LANDSCAPE LAYOUT. IT MUST BE PRINTED AND "flipped on the short side" (the non-typical flipping)</b>
                         <br>
                         Remember to do a single-sheet test print if it's your first time to make sure duplex/mirroring is correct!
                         </p><p>
@@ -241,7 +255,7 @@
                     <details>
                         <summary>Instructions</summary>
                         <p>
-                        <b> THIS IS A LANDSCAPE LAYOUT. IT MUST BE PRINTED AND "flipped on the short size" (the non-typical flipping)</b>
+                        <b> THIS IS A LANDSCAPE LAYOUT. IT MUST BE PRINTED AND "flipped on the short side" (the non-typical flipping)</b>
                         <br>
                         Thankfully most small layouts fit on one page-- easy enough to do a test print and make sure you're duplexing correctly (if that's your route)
                         </p><p>
