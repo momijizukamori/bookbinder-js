@@ -22,17 +22,62 @@ export function renderInfoBox(book) {
     totalPages.innerText = outputPages;
 }
 
+
+export function updatePaperSelectOptionsUnits() {
+    const paperList = document.getElementById('paper_size');
+    const paperListUnit = document.getElementById('paper_size_unit').value
+    for(let option of Array.from(paperList.children)) {
+        let paperName = option.value
+        let paper = PAGE_SIZES[paperName]
+        let label = `${paperName} (${paper[0]} x ${paper[1]} pt)`
+        // conversion values from Google default converter
+        if (paperListUnit == 'in') {
+            label = `${paperName} (${(paper[0] * 0.0138889).toFixed(1)} x ${(paper[1] * 0.0138889).toFixed(1)} inches)`
+        } else if (paperListUnit == 'cm') {
+            label= `${paperName} (${(paper[0] * 0.0352778).toFixed(2)} x ${(paper[1] * 0.0352778).toFixed(2)} cm)`
+        }
+        option.setAttribute('label', label);
+    }
+}
+export function updateAddOrRemoveCustomPaperOption() {
+    const width = document.getElementById('paper_size_custom_width').value;
+    const height = document.getElementById('paper_size_custom_height').value;
+    const paperList = document.getElementById('paper_size');
+    const validDimensions = width.length > 0 && height.length > 0 && !isNaN(width) && !isNaN(height)
+    const customOpt = paperList.children.namedItem("CUSTOM")
+    if (customOpt == null && !validDimensions) {
+        // No custom option, no valid custom settings
+    } else if (customOpt != null && !validDimensions) {
+        // Need to remove custom option because no valid custom settings
+        customOpt.remove()
+    } else if (customOpt == null) {
+        // no option but valid settings!
+        let opt = document.createElement('option');
+        opt.setAttribute('value', 'CUSTOM');
+        opt.setAttribute('name', 'CUSTOM');
+        PAGE_SIZES['CUSTOM'] = [Number(width), Number(height)]
+        paperList.appendChild(opt);
+    } else {
+        // valid option, valid dimensions -- lets just make sure they're up to date
+        PAGE_SIZES['CUSTOM'] = [Number(width), Number(height)]
+    }
+
+
+}
 export function renderPaperSelectOptions() {
     const paperList = document.getElementById('paper_size');
+    let maxLength = Math.max(Object.keys(PAGE_SIZES).map( (s) => { s.length}))
     Object.keys(PAGE_SIZES).forEach((key) => {
         let opt = document.createElement('option');
         opt.setAttribute('value', key);
+        opt.setAttribute('name', key);
         if (key == 'A4') {
             opt.setAttribute('selected', true);
         }
         opt.innerText = key;
         paperList.appendChild(opt);
     });
+    updatePaperSelectOptionsUnits()
 }
 
 export function renderWacky() {
