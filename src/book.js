@@ -188,7 +188,7 @@ export class Book {
         console.log("Created pages for : ",this.book)
     }
 
-    async createoutputfiles() {
+    async createoutputfiles(isPreview) {
         //  create a directory named after the input pdf and fill it with
         //  the signatures
         this.zip = new JSZip();
@@ -212,8 +212,22 @@ export class Book {
             }
             await forLoop();
             if (this.duplex && this.rearrangedpages.length > 1) {
-                await aggregatePdf.save().then(pdfBytes => { this.zip.file('aggregate_book.pdf', pdfBytes); });
+                await aggregatePdf.save().then(pdfBytes => { 
+                    if (!isPreview) 
+                        this.zip.file('aggregate_book.pdf', pdfBytes); 
+                });
             }
+            const pdfDataUri = await aggregatePdf.saveAsBase64({ dataUri: true });
+            // SHARKS
+            let previewFrame = document.getElementById('pdf')
+            console.log("Dear Lottie, we have "+this.papersize+" to work with")
+            previewFrame.style.width = `${this.papersize[0]}px`;
+            previewFrame.style.height = `${this.papersize[1]}px`;
+            previewFrame.width = this.papersize[0];
+            previewFrame.height = this.papersize[1];
+            previewFrame.src = pdfDataUri;
+
+
 
            //return forLoop().then(_ => this.saveZip());
         } else if (this.format == 'a9_3_3_4') {
@@ -229,7 +243,10 @@ export class Book {
         } else if (this.format == '1_3rd') {
             await this.buildSheets(this.filename, this.book.page_1_3rd_builder());
         }
-        return this.saveZip();
+        if (!isPreview)
+            return this.saveZip();
+        else
+            return true
     }
 
     /**
