@@ -37,6 +37,7 @@ class Book {
         this.duplex = false; //FIXME
         this.duplexrotate = true;
         this.papersize = _constants_js__WEBPACK_IMPORTED_MODULE_6__.PAGE_SIZES.A4;   //  default for europe
+        this.paper_rotation_90 = false; // new feature to put things in landscape mode 2023/3/09 
 
         this.page_scaling = 'lockratio';
         this.page_positioning = 'centered';
@@ -71,7 +72,12 @@ class Book {
 
         this.duplex = form.get('printer_type') == 'duplex';
         this.duplexrotate = form.has('rotate_page');
+        this.paper_rotation_90 = form.has('paper_rotation_90');
         this.papersize = _constants_js__WEBPACK_IMPORTED_MODULE_6__.PAGE_SIZES[form.get('paper_size')];
+        if (this.paper_rotation_90) {
+            this.papersize = [this.papersize[1], this.papersize[0]]
+        }
+        
         this.page_scaling = form.get("page_scaling");
         this.page_positioning = form.get("page_positioning");
         this.flyleaf = form.has('flyleaf');
@@ -149,6 +155,7 @@ class Book {
     }
 
     setbooksize(targetsize, customx, customy) {
+        console.log(`Hi Lottie, we're setting the book size: ${targetsize} : ${customx} : ${customy}`)
         if (targetsize == 'full') {
             this.booksize = [this.papersize[1] * 0.5, this.papersize[0]]
         } else if (targetsize == 'custom') {
@@ -156,7 +163,6 @@ class Book {
         } else {
             this.booksize = _constants_js__WEBPACK_IMPORTED_MODULE_6__.TARGET_BOOK_SIZE[targetsize];
         }
-
     }
 
     createpagelist() {
