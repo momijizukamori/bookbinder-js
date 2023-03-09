@@ -210,7 +210,7 @@ class Book {
         console.log("Created pages for : ",this.book)
     }
 
-    async createoutputfiles() {
+    async createoutputfiles(isPreview) {
         //  create a directory named after the input pdf and fill it with
         //  the signatures
         this.zip = new (jszip__WEBPACK_IMPORTED_MODULE_8___default())();
@@ -234,8 +234,22 @@ class Book {
             }
             await forLoop();
             if (this.duplex && this.rearrangedpages.length > 1) {
-                await aggregatePdf.save().then(pdfBytes => { this.zip.file('aggregate_book.pdf', pdfBytes); });
+                await aggregatePdf.save().then(pdfBytes => { 
+                    if (!isPreview) 
+                        this.zip.file('aggregate_book.pdf', pdfBytes); 
+                });
             }
+            const pdfDataUri = await aggregatePdf.saveAsBase64({ dataUri: true });
+            // SHARKS
+            let previewFrame = document.getElementById('pdf')
+            console.log("Dear Lottie, we have "+this.papersize+" to work with")
+            previewFrame.style.width = `${this.papersize[0]}px`;
+            previewFrame.style.height = `${this.papersize[1]}px`;
+            previewFrame.width = this.papersize[0];
+            previewFrame.height = this.papersize[1];
+            previewFrame.src = pdfDataUri;
+
+
 
            //return forLoop().then(_ => this.saveZip());
         } else if (this.format == 'a9_3_3_4') {
@@ -251,7 +265,10 @@ class Book {
         } else if (this.format == '1_3rd') {
             await this.buildSheets(this.filename, this.book.page_1_3rd_builder());
         }
-        return this.saveZip();
+        if (!isPreview)
+            return this.saveZip();
+        else
+            return true
     }
 
     /**
@@ -31624,13 +31641,14 @@ function handleFileChange(e, book) {
 "use strict";
 __webpack_require__.r(__webpack_exports__);
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
-/* harmony export */   "handleGenerateClick": () => (/* binding */ handleGenerateClick)
+/* harmony export */   "handleGenerateClick": () => (/* binding */ handleGenerateClick),
+/* harmony export */   "handlePreviewClick": () => (/* binding */ handlePreviewClick)
 /* harmony export */ });
 function handleGenerateClick(generateEl, book) {
 	generateEl.setAttribute('disabled', true);
 	generateEl.innerText = 'Generating, this may take a little while...';
 	console.log('The whole Book model:', book);
-	const result = book.createoutputfiles();
+	const result = book.createoutputfiles(false);
 	result
 		.then((_) => {
 			console.log('Generated result!');
@@ -31641,6 +31659,24 @@ function handleGenerateClick(generateEl, book) {
 		.finally((_) => {
 			generateEl.removeAttribute('disabled');
 			generateEl.innerText = 'Generate Output';
+		});
+}
+
+function handlePreviewClick(previewEl, book) {
+	previewEl.setAttribute('disabled', true);
+	previewEl.innerText = 'Previewing... this may take a little while...';
+	console.log('The whole Book model:', book);
+	const result = book.createoutputfiles(true);
+	result
+		.then((_) => {
+			console.log('Preview result!');
+		})
+		.catch((error) => {
+			console.error(error);
+		})
+		.finally((_) => {
+			previewEl.removeAttribute('disabled');
+			previewEl.innerText = 'Preview Output';
 		});
 }
 
@@ -31748,6 +31784,7 @@ window.addEventListener('DOMContentLoaded', () => {
 
     // grab DOM elements
     const generate = document.getElementById('generate');
+    const preview = document.getElementById('preview');
     const bookbinderForm = document.getElementById('bookbinder');
     const fileInput = document.getElementById('input_file');
     const inputs = document.querySelectorAll('input, select');
@@ -31764,10 +31801,15 @@ window.addEventListener('DOMContentLoaded', () => {
     fileInput.addEventListener('change', (e) => { 
         (0,_utils_changeHandlers_js__WEBPACK_IMPORTED_MODULE_2__.handleFileChange)(e, book);
         generate.removeAttribute('disabled');
+        preview.removeAttribute('disabled');
     });
     generate.addEventListener('click', () =>
         (0,_utils_clickHandlers_js__WEBPACK_IMPORTED_MODULE_3__.handleGenerateClick)(generate, book)
     );
+    preview.addEventListener('click', () =>
+        (0,_utils_clickHandlers_js__WEBPACK_IMPORTED_MODULE_3__.handlePreviewClick)(preview, book)
+    );
+
 });
 
 })();
