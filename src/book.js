@@ -226,15 +226,7 @@ export class Book {
                 });
             }
             resultPDF = aggregatePdf;
-            // const pdfDataUri = await aggregatePdf.saveAsBase64({ dataUri: true });
             // // SHARKS
-            // let previewFrame = document.getElementById('pdf')
-            // console.log("Dear Lottie, we have "+this.papersize+" to work with")
-            // previewFrame.style.width = `${this.papersize[0]}px`;
-            // previewFrame.style.height = `${this.papersize[1]}px`;
-            // previewFrame.width = this.papersize[0];
-            // previewFrame.height = this.papersize[1];
-            // previewFrame.src = pdfDataUri;
         } else if (this.format == 'a9_3_3_4') {
             resultPDF = await this.buildSheets(this.filename, this.book.a9_3_3_4_builder());
         } else if (this.format == 'a10_6_10s') {
@@ -250,21 +242,24 @@ export class Book {
         }
         console.log("Attempting to generate preview for ",resultPDF);
 
-        const pdfDataUri = await resultPDF.saveAsBase64({ dataUri: true });
-        const viewerPrefs = resultPDF.catalog.getOrCreateViewerPreferences()
-        viewerPrefs.setHideToolbar(false)
-        viewerPrefs.setHideMenubar(false)
-        viewerPrefs.setHideWindowUI(false)
-        viewerPrefs.setFitWindow(true)
-        viewerPrefs.setCenterWindow(true)
-        viewerPrefs.setDisplayDocTitle(true)
+        if (this.duplex) {
+            const pdfDataUri = await resultPDF.saveAsBase64({ dataUri: true });
+            const viewerPrefs = resultPDF.catalog.getOrCreateViewerPreferences()
+            viewerPrefs.setHideToolbar(false)
+            viewerPrefs.setHideMenubar(false)
+            viewerPrefs.setHideWindowUI(false)
+            viewerPrefs.setFitWindow(true)
+            viewerPrefs.setCenterWindow(true)
+            viewerPrefs.setDisplayDocTitle(true)
 
-        previewFrame.style.width = `450px`;
-        let height = this.papersize[1] / this.papersize[0] * 500
-        previewFrame.style.height = `${height}px`;
-        previewFrame.style.display = '';
-        previewFrame.src = pdfDataUri;
-
+            previewFrame.style.width = `450px`;
+            let height = this.papersize[1] / this.papersize[0] * 500
+            previewFrame.style.height = `${height}px`;
+            previewFrame.style.display = '';
+            previewFrame.src = pdfDataUri;
+        } else if (isPreview) {
+            window.alert("I'm sorry, the preivew feature doesn't work with non-duplex settings yet")
+        }
 
         if (!isPreview)
             return this.saveZip();
@@ -524,6 +519,8 @@ export class Book {
             "\n\toffset: [",xoffset,", ",yoffset,"]" +
             "\n\tpadding (bottom/binding/top/fore edge): [",padding['bottom'],", ",padding['binding'],",",padding['top'],", ",padding['fore_edge'],"]" 
             +"");
+        console.log("WHAT IS GOING ON?? : layout ", layout)
+        console.log("WWHYYyyyyyy?  ", layout.rotations)
 
 
         layout.rotations.forEach((row, i) => {
