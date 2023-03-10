@@ -18,8 +18,7 @@ export function handleGenerateClick(generateEl, book) {
 
 export function handlePreviewClick(previewEl, book) {
 	previewEl.setAttribute('disabled', true);
-	previewEl.innerText = 'Previewing... this may take a little while...';
-	console.log('The whole Book model:', book);
+	previewEl.innerText = 'Generating Preview, please wait....';
 	const result = book.createoutputfiles(true);
 	result
 		.then((_) => {
