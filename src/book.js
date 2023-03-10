@@ -188,7 +188,15 @@ export class Book {
         console.log("Created pages for : ",this.book)
     }
 
+    /**
+     * @param isPreview - if it's true we only generate preview content, if it's not true... we still 
+     *      generate preview content AND a downloadable zip
+     */
     async createoutputfiles(isPreview) {
+        let previewFrame = document.getElementById('pdf');
+        previewFrame.style.display = 'none';
+        let resultPDF = null
+
         //  create a directory named after the input pdf and fill it with
         //  the signatures
         this.zip = new JSZip();
@@ -217,36 +225,51 @@ export class Book {
                         this.zip.file('aggregate_book.pdf', pdfBytes); 
                 });
             }
-            const pdfDataUri = await aggregatePdf.saveAsBase64({ dataUri: true });
-            // SHARKS
-            let previewFrame = document.getElementById('pdf')
-            console.log("Dear Lottie, we have "+this.papersize+" to work with")
-            previewFrame.style.width = `${this.papersize[0]}px`;
-            previewFrame.style.height = `${this.papersize[1]}px`;
-            previewFrame.width = this.papersize[0];
-            previewFrame.height = this.papersize[1];
-            previewFrame.src = pdfDataUri;
-
-
-
-           //return forLoop().then(_ => this.saveZip());
+            resultPDF = aggregatePdf;
+            // const pdfDataUri = await aggregatePdf.saveAsBase64({ dataUri: true });
+            // // SHARKS
+            // let previewFrame = document.getElementById('pdf')
+            // console.log("Dear Lottie, we have "+this.papersize+" to work with")
+            // previewFrame.style.width = `${this.papersize[0]}px`;
+            // previewFrame.style.height = `${this.papersize[1]}px`;
+            // previewFrame.width = this.papersize[0];
+            // previewFrame.height = this.papersize[1];
+            // previewFrame.src = pdfDataUri;
         } else if (this.format == 'a9_3_3_4') {
-            await this.buildSheets(this.filename, this.book.a9_3_3_4_builder());
+            resultPDF = await this.buildSheets(this.filename, this.book.a9_3_3_4_builder());
         } else if (this.format == 'a10_6_10s') {
-            await this.buildSheets(this.filename, this.book.a10_6_10s_builder());
+            resultPDF = await this.buildSheets(this.filename, this.book.a10_6_10s_builder());
         } else if (this.format == 'a_4_8s') {
-            await this.buildSheets(this.filename, this.book.a_4_8s_builder());
+            resultPDF = await this.buildSheets(this.filename, this.book.a_4_8s_builder());
         } else if (this.format == 'a_3_6s') {
-            await this.buildSheets(this.filename, this.book.a_3_6s_builder());
+            resultPDF = await this.buildSheets(this.filename, this.book.a_3_6s_builder());
         } else if (this.format == 'A7_2_16s') {
-            await this.buildSheets(this.filename, this.book.a7_2_16s_builder());
+            resultPDF = await this.buildSheets(this.filename, this.book.a7_2_16s_builder());
         } else if (this.format == '1_3rd') {
-            await this.buildSheets(this.filename, this.book.page_1_3rd_builder());
+            resultPDF = await this.buildSheets(this.filename, this.book.page_1_3rd_builder());
         }
+        console.log("Attempting to generate preview for ",resultPDF);
+
+        const pdfDataUri = await resultPDF.saveAsBase64({ dataUri: true });
+        const viewerPrefs = resultPDF.catalog.getOrCreateViewerPreferences()
+        viewerPrefs.setHideToolbar(false)
+        viewerPrefs.setHideMenubar(false)
+        viewerPrefs.setHideWindowUI(false)
+        viewerPrefs.setFitWindow(true)
+        viewerPrefs.setCenterWindow(true)
+        viewerPrefs.setDisplayDocTitle(true)
+
+        previewFrame.style.width = `450px`;
+        let height = this.papersize[1] / this.papersize[0] * 500
+        previewFrame.style.height = `${height}px`;
+        previewFrame.style.display = '';
+        previewFrame.src = pdfDataUri;
+
+
         if (!isPreview)
             return this.saveZip();
         else
-            return true
+            return Promise.resolve(1);
     }
 
     /**
@@ -624,6 +647,7 @@ export class Book {
           this.filelist.push(fileName);
         }
         console.log("buildSheets complete");
+        return outPDF
     }
 
     /**
