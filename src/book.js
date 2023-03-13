@@ -171,12 +171,23 @@ export class Book {
         var pages = this.currentdoc.getPages();
         for (var i = 0; i < pages.length; ++i) {
             var page = pages[i]
-            var embeddedPage = await updatedDoc.embedPage(page);// [0, 1, -1, 0, 0, 0]); // this is CCW
-            var newPage = updatedDoc.addPage();
-            newPage.drawPage(embeddedPage); // rotational stuff here???
-
+            if (this.source_rotation == 'none') {
+                var embeddedPage = await updatedDoc.embedPage(page);// [0, 1, -1, 0, 0, 0]); // this is CCW
+                //var copiedPages = await updatedDoc.copyPages(this.currentdoc, [i])
+                console.log("Dear Lottie, how do you feel about " ,  embeddedPage)
+                var newPage = updatedDoc.addPage();
+                //embeddedPage.embed();
+                newPage.drawPage(embeddedPage); // rotational stuff here???
+                embeddedPage.embed();
+            } else {
+                var embeddedPage = await updatedDoc.embedPage(page, undefined, [0, 1, -1, 0, 20, 0]); // this is CCW
+                var newPage = updatedDoc.addPage();
+                newPage.drawPage(embeddedPage); // rotational stuff here???
+                embeddedPage.embed();
+            }
         }
         console.log("Going to do the ol' switcher-ro --- current doc's page count is ", pages);
+        this.currentdoc = updatedDoc
         console.log("The updatedDoc doc has : ", updatedDoc.getPages(), " vs --- ", updatedDoc.getPageCount());
         
         if (this.format == 'booklet') {
