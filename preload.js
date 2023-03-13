@@ -216,7 +216,15 @@ class Book {
         console.log("Created pages for : ",this.book)
     }
 
-    async createoutputfiles() {
+    /**
+     * @param isPreview - if it's true we only generate preview content, if it's not true... we still 
+     *      generate preview content AND a downloadable zip
+     */
+    async createoutputfiles(isPreview) {
+        let previewFrame = document.getElementById('pdf');
+        previewFrame.style.display = 'none';
+        let resultPDF = null
+
         //  create a directory named after the input pdf and fill it with
         //  the signatures
         this.zip = new (jszip__WEBPACK_IMPORTED_MODULE_8___default())();
@@ -240,24 +248,51 @@ class Book {
             }
             await forLoop();
             if (this.duplex && this.rearrangedpages.length > 1) {
-                await aggregatePdf.save().then(pdfBytes => { this.zip.file('aggregate_book.pdf', pdfBytes); });
+                await aggregatePdf.save().then(pdfBytes => { 
+                    if (!isPreview) 
+                        this.zip.file('aggregate_book.pdf', pdfBytes); 
+                });
             }
-
-           //return forLoop().then(_ => this.saveZip());
+            resultPDF = aggregatePdf;
+            // // SHARKS
         } else if (this.format == 'a9_3_3_4') {
-            await this.buildSheets(this.filename, this.book.a9_3_3_4_builder());
+            resultPDF = await this.buildSheets(this.filename, this.book.a9_3_3_4_builder());
         } else if (this.format == 'a10_6_10s') {
-            await this.buildSheets(this.filename, this.book.a10_6_10s_builder());
+            resultPDF = await this.buildSheets(this.filename, this.book.a10_6_10s_builder());
         } else if (this.format == 'a_4_8s') {
-            await this.buildSheets(this.filename, this.book.a_4_8s_builder());
+            resultPDF = await this.buildSheets(this.filename, this.book.a_4_8s_builder());
         } else if (this.format == 'a_3_6s') {
-            await this.buildSheets(this.filename, this.book.a_3_6s_builder());
+            resultPDF = await this.buildSheets(this.filename, this.book.a_3_6s_builder());
         } else if (this.format == 'A7_2_16s') {
-            await this.buildSheets(this.filename, this.book.a7_2_16s_builder());
+            resultPDF = await this.buildSheets(this.filename, this.book.a7_2_16s_builder());
         } else if (this.format == '1_3rd') {
-            await this.buildSheets(this.filename, this.book.page_1_3rd_builder());
+            resultPDF = await this.buildSheets(this.filename, this.book.page_1_3rd_builder());
         }
-        return this.saveZip();
+        console.log("Attempting to generate preview for ",resultPDF);
+
+        if (this.duplex) {
+            const pdfDataUri = await resultPDF.saveAsBase64({ dataUri: true });
+            const viewerPrefs = resultPDF.catalog.getOrCreateViewerPreferences()
+            viewerPrefs.setHideToolbar(false)
+            viewerPrefs.setHideMenubar(false)
+            viewerPrefs.setHideWindowUI(false)
+            viewerPrefs.setFitWindow(true)
+            viewerPrefs.setCenterWindow(true)
+            viewerPrefs.setDisplayDocTitle(true)
+
+            previewFrame.style.width = `450px`;
+            let height = this.papersize[1] / this.papersize[0] * 500
+            previewFrame.style.height = `${height}px`;
+            previewFrame.style.display = '';
+            previewFrame.src = pdfDataUri;
+        } else if (isPreview) {
+            window.alert("I'm sorry, the preivew feature doesn't work with non-duplex settings yet")
+        }
+
+        if (!isPreview)
+            return this.saveZip();
+        else
+            return Promise.resolve(1);
     }
 
     /**
@@ -512,6 +547,8 @@ class Book {
             "\n\toffset: [",xoffset,", ",yoffset,"]" +
             "\n\tpadding (bottom/binding/top/fore edge): [",padding['bottom'],", ",padding['binding'],",",padding['top'],", ",padding['fore_edge'],"]" 
             +"");
+        console.log("WHAT IS GOING ON?? : layout ", layout)
+        console.log("WWHYYyyyyyy?  ", layout.rotations)
 
 
         layout.rotations.forEach((row, i) => {
@@ -635,6 +672,7 @@ class Book {
           this.filelist.push(fileName);
         }
         console.log("buildSheets complete");
+        return outPDF
     }
 
     /**
@@ -31630,13 +31668,14 @@ function handleFileChange(e, book) {
 "use strict";
 __webpack_require__.r(__webpack_exports__);
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
-/* harmony export */   "handleGenerateClick": () => (/* binding */ handleGenerateClick)
+/* harmony export */   "handleGenerateClick": () => (/* binding */ handleGenerateClick),
+/* harmony export */   "handlePreviewClick": () => (/* binding */ handlePreviewClick)
 /* harmony export */ });
 function handleGenerateClick(generateEl, book) {
 	generateEl.setAttribute('disabled', true);
 	generateEl.innerText = 'Generating, this may take a little while...';
 	console.log('The whole Book model:', book);
-	const result = book.createoutputfiles();
+	const result = book.createoutputfiles(false);
 	result
 		.then((_) => {
 			console.log('Generated result!');
@@ -31647,6 +31686,23 @@ function handleGenerateClick(generateEl, book) {
 		.finally((_) => {
 			generateEl.removeAttribute('disabled');
 			generateEl.innerText = 'Generate Output';
+		});
+}
+
+function handlePreviewClick(previewEl, book) {
+	previewEl.setAttribute('disabled', true);
+	previewEl.innerText = 'Generating Preview, please wait....';
+	const result = book.createoutputfiles(true);
+	result
+		.then((_) => {
+			console.log('Preview result!');
+		})
+		.catch((error) => {
+			console.error(error);
+		})
+		.finally((_) => {
+			previewEl.removeAttribute('disabled');
+			previewEl.innerText = 'Preview Output';
 		});
 }
 
@@ -31754,6 +31810,7 @@ window.addEventListener('DOMContentLoaded', () => {
 
     // grab DOM elements
     const generate = document.getElementById('generate');
+    const preview = document.getElementById('preview');
     const bookbinderForm = document.getElementById('bookbinder');
     const fileInput = document.getElementById('input_file');
     const inputs = document.querySelectorAll('input, select');
@@ -31770,10 +31827,15 @@ window.addEventListener('DOMContentLoaded', () => {
     fileInput.addEventListener('change', (e) => { 
         (0,_utils_changeHandlers_js__WEBPACK_IMPORTED_MODULE_2__.handleFileChange)(e, book);
         generate.removeAttribute('disabled');
+        preview.removeAttribute('disabled');
     });
     generate.addEventListener('click', () =>
         (0,_utils_clickHandlers_js__WEBPACK_IMPORTED_MODULE_3__.handleGenerateClick)(generate, book)
     );
+    preview.addEventListener('click', () =>
+        (0,_utils_clickHandlers_js__WEBPACK_IMPORTED_MODULE_3__.handlePreviewClick)(preview, book)
+    );
+
 });
 
 })();
