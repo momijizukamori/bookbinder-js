@@ -17,7 +17,7 @@ export class Book {
         this.papersize = PAGE_SIZES.A4;   //  default for europe
         this.paper_rotation_90 = false; // new feature to put things in landscape mode 2023/3/09 
 
-        // valid rotation options: none, 90cw, 90ccw, out_binding, in_binding
+        // valid rotation options: [none, 90cw, 90ccw, out_binding, in_binding]
         this.source_rotation = 'none'; // new feature to rotate pages on the sheets 2023/3/09
 
         this.page_scaling = 'lockratio';
@@ -163,8 +163,22 @@ export class Book {
         console.log("Calculated pagecount [",this.pagecount,"] and ordered pages: ", this.orderedpages)
     }
 
-    createpages() {
+    async createpages() {
         this.createpagelist();
+        // SHARKS
+        
+        var updatedDoc = await PDFDocument.create()
+        var pages = this.currentdoc.getPages();
+        for (var i = 0; i < pages.length; ++i) {
+            var page = pages[i]
+            var embeddedPage = await updatedDoc.embedPage(page);// [0, 1, -1, 0, 0, 0]); // this is CCW
+            var newPage = updatedDoc.addPage();
+            newPage.drawPage(embeddedPage); // rotational stuff here???
+
+        }
+        console.log("Going to do the ol' switcher-ro --- current doc's page count is ", pages);
+        console.log("The updatedDoc doc has : ", updatedDoc.getPages(), " vs --- ", updatedDoc.getPageCount());
+        
         if (this.format == 'booklet') {
             this.book = new Booklet(this.orderedpages, this.duplex);
         } else if (this.format == 'perfect') {
@@ -223,7 +237,6 @@ export class Book {
                 });
             }
             resultPDF = aggregatePdf;
-            // // SHARKS
         } else if (this.format == 'a9_3_3_4') {
             resultPDF = await this.buildSheets(this.filename, this.book.a9_3_3_4_builder());
         } else if (this.format == 'a10_6_10s') {

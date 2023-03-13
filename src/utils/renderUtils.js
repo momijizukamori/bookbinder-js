@@ -11,6 +11,12 @@ export function renderInfoBox(book) {
     const sigArrange = document.getElementById('sig_arrange');
     const totalPages = document.getElementById('total_pages');
 
+    console.log("What SHOULD the book be?" , book)
+    console.log("What SHOULD the book.book be?" , book.book)
+    if (book.book == null || book.book == undefined)
+        return
+    console.log("What SHOULD the book.book.pagelist be?" , book.book.pagelist)
+
     const outputPages = book.book.pagelist.reduce((acc, list) => {
         list.forEach((sublist) => (acc += sublist.length));
         return acc;
