@@ -39,12 +39,14 @@ class Book {
         this.papersize = _constants_js__WEBPACK_IMPORTED_MODULE_6__.PAGE_SIZES.A4;   //  default for europe
         this.paper_rotation_90 = false; // new feature to put things in landscape mode 2023/3/09 
 
+        // valid rotation options: none, 90cw, 90ccw, out_binding, in_binding
+        this.source_rotation = 'none'; // new feature to rotate pages on the sheets 2023/3/09
+
         this.page_scaling = 'lockratio';
         this.page_positioning = 'centered';
         this.flyleaf = false;
         this.spineoffset = false;
         this.format = 'standardsig';
-        this.booksize = [null, null];
         this.sigsize = 4;       //  preferred signature size
         this.customsig = null;
         this.signatureconfig = [];  //  signature configuration
@@ -77,6 +79,8 @@ class Book {
         if (this.paper_rotation_90) {
             this.papersize = [this.papersize[1], this.papersize[0]]
         }
+
+        this.source_rotation = form.get("source_rotation");
         
         this.page_scaling = form.get("page_scaling");
         this.page_positioning = form.get("page_positioning");
@@ -98,10 +102,8 @@ class Book {
                     this.signatureconfig.push(num);
                 }
             });
-
         }
 
-        this.booksize = [this.papersize[1] * 0.5, this.papersize[0]];
         this.page_layout = form.get('pagelayout') == null ? 'folio' : _constants_js__WEBPACK_IMPORTED_MODULE_6__.PAGE_LAYOUTS[form.get('pagelayout')];
         this.per_sheet = this.page_layout.per_sheet;
         this.pack_pages = form.get('wacky_spacing') == 'wacky_pack';
@@ -152,17 +154,6 @@ class Book {
             }
         })
 
-    }
-
-    setbooksize(targetsize, customx, customy) {
-        console.log(`Hi Lottie, we're setting the book size: ${targetsize} : ${customx} : ${customy}`)
-        if (targetsize == 'full') {
-            this.booksize = [this.papersize[1] * 0.5, this.papersize[0]]
-        } else if (targetsize == 'custom') {
-            this.booksize = [customx, customy];
-        } else {
-            this.booksize = _constants_js__WEBPACK_IMPORTED_MODULE_6__.TARGET_BOOK_SIZE[targetsize];
-        }
     }
 
     createpagelist() {
