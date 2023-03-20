@@ -9,6 +9,8 @@ import { updatePaperSelectOptionsUnits, updateAddOrRemoveCustomPaperOption} from
 import JSZip from 'jszip';
 export class Book {
     constructor() {
+        this.managedDoc = null;     // this is the original PDF with the pages rotated as needed/requested
+
         this.inputpdf = null;    //  string with pdf filepath
         this.password = null;    //  if necessary
 
@@ -135,7 +137,7 @@ export class Book {
     }
 
     createpagelist() {
-        this.pagecount = this.currentdoc.getPageCount();
+        this.pagecount = (this.managedDoc == null) ? this.currentdoc.getPageCount() : this.managedDoc.getPageCount();
         this.orderedpages = Array.from({ length: this.pagecount }, (x, i) => i);
 
         if (this.flyleaf) {
@@ -167,30 +169,27 @@ export class Book {
         this.createpagelist();
         // SHARKS
         
-        var updatedDoc = await PDFDocument.create()
+        this.managedDoc = await PDFDocument.create()
         var pages = this.currentdoc.getPages();
         console.log("LOTTIE!!! what is our mode??? ", this.source_rotation)
         for (var i = 0; i < pages.length; ++i) {
             var page = pages[i]
             var embeddedPage = null
             if (this.source_rotation == 'none') {
-                embeddedPage = await updatedDoc.embedPage(page);
+                embeddedPage = await this.managedDoc.embedPage(page);
             } else if (this.source_rotation == '90ccw') {
-                embeddedPage = await updatedDoc.embedPage(page, undefined, [0, 1, -1, 0, page.getHeight(), 0]); // this is CCW
+                embeddedPage = await this.managedDoc.embedPage(page, undefined, [0, 1, -1, 0, page.getHeight(), 0]); // this is CCW
             } else if (this.source_rotation == '90cw') {
-                embeddedPage = await updatedDoc.embedPage(page, undefined, [0, -1, 1, 0, 0, page.getWidth()]); // this is CW
+                embeddedPage = await this.managedDoc.embedPage(page, undefined, [0, -1, 1, 0, 0, page.getWidth()]); // this is CW
             } else {
-                embeddedPage = await updatedDoc.embedPage(page, undefined, [0, -1, 1, 0, page.getWidth(), 200]); 
+                embeddedPage = await this.managedDoc.embedPage(page, undefined, [0, -1, 1, 0, page.getWidth(), 200]); 
             }
 
-            var newPage = updatedDoc.addPage();
+            var newPage = this.managedDoc.addPage();
             newPage.drawPage(embeddedPage);
             embeddedPage.embed();
         }
-        console.log("Going to do the ol' switcher-ro --- current doc's page count is ", pages);
-        //this.currentdoc = updatedDoc
-        this.rebecca = updatedDoc
-        console.log("The updatedDoc doc has : ", updatedDoc.getPages(), " vs --- ", updatedDoc.getPageCount());
+        console.log("The updatedDoc doc has : ", this.managedDoc.getPages(), " vs --- ", this.managedDoc.getPageCount());
         
         if (this.format == 'booklet') {
             this.book = new Booklet(this.orderedpages, this.duplex);
@@ -231,26 +230,26 @@ export class Book {
         } else if (this.format == 'perfect') {
             await this.createsignatures(this.rearrangedpages, 'perfect');
         } else if (this.format == 'standardsig' || this.format == 'customsig') {
-            // const aggregatePdf = await PDFDocument.create();
-            // const forLoop = async _ => {
-            //     for (let i = 0; i < this.rearrangedpages.length; i++) {
-            //         let page = this.rearrangedpages[i];
-            //         const newPDF = await this.createsignatures(page, `signature${i}`);
-            //         if (newPDF != null) {
-            //             const dupPages = await aggregatePdf.copyPages(newPDF, newPDF.getPageIndices());
-            //             dupPages.forEach( page => { aggregatePdf.addPage(page); });
-            //         }
-            //     }
-            // }
-            // await forLoop();
+            const aggregatePdf = await PDFDocument.create();
+            const forLoop = async _ => {
+                for (let i = 0; i < this.rearrangedpages.length; i++) {
+                    let page = this.rearrangedpages[i];
+                    const newPDF = await this.createsignatures(page, `signature${i}`);
+                    if (newPDF != null) {
+                        const dupPages = await aggregatePdf.copyPages(newPDF, newPDF.getPageIndices());
+                        dupPages.forEach( page => { aggregatePdf.addPage(page); });
+                    }
+                }
+            }
+            await forLoop();
             if (this.duplex && this.rearrangedpages.length > 1) {
-                // await aggregatePdf.save().then(pdfBytes => { 
-                await this.rebecca.save().then(pdfBytes => { 
+                await aggregatePdf.save().then(pdfBytes => { 
+                // await this.managedDoc.save().then(pdfBytes => { 
                     if (!isPreview) 
                         this.zip.file('aggregate_book.pdf', pdfBytes); 
                 });
             }
-             resultPDF    =  this.rebecca;//aggregatePdf;
+            resultPDF = aggregatePdf;
         } else if (this.format == 'a9_3_3_4') {
             resultPDF = await this.buildSheets(this.filename, this.book.a9_3_3_4_builder());
         } else if (this.format == 'a10_6_10s') {
@@ -307,7 +306,7 @@ export class Book {
             }
         });
 
-        let embeddedPages = await outPDF.embedPdf(this.currentdoc, filteredList);
+        let embeddedPages = await outPDF.embedPdf(this.managedDoc, filteredList);
         blankIndices.forEach(i => embeddedPages.splice(i, 0, 'b'));
 
         let block_start = 0;
@@ -703,7 +702,7 @@ export class Book {
             console.warn("All the pages are empty! : ",pagelist);
             return;
         }
-        let embeddedPages = await outPDF.embedPdf(this.currentdoc, filteredList);
+        let embeddedPages = await outPDF.embedPdf(this.managedDoc, filteredList);
         // TODO : make sure the max dimen is correct here...
         let papersize = isLandscape ? [this.papersize[1], this.papersize[0]] : [this.papersize[0], this.papersize[1]]
         let curPage = outPDF.addPage(papersize);
