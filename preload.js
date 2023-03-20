@@ -194,34 +194,24 @@ class Book {
         console.log("LOTTIE!!! what is our mode??? ", this.source_rotation)
         for (var i = 0; i < pages.length; ++i) {
             var page = pages[i]
+            var embeddedPage = null
             if (this.source_rotation == 'none') {
-                var embeddedPage = await updatedDoc.embedPage(page);// [0, 1, -1, 0, 0, 0]); // this is CCW
-                //var copiedPages = await updatedDoc.copyPages(this.currentdoc, [i])
-                console.log("Dear Lottie, how do you feel about " ,  embeddedPage)
-                var newPage = updatedDoc.addPage();
-                //embeddedPage.embed();
-                newPage.drawPage(embeddedPage); // rotational stuff here???
-                embeddedPage.embed();
+                embeddedPage = await updatedDoc.embedPage(page);
             } else if (this.source_rotation == '90ccw') {
-                var embeddedPage = await updatedDoc.embedPage(page, undefined, [0, 1, -1, 0, page.getWidth(), 0]); // this is CCW
-                var newPage = updatedDoc.addPage();
-                newPage.drawPage(embeddedPage); // rotational stuff here???
-                embeddedPage.embed();
-            }  else if (this.source_rotation == '90cw') {
-                var embeddedPage = await updatedDoc.embedPage(page, undefined, [0, -1, 1, 0, -1 * page.getWidth(), 0]); // this is CCW
-                var newPage = updatedDoc.addPage();
-                newPage.drawPage(embeddedPage); // rotational stuff here???
-                embeddedPage.embed();
-            }  else  {
-                var embeddedPage = await updatedDoc.embedPage(page, undefined, [0, 1, -1, 0, page.getWidth(), 0]); // this is CCW
-                var newPage = updatedDoc.addPage();
-                newPage.drawPage(embeddedPage); // rotational stuff here???
-                embeddedPage.embed();
+                embeddedPage = await updatedDoc.embedPage(page, undefined, [0, 1, -1, 0, page.getHeight(), 0]); // this is CCW
+            } else if (this.source_rotation == '90cw') {
+                embeddedPage = await updatedDoc.embedPage(page, undefined, [0, -1, 1, 0, 0, page.getWidth()]); // this is CW
+            } else {
+                embeddedPage = await updatedDoc.embedPage(page, undefined, [0, -1, 1, 0, page.getWidth(), 200]); 
             }
 
+            var newPage = updatedDoc.addPage();
+            newPage.drawPage(embeddedPage);
+            embeddedPage.embed();
         }
         console.log("Going to do the ol' switcher-ro --- current doc's page count is ", pages);
-        this.currentdoc = updatedDoc
+        //this.currentdoc = updatedDoc
+        this.rebecca = updatedDoc
         console.log("The updatedDoc doc has : ", updatedDoc.getPages(), " vs --- ", updatedDoc.getPageCount());
         
         if (this.format == 'booklet') {
@@ -277,12 +267,12 @@ class Book {
             // await forLoop();
             if (this.duplex && this.rearrangedpages.length > 1) {
                 // await aggregatePdf.save().then(pdfBytes => { 
-                await this.currentdoc.save().then(pdfBytes => { 
+                await this.rebecca.save().then(pdfBytes => { 
                     if (!isPreview) 
                         this.zip.file('aggregate_book.pdf', pdfBytes); 
                 });
             }
-             resultPDF    =  this.currentdoc;//aggregatePdf;
+             resultPDF    =  this.rebecca;//aggregatePdf;
         } else if (this.format == 'a9_3_3_4') {
             resultPDF = await this.buildSheets(this.filename, this.book.a9_3_3_4_builder());
         } else if (this.format == 'a10_6_10s') {
