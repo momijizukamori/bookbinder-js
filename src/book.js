@@ -181,17 +181,17 @@ export class Book {
                 newPage.drawPage(embeddedPage); // rotational stuff here???
                 embeddedPage.embed();
             } else if (this.source_rotation == '90ccw') {
-                var embeddedPage = await updatedDoc.embedPage(page, undefined, [0, 1, -1, 0, page.getWidth(), 0]); // this is CCW
+                var embeddedPage = await updatedDoc.embedPage(page, undefined, [0, 1, -1, 0, page.getWidth(), 100]); // this is CCW
                 var newPage = updatedDoc.addPage();
                 newPage.drawPage(embeddedPage); // rotational stuff here???
                 embeddedPage.embed();
             }  else if (this.source_rotation == '90cw') {
-                var embeddedPage = await updatedDoc.embedPage(page, undefined, [0, -1, 1, 0, -1 * page.getWidth(), 0]); // this is CCW
+                var embeddedPage = await updatedDoc.embedPage(page, undefined, [0, -1, 1, 0,  -1 * page.getWidth(), 20]); // this is CCW
                 var newPage = updatedDoc.addPage();
                 newPage.drawPage(embeddedPage); // rotational stuff here???
                 embeddedPage.embed();
             }  else  {
-                var embeddedPage = await updatedDoc.embedPage(page, undefined, [0, 1, -1, 0, page.getWidth(), 0]); // this is CCW
+                var embeddedPage = await updatedDoc.embedPage(page, undefined, [0, 1, -1, 0, page.getWidth(), -20]); // this is CCW
                 var newPage = updatedDoc.addPage();
                 newPage.drawPage(embeddedPage); // rotational stuff here???
                 embeddedPage.embed();
