@@ -191,6 +191,7 @@ class Book {
         
         var updatedDoc = await pdf_lib__WEBPACK_IMPORTED_MODULE_0__.PDFDocument.create()
         var pages = this.currentdoc.getPages();
+        console.log("LOTTIE!!! what is our mode??? ", this.source_rotation)
         for (var i = 0; i < pages.length; ++i) {
             var page = pages[i]
             if (this.source_rotation == 'none') {
@@ -201,12 +202,23 @@ class Book {
                 //embeddedPage.embed();
                 newPage.drawPage(embeddedPage); // rotational stuff here???
                 embeddedPage.embed();
-            } else {
-                var embeddedPage = await updatedDoc.embedPage(page, undefined, [0, 1, -1, 0, 20, 0]); // this is CCW
+            } else if (this.source_rotation == '90ccw') {
+                var embeddedPage = await updatedDoc.embedPage(page, undefined, [0, 1, -1, 0, page.getWidth(), 0]); // this is CCW
+                var newPage = updatedDoc.addPage();
+                newPage.drawPage(embeddedPage); // rotational stuff here???
+                embeddedPage.embed();
+            }  else if (this.source_rotation == '90cw') {
+                var embeddedPage = await updatedDoc.embedPage(page, undefined, [0, -1, 1, 0, -1 * page.getWidth(), 0]); // this is CCW
+                var newPage = updatedDoc.addPage();
+                newPage.drawPage(embeddedPage); // rotational stuff here???
+                embeddedPage.embed();
+            }  else  {
+                var embeddedPage = await updatedDoc.embedPage(page, undefined, [0, 1, -1, 0, page.getWidth(), 0]); // this is CCW
                 var newPage = updatedDoc.addPage();
                 newPage.drawPage(embeddedPage); // rotational stuff here???
                 embeddedPage.embed();
             }
+
         }
         console.log("Going to do the ol' switcher-ro --- current doc's page count is ", pages);
         this.currentdoc = updatedDoc
@@ -251,25 +263,26 @@ class Book {
         } else if (this.format == 'perfect') {
             await this.createsignatures(this.rearrangedpages, 'perfect');
         } else if (this.format == 'standardsig' || this.format == 'customsig') {
-            const aggregatePdf = await pdf_lib__WEBPACK_IMPORTED_MODULE_0__.PDFDocument.create();
-            const forLoop = async _ => {
-                for (let i = 0; i < this.rearrangedpages.length; i++) {
-                    let page = this.rearrangedpages[i];
-                    const newPDF = await this.createsignatures(page, `signature${i}`);
-                    if (newPDF != null) {
-                        const dupPages = await aggregatePdf.copyPages(newPDF, newPDF.getPageIndices());
-                        dupPages.forEach( page => { aggregatePdf.addPage(page); });
-                    }
-                }
-            }
-            await forLoop();
+            // const aggregatePdf = await PDFDocument.create();
+            // const forLoop = async _ => {
+            //     for (let i = 0; i < this.rearrangedpages.length; i++) {
+            //         let page = this.rearrangedpages[i];
+            //         const newPDF = await this.createsignatures(page, `signature${i}`);
+            //         if (newPDF != null) {
+            //             const dupPages = await aggregatePdf.copyPages(newPDF, newPDF.getPageIndices());
+            //             dupPages.forEach( page => { aggregatePdf.addPage(page); });
+            //         }
+            //     }
+            // }
+            // await forLoop();
             if (this.duplex && this.rearrangedpages.length > 1) {
-                await aggregatePdf.save().then(pdfBytes => { 
+                // await aggregatePdf.save().then(pdfBytes => { 
+                await this.currentdoc.save().then(pdfBytes => { 
                     if (!isPreview) 
                         this.zip.file('aggregate_book.pdf', pdfBytes); 
                 });
             }
-            resultPDF = aggregatePdf;
+             resultPDF    =  this.currentdoc;//aggregatePdf;
         } else if (this.format == 'a9_3_3_4') {
             resultPDF = await this.buildSheets(this.filename, this.book.a9_3_3_4_builder());
         } else if (this.format == 'a10_6_10s') {
