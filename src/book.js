@@ -180,17 +180,19 @@ export class Book {
                 || (this.source_rotation == 'in_binding' && i % 2 == 0)
 
             if (this.source_rotation == 'none') {
-                embeddedPage = await this.managedDoc.embedPage(page);
+                embeddedPage = await this.managedDoc.embedPage(page, undefined, [1, 0, 0, 1, 0, 0]);
+                newPage.setSize(embeddedPage.width, embeddedPage.height);
             } else if (rotate90ccw) {
                 embeddedPage = await this.managedDoc.embedPage(page, undefined, [0, 1, -1, 0, page.getHeight(), 0]); // this is CCW
+                newPage.setSize(embeddedPage.height, embeddedPage.width);
             } else if (rotate90cw) {
                 embeddedPage = await this.managedDoc.embedPage(page, undefined, [0, -1, 1, 0, 0, page.getWidth()]); // this is CW
+                newPage.setSize(embeddedPage.height, embeddedPage.width);
             } else {
                 var e = new Error("??? what sorta' layout you think you're going to get?");
                 console.error(e);
                 throw e;
             }
-            newPage.setSize(embeddedPage.height, embeddedPage.width);
             newPage.drawPage(embeddedPage);
             embeddedPage.embed();
             this.cropbox = newPage.getCropBox();
