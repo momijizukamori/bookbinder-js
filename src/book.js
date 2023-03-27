@@ -1,4 +1,4 @@
-import { PDFDocument, degrees, rgb } from 'pdf-lib';
+import { PDFDocument, degrees, grayscale, rgb } from 'pdf-lib';
 import { saveAs } from 'file-saver';
 import { Signatures } from './signatures.js';
 import { Booklet } from './booklet.js';
@@ -9,18 +9,17 @@ import { updatePaperSelectOptionsUnits, updateAddOrRemoveCustomPaperOption} from
 import JSZip from 'jszip';
 export class Book {
     constructor() {
-        this.managedDoc = null;     // this is the original PDF with the pages rotated as needed/requested
-
         this.inputpdf = null;    //  string with pdf filepath
         this.password = null;    //  if necessary
 
         this.duplex = false; //FIXME
         this.duplexrotate = true;
         this.papersize = PAGE_SIZES.A4;   //  default for europe
-        this.paper_rotation_90 = false; // new feature to put things in landscape mode 2023/3/09 
+        this.paper_rotation_90 = false; // make the printed page landscape [for landscaped layouts, results in portait]
 
         // valid rotation options: [none, 90cw, 90ccw, out_binding, in_binding]
         this.source_rotation = 'none'; // new feature to rotate pages on the sheets 2023/3/09
+        this.managedDoc = null; // original PDF with the pages rotated per source_rotation - use THIS for laying out pages
 
         this.page_scaling = 'lockratio';
         this.page_positioning = 'centered';
@@ -32,7 +31,7 @@ export class Book {
         this.signatureconfig = [];  //  signature configuration
 
         this.input = null;    //  opened pdf file
-        this.currentdoc = null;    //  Itext PDFReader object
+        this.currentdoc = null;    //  uploaded PDF, untouched by source_rotation - use managedDoc for layout
         this.pagecount = null;
         this.cropbox = null;
 
@@ -175,20 +174,51 @@ export class Book {
         for (var i = 0; i < pages.length; ++i) {
             var page = pages[i]
             var embeddedPage = null
+            var newPage = this.managedDoc.addPage();
             if (this.source_rotation == 'none') {
                 embeddedPage = await this.managedDoc.embedPage(page);
+                
             } else if (this.source_rotation == '90ccw') {
                 embeddedPage = await this.managedDoc.embedPage(page, undefined, [0, 1, -1, 0, page.getHeight(), 0]); // this is CCW
+                
             } else if (this.source_rotation == '90cw') {
                 embeddedPage = await this.managedDoc.embedPage(page, undefined, [0, -1, 1, 0, 0, page.getWidth()]); // this is CW
+                
             } else {
-                embeddedPage = await this.managedDoc.embedPage(page, undefined, [0, -1, 1, 0, page.getWidth(), 200]); 
+                embeddedPage = await this.managedDoc.embedPage(page, undefined, [0, -1, 1, 0, page.getWidth(), 0]); 
+                
             }
-
-            var newPage = this.managedDoc.addPage();
+            newPage.setSize(embeddedPage.height, embeddedPage.width);
             newPage.drawPage(embeddedPage);
+            // newPage.drawRectangle({
+            //   x: 0,
+            //   y: 0,
+            //   rotation: 0,
+            //   width: newPage.getWidth() - 2,
+            //   height: newPage.getHeight() - 2,
+            //   borderWidth: 5,
+            //   borderColor: rgb(1,1,0),  // YELLOW
+            //   color: rgb(0,0,1),    // BLUE
+            //   opacity: 0.25,
+            //   borderOpacity: 0.5,
+            // })
+            // newPage.drawRectangle({
+            //   x: 0,
+            //   y: 0,
+            //   rotation: 0,
+            //   width: embeddedPage.width - 2,
+            //   height: embeddedPage.height - 2,
+            //   borderWidth: 5,
+            //   borderColor: rgb(1,0,0),
+            //   color: rgb(0,1,0),
+            //   opacity: 0.25,
+            //   borderOpacity: 0.5,
+            // })
+            console.log("Dear Lottie, we have a new page with ",newPage.getWidth()," x ",newPage.getHeight()," and we're mashing onto it ", embeddedPage.width, ", ", embeddedPage.height)
             embeddedPage.embed();
+            this.cropbox = newPage.getCropBox();
         }
+
         console.log("The updatedDoc doc has : ", this.managedDoc.getPages(), " vs --- ", this.managedDoc.getPageCount());
         
         if (this.format == 'booklet') {
