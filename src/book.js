@@ -166,11 +166,8 @@ export class Book {
 
     async createpages() {
         this.createpagelist();
-        // SHARKS
-        
         this.managedDoc = await PDFDocument.create()
         var pages = this.currentdoc.getPages();
-        console.log("LOTTIE!!! what is our mode??? ", this.source_rotation)
         for (var i = 0; i < pages.length; ++i) {
             var page = pages[i]
             var embeddedPage = null
@@ -195,31 +192,6 @@ export class Book {
             }
             newPage.setSize(embeddedPage.height, embeddedPage.width);
             newPage.drawPage(embeddedPage);
-            // newPage.drawRectangle({
-            //   x: 0,
-            //   y: 0,
-            //   rotation: 0,
-            //   width: newPage.getWidth() - 2,
-            //   height: newPage.getHeight() - 2,
-            //   borderWidth: 5,
-            //   borderColor: rgb(1,1,0),  // YELLOW
-            //   color: rgb(0,0,1),    // BLUE
-            //   opacity: 0.25,
-            //   borderOpacity: 0.5,
-            // })
-            // newPage.drawRectangle({
-            //   x: 0,
-            //   y: 0,
-            //   rotation: 0,
-            //   width: embeddedPage.width - 2,
-            //   height: embeddedPage.height - 2,
-            //   borderWidth: 5,
-            //   borderColor: rgb(1,0,0),
-            //   color: rgb(0,1,0),
-            //   opacity: 0.25,
-            //   borderOpacity: 0.5,
-            // })
-            console.log("Dear Lottie, we have a new page with ",newPage.getWidth()," x ",newPage.getHeight()," and we're mashing onto it ", embeddedPage.width, ", ", embeddedPage.height)
             embeddedPage.embed();
             this.cropbox = newPage.getCropBox();
         }
@@ -258,7 +230,8 @@ export class Book {
         //  create a directory named after the input pdf and fill it with
         //  the signatures
         this.zip = new JSZip();
-        this.filename = this.inputpdf.replace(/\s|,|\.pdf/, '');
+        var origFileName = this.inputpdf.replace(/\s|,|\.pdf/, '');
+        this.filename = origFileName
 
         if (this.format == 'booklet') {
             await this.createsignatures(this.rearrangedpages, 'booklet');
@@ -277,6 +250,7 @@ export class Book {
                 }
             }
             await forLoop();
+
             if (this.duplex && this.rearrangedpages.length > 1) {
                 await aggregatePdf.save().then(pdfBytes => { 
                 // await this.managedDoc.save().then(pdfBytes => { 
@@ -284,6 +258,10 @@ export class Book {
                         this.zip.file('aggregate_book.pdf', pdfBytes); 
                 });
             }
+            var rotationMetaInfo = ((this.paper_rotation_90) ? "_paperRotated" : "")
+                + ((this.source_rotation == 'none') ? "" : `_${this.source_rotation}`)
+            this.filename = `${origFileName}${rotationMetaInfo}`
+            console.log("Lottie, why is my name bad??? ",rotationMetaInfo," and ", origFileName," yields: ",this.filename)
             resultPDF = aggregatePdf;
         } else if (this.format == 'a9_3_3_4') {
             resultPDF = await this.buildSheets(this.filename, this.book.a9_3_3_4_builder());
