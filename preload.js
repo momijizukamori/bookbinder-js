@@ -197,45 +197,50 @@ class Book {
             var page = pages[i]
             var embeddedPage = null
             var newPage = this.managedDoc.addPage();
+            var rotate90cw = this.source_rotation == '90cw' 
+                || (this.source_rotation == 'out_binding' && i % 2 == 0)
+                || (this.source_rotation == 'in_binding' && i % 2 == 1)
+            var rotate90ccw = this.source_rotation == '90ccw' 
+                || (this.source_rotation == 'out_binding' && i % 2 == 1)
+                || (this.source_rotation == 'in_binding' && i % 2 == 0)
+
             if (this.source_rotation == 'none') {
                 embeddedPage = await this.managedDoc.embedPage(page);
-                
-            } else if (this.source_rotation == '90ccw') {
+            } else if (rotate90ccw) {
                 embeddedPage = await this.managedDoc.embedPage(page, undefined, [0, 1, -1, 0, page.getHeight(), 0]); // this is CCW
-                
-            } else if (this.source_rotation == '90cw') {
+            } else if (rotate90cw) {
                 embeddedPage = await this.managedDoc.embedPage(page, undefined, [0, -1, 1, 0, 0, page.getWidth()]); // this is CW
-                
             } else {
-                embeddedPage = await this.managedDoc.embedPage(page, undefined, [0, -1, 1, 0, page.getWidth(), 0]); 
-                
+                var e = new Error("??? what sorta' layout you think you're going to get?");
+                console.error(e);
+                throw e;
             }
             newPage.setSize(embeddedPage.height, embeddedPage.width);
             newPage.drawPage(embeddedPage);
-            newPage.drawRectangle({
-              x: 0,
-              y: 0,
-              rotation: 0,
-              width: newPage.getWidth() - 2,
-              height: newPage.getHeight() - 2,
-              borderWidth: 5,
-              borderColor: (0,pdf_lib__WEBPACK_IMPORTED_MODULE_0__.rgb)(1,1,0),  // YELLOW
-              color: (0,pdf_lib__WEBPACK_IMPORTED_MODULE_0__.rgb)(0,0,1),    // BLUE
-              opacity: 0.25,
-              borderOpacity: 0.5,
-            })
-            newPage.drawRectangle({
-              x: 0,
-              y: 0,
-              rotation: 0,
-              width: embeddedPage.width - 2,
-              height: embeddedPage.height - 2,
-              borderWidth: 5,
-              borderColor: (0,pdf_lib__WEBPACK_IMPORTED_MODULE_0__.rgb)(1,0,0),
-              color: (0,pdf_lib__WEBPACK_IMPORTED_MODULE_0__.rgb)(0,1,0),
-              opacity: 0.25,
-              borderOpacity: 0.5,
-            })
+            // newPage.drawRectangle({
+            //   x: 0,
+            //   y: 0,
+            //   rotation: 0,
+            //   width: newPage.getWidth() - 2,
+            //   height: newPage.getHeight() - 2,
+            //   borderWidth: 5,
+            //   borderColor: rgb(1,1,0),  // YELLOW
+            //   color: rgb(0,0,1),    // BLUE
+            //   opacity: 0.25,
+            //   borderOpacity: 0.5,
+            // })
+            // newPage.drawRectangle({
+            //   x: 0,
+            //   y: 0,
+            //   rotation: 0,
+            //   width: embeddedPage.width - 2,
+            //   height: embeddedPage.height - 2,
+            //   borderWidth: 5,
+            //   borderColor: rgb(1,0,0),
+            //   color: rgb(0,1,0),
+            //   opacity: 0.25,
+            //   borderOpacity: 0.5,
+            // })
             console.log("Dear Lottie, we have a new page with ",newPage.getWidth()," x ",newPage.getHeight()," and we're mashing onto it ", embeddedPage.width, ", ", embeddedPage.height)
             embeddedPage.embed();
             this.cropbox = newPage.getCropBox();
