@@ -204,7 +204,7 @@ class Book {
             }
 
             this.rearrangedpages = this.book.pagelist;
-        } else if (this.format == 'a9_3_3_4' || this.format == 'a10_6_10s' || this.format == 'A7_2_16s' || this.format == '1_3rd' || this.format == 'a_3_6s' || this.format == 'a_4_8s') {
+        } else if (this.format == 'a9_3_3_4' || this.format == 'a10_6_10s' || this.format == 'A7_2_16s' || this.format == '1_3rd' || this.format == '8_zine'|| this.format == 'a_3_6s' || this.format == 'a_4_8s') {
             this.book = new _wacky_imposition_js__WEBPACK_IMPORTED_MODULE_5__.WackyImposition(this.orderedpages, this.duplex, this.format, this.pack_pages)
         }
         console.log("Created pages for : ",this.book)
@@ -261,6 +261,8 @@ class Book {
             resultPDF = await this.buildSheets(this.filename, this.book.a7_2_16s_builder());
         } else if (this.format == '1_3rd') {
             resultPDF = await this.buildSheets(this.filename, this.book.page_1_3rd_builder());
+        } else if (this.format == '8_zine') {
+            resultPDF = await this.buildSheets(this.filename, this.book.page_8_zine_builder());
         }
         console.log("Attempting to generate preview for ",resultPDF);
 
@@ -30803,7 +30805,19 @@ class WackyImposition{
       } else if (format == "A7_2_16s") {
         this.sheets = Math.ceil(pages.length/32.0);
         this.sigconfig = Array(this.sheets * 2)
+      } else if (format == "8_zine") {
+        this.sheets = 1;
+        this.sigconfig = [1];
       }
+    }
+
+    page_8_zine_builder() {
+        return {
+            sheetMaker: this.build_8_zine_sheetList.bind(this),
+            lineMaker: this.build_8_zine_lineFunction.bind(this),
+            isLandscape: false,
+            fileNameMod: "8_zine" + ((this.isPacked) ? "_packed" : "_spread")
+        }
     }
 
     page_1_3rd_builder() {
@@ -30860,8 +30874,25 @@ class WackyImposition{
         }
     }
 
+
     // ---------------- the real guts of the layout
 
+
+    /**
+     * It's an 8 page zine. Same page count every time....
+     *
+     * @param pageCount - total pages in document (to add blanks if < 8)
+     * @return an array of a single sheets. It's just one printed page (face)
+     *      The sheet is an array of rows, containing a list of page objects
+     */
+    build_8_zine_sheetList(pageCount) {
+        let p = this.page;
+        let f = this.flipPage;
+        return  [[
+            this.auditForBlanks([ p(7),p(0),p(1),p(2) ], pageCount),
+            this.auditForBlanks([ f(6),f(5),f(4),f(3) ], pageCount)
+        ]];
+    }
 
     /**
      * Produces a 3 folio signature per sheet
@@ -30924,6 +30955,23 @@ class WackyImposition{
                 this.cutHorizontal(info.paperSize[0], vGap(3) + info.renderPageSize[1] * 3),
             ]
             .concat(foldMarks);
+        };
+    }
+
+    /**
+     * @return a FUNCTION. The function takes as it's parameter:
+     *       Object definition: {
+     *           gap: [leftGap, topGap],
+     *           renderPageSize: [width, height],
+     *           paperSize: [width, height],
+     *           isFront: boolean,
+     *           isPacked: boolean
+     *       }
+     *       and returns: a list of lines, as described by PDF-lib.js's `PDFPageDrawLineOptions` object
+     */
+    build_8_zine_lineFunction() {
+        return info => {
+            return [];
         };
     }
 
