@@ -31,7 +31,7 @@ export class Book {
         this.signatureconfig = [];  //  signature configuration
 
         this.input = null;    //  opened pdf file
-        this.currentdoc = null;    //  uploaded PDF, untouched by source_rotation - use managedDoc for layout
+        this.currentdoc = null;    //  uploaded PDF [Itext PDFReader object] untouched by source_rotation - use managedDoc for layout
         this.pagecount = null;
         this.cropbox = null;
 
@@ -263,7 +263,6 @@ export class Book {
             var rotationMetaInfo = ((this.paper_rotation_90) ? "_paperRotated" : "")
                 + ((this.source_rotation == 'none') ? "" : `_${this.source_rotation}`)
             this.filename = `${origFileName}${rotationMetaInfo}`
-            console.log("Lottie, why is my name bad??? ",rotationMetaInfo," and ", origFileName," yields: ",this.filename)
             resultPDF = aggregatePdf;
         } else if (this.format == 'a9_3_3_4') {
             resultPDF = await this.buildSheets(this.filename, this.book.a9_3_3_4_builder());
