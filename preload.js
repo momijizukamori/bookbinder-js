@@ -53,7 +53,7 @@ class Book {
         this.signatureconfig = [];  //  signature configuration
 
         this.input = null;    //  opened pdf file
-        this.currentdoc = null;    //  uploaded PDF, untouched by source_rotation - use managedDoc for layout
+        this.currentdoc = null;    //  uploaded PDF [Itext PDFReader object] untouched by source_rotation - use managedDoc for layout
         this.pagecount = null;
         this.cropbox = null;
 
@@ -285,7 +285,6 @@ class Book {
             var rotationMetaInfo = ((this.paper_rotation_90) ? "_paperRotated" : "")
                 + ((this.source_rotation == 'none') ? "" : `_${this.source_rotation}`)
             this.filename = `${origFileName}${rotationMetaInfo}`
-            console.log("Lottie, why is my name bad??? ",rotationMetaInfo," and ", origFileName," yields: ",this.filename)
             resultPDF = aggregatePdf;
         } else if (this.format == 'a9_3_3_4') {
             resultPDF = await this.buildSheets(this.filename, this.book.a9_3_3_4_builder());
@@ -31417,11 +31416,8 @@ function renderInfoBox(book) {
     const sigArrange = document.getElementById('sig_arrange');
     const totalPages = document.getElementById('total_pages');
 
-    console.log("What SHOULD the book be?" , book)
-    console.log("What SHOULD the book.book be?" , book.book)
     if (book.book == null || book.book == undefined)
         return
-    console.log("What SHOULD the book.book.pagelist be?" , book.book.pagelist)
 
     const outputPages = book.book.pagelist.reduce((acc, list) => {
         list.forEach((sublist) => (acc += sublist.length));
