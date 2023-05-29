@@ -1,4 +1,4 @@
-import { PDFDocument, degrees, rgb } from 'pdf-lib';
+import { PDFDocument, degrees, grayscale, rgb } from 'pdf-lib';
 import { saveAs } from 'file-saver';
 import { Signatures } from './signatures.js';
 import { Booklet } from './booklet.js';
@@ -15,19 +15,23 @@ export class Book {
         this.duplex = false; //FIXME
         this.duplexrotate = true;
         this.papersize = PAGE_SIZES.A4;   //  default for europe
+        this.paper_rotation_90 = false; // make the printed page landscape [for landscaped layouts, results in portait]
+
+        // valid rotation options: [none, 90cw, 90ccw, out_binding, in_binding]
+        this.source_rotation = 'none'; // new feature to rotate pages on the sheets 2023/3/09
+        this.managedDoc = null; // original PDF with the pages rotated per source_rotation - use THIS for laying out pages
 
         this.page_scaling = 'lockratio';
         this.page_positioning = 'centered';
         this.flyleaf = false;
         this.spineoffset = false;
         this.format = 'standardsig';
-        this.booksize = [null, null];
         this.sigsize = 4;       //  preferred signature size
         this.customsig = null;
         this.signatureconfig = [];  //  signature configuration
 
         this.input = null;    //  opened pdf file
-        this.currentdoc = null;    //  Itext PDFReader object
+        this.currentdoc = null;    //  uploaded PDF [Itext PDFReader object] untouched by source_rotation - use managedDoc for layout
         this.pagecount = null;
         this.cropbox = null;
 
@@ -49,7 +53,14 @@ export class Book {
 
         this.duplex = form.get('printer_type') == 'duplex';
         this.duplexrotate = form.has('rotate_page');
+        this.paper_rotation_90 = form.has('paper_rotation_90');
         this.papersize = PAGE_SIZES[form.get('paper_size')];
+        if (this.paper_rotation_90) {
+            this.papersize = [this.papersize[1], this.papersize[0]]
+        }
+
+        this.source_rotation = form.get("source_rotation");
+        
         this.page_scaling = form.get("page_scaling");
         this.page_positioning = form.get("page_positioning");
         this.flyleaf = form.has('flyleaf');
@@ -70,10 +81,8 @@ export class Book {
                     this.signatureconfig.push(num);
                 }
             });
-
         }
 
-        this.booksize = [this.papersize[1] * 0.5, this.papersize[0]];
         this.page_layout = form.get('pagelayout') == null ? 'folio' : PAGE_LAYOUTS[form.get('pagelayout')];
         this.per_sheet = this.page_layout.per_sheet;
         this.pack_pages = form.get('wacky_spacing') == 'wacky_pack';
@@ -126,19 +135,8 @@ export class Book {
 
     }
 
-    setbooksize(targetsize, customx, customy) {
-        if (targetsize == 'full') {
-            this.booksize = [this.papersize[1] * 0.5, this.papersize[0]]
-        } else if (targetsize == 'custom') {
-            this.booksize = [customx, customy];
-        } else {
-            this.booksize = TARGET_BOOK_SIZE[targetsize];
-        }
-
-    }
-
     createpagelist() {
-        this.pagecount = this.currentdoc.getPageCount();
+        this.pagecount = (this.managedDoc == null) ? this.currentdoc.getPageCount() : this.managedDoc.getPageCount();
         this.orderedpages = Array.from({ length: this.pagecount }, (x, i) => i);
 
         if (this.flyleaf) {
@@ -166,8 +164,42 @@ export class Book {
         console.log("Calculated pagecount [",this.pagecount,"] and ordered pages: ", this.orderedpages)
     }
 
-    createpages() {
+    async createpages() {
         this.createpagelist();
+        this.managedDoc = await PDFDocument.create()
+        var pages = this.currentdoc.getPages();
+        for (var i = 0; i < pages.length; ++i) {
+            var page = pages[i]
+            var embeddedPage = null
+            var newPage = this.managedDoc.addPage();
+            var rotate90cw = this.source_rotation == '90cw' 
+                || (this.source_rotation == 'out_binding' && i % 2 == 0)
+                || (this.source_rotation == 'in_binding' && i % 2 == 1)
+            var rotate90ccw = this.source_rotation == '90ccw' 
+                || (this.source_rotation == 'out_binding' && i % 2 == 1)
+                || (this.source_rotation == 'in_binding' && i % 2 == 0)
+
+            if (this.source_rotation == 'none') {
+                embeddedPage = await this.managedDoc.embedPage(page, undefined, [1, 0, 0, 1, 0, 0]);
+                newPage.setSize(embeddedPage.width, embeddedPage.height);
+            } else if (rotate90ccw) {
+                embeddedPage = await this.managedDoc.embedPage(page, undefined, [0, 1, -1, 0, page.getHeight(), 0]); // this is CCW
+                newPage.setSize(embeddedPage.height, embeddedPage.width);
+            } else if (rotate90cw) {
+                embeddedPage = await this.managedDoc.embedPage(page, undefined, [0, -1, 1, 0, 0, page.getWidth()]); // this is CW
+                newPage.setSize(embeddedPage.height, embeddedPage.width);
+            } else {
+                var e = new Error("??? what sorta' layout you think you're going to get?");
+                console.error(e);
+                throw e;
+            }
+            newPage.drawPage(embeddedPage);
+            embeddedPage.embed();
+            this.cropbox = newPage.getCropBox();
+        }
+
+        console.log("The updatedDoc doc has : ", this.managedDoc.getPages(), " vs --- ", this.managedDoc.getPageCount());
+        
         if (this.format == 'booklet') {
             this.book = new Booklet(this.orderedpages, this.duplex);
         } else if (this.format == 'perfect') {
@@ -200,7 +232,8 @@ export class Book {
         //  create a directory named after the input pdf and fill it with
         //  the signatures
         this.zip = new JSZip();
-        this.filename = this.inputpdf.replace(/\s|,|\.pdf/, '');
+        var origFileName = this.inputpdf.replace(/\s|,|\.pdf/, '');
+        this.filename = origFileName
 
         if (this.format == 'booklet') {
             await this.createsignatures(this.rearrangedpages, 'booklet');
@@ -219,14 +252,18 @@ export class Book {
                 }
             }
             await forLoop();
+
             if (this.duplex && this.rearrangedpages.length > 1) {
                 await aggregatePdf.save().then(pdfBytes => { 
+                // await this.managedDoc.save().then(pdfBytes => { 
                     if (!isPreview) 
                         this.zip.file('aggregate_book.pdf', pdfBytes); 
                 });
             }
+            var rotationMetaInfo = ((this.paper_rotation_90) ? "_paperRotated" : "")
+                + ((this.source_rotation == 'none') ? "" : `_${this.source_rotation}`)
+            this.filename = `${origFileName}${rotationMetaInfo}`
             resultPDF = aggregatePdf;
-            // // SHARKS
         } else if (this.format == 'a9_3_3_4') {
             resultPDF = await this.buildSheets(this.filename, this.book.a9_3_3_4_builder());
         } else if (this.format == 'a10_6_10s') {
@@ -285,7 +322,7 @@ export class Book {
             }
         });
 
-        let embeddedPages = await outPDF.embedPdf(this.currentdoc, filteredList);
+        let embeddedPages = await outPDF.embedPdf(this.managedDoc, filteredList);
         blankIndices.forEach(i => embeddedPages.splice(i, 0, 'b'));
 
         let block_start = 0;
@@ -681,7 +718,7 @@ export class Book {
             console.warn("All the pages are empty! : ",pagelist);
             return;
         }
-        let embeddedPages = await outPDF.embedPdf(this.currentdoc, filteredList);
+        let embeddedPages = await outPDF.embedPdf(this.managedDoc, filteredList);
         // TODO : make sure the max dimen is correct here...
         let papersize = isLandscape ? [this.papersize[1], this.papersize[0]] : [this.papersize[0], this.papersize[1]]
         let curPage = outPDF.addPage(papersize);

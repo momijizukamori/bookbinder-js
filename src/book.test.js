@@ -12,7 +12,6 @@ describe('Book model', () => {
         flyleaf: false,
         spineoffset: false,
         format: 'standardsig',
-        booksize: [null, null],
         sigsize: 4,
         customsig: null,
         signatureconfig: [],
