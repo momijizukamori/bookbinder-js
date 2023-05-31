@@ -11,10 +11,13 @@ import {
 } from './renderUtils';
 
 export function updateForm(book) {
-    book.createpages();
-    renderPageCount(book);
-    renderInfoBox(book);
-    renderWacky();
+    console.log("Form updated....")
+    book.createpages().then(() => {
+        console.log("... pages created")
+        renderPageCount(book);
+        renderInfoBox(book);
+        renderWacky();
+    })
 }
 
 export function saveForm(formData, book) {
