@@ -240,7 +240,6 @@ class Book {
             } else {
                 this.book.createsigconfig();
             }
-
             this.rearrangedpages = this.book.pagelist;
         } else if (this.format == 'a9_3_3_4' || this.format == 'a10_6_10s' || this.format == 'A7_2_16s' || this.format == '1_3rd' || this.format == '8_zine'|| this.format == 'a_3_6s' || this.format == 'a_4_8s') {
             this.book = new _wacky_imposition_js__WEBPACK_IMPORTED_MODULE_5__.WackyImposition(this.orderedpages, this.duplex, this.format, this.pack_pages)
@@ -264,19 +263,34 @@ class Book {
         this.filename = origFileName
 
         if (this.format == 'booklet') {
-            await this.createsignatures(this.rearrangedpages, 'booklet');
+            await this.createsignatures({
+                pages: this.rearrangedpages, 
+                id: 'booklet',
+                isDuplex: this.duplex,
+                fileList: this.fileList
+            });
         } else if (this.format == 'perfect') {
-            await this.createsignatures(this.rearrangedpages, 'perfect');
+            await this.createsignatures({
+                pages: this.rearrangedpages, 
+                id: 'perfect',
+                isDuplex: this.duplex,
+                fileList: this.filelist
+            });
         } else if (this.format == 'standardsig' || this.format == 'customsig') {
             const aggregatePdf = await pdf_lib__WEBPACK_IMPORTED_MODULE_0__.PDFDocument.create();
+            var pageNumbers = Array.from(Array(this.managedDoc.getPageCount()).keys())
+            let embeddedPages = await aggregatePdf.embedPdf(this.managedDoc, pageNumbers);
             const forLoop = async _ => {
                 for (let i = 0; i < this.rearrangedpages.length; i++) {
                     let page = this.rearrangedpages[i];
-                    const newPDF = await this.createsignatures(page, `signature${i}`);
-                    if (newPDF != null) {
-                        const dupPages = await aggregatePdf.copyPages(newPDF, newPDF.getPageIndices());
-                        dupPages.forEach( page => { aggregatePdf.addPage(page); });
-                    }
+                    await this.createsignatures({
+                        embeddedPages: embeddedPages,
+                        aggregatePdf: aggregatePdf,
+                        pageIndexes: page, 
+                        id: `signature${i}`,
+                        isDuplex: this.duplex,
+                        fileList: this.filelist
+                    });
                 }
             }
             await forLoop();
@@ -335,11 +349,21 @@ class Book {
     }
 
     /**
+     * @param config - object /w the following parameters:
+     *      - outname : name of pdf added to ongoing zip file. Ex: 'signature1duplex.pdf'
+     *      - pageList : indicies of pages to assemble. Ex: [12, 11, 10, 13, 14, 9, 8, 15]
+     *      - back : is 'back' of page  (boolean)
+     *      - alt : alternate pages (boolean)
+     *      - destPdf : PDF to write to, in addition to PDF created w/ `outname` (or null)
+     *      - providedPages : pages already embedded in the `destPdf` to assemble in addition (or null)
      * @return reference to the new PDF created
      */
-    async writepages(outname, pagelist, back, alt) {
+    async writepages(config) {
+        const outname = config.outname;
+        const pagelist = config.pageList;
+        const back = config.back;
+        const alt = config.alt;
         const outPDF = await pdf_lib__WEBPACK_IMPORTED_MODULE_0__.PDFDocument.create();
-        let currPage = null;
         let filteredList = [];
         let blankIndices = [];
         pagelist.forEach((page, i) => {
@@ -351,7 +375,12 @@ class Book {
         });
 
         let embeddedPages = await outPDF.embedPdf(this.managedDoc, filteredList);
+        let destPdfPages = (config.providedPages == null) ? null : filteredList.map( (pI) => {
+            return config.providedPages[pI]
+        })
+
         blankIndices.forEach(i => embeddedPages.splice(i, 0, 'b'));
+        blankIndices.forEach(i => destPdfPages.splice(i, 0, 'b'));
 
         let block_start = 0;
         const offset = this.per_sheet / 2;
@@ -364,40 +393,72 @@ class Book {
         let side2flag = back;
     
         while (block_end <= pagelist.length) {
-            
-            let block = embeddedPages.slice(block_start, block_end);
-            currPage = outPDF.addPage([this.papersize[0], this.papersize[1]]);
-
-            block.forEach((page, i) => {
-                if (page == 'b') {
-                    // blank page, move on.
-                } else {
-                    let pos = positions[i];
-                    let rot = pos.rotation;
-
-                    currPage.drawPage(page, { y: pos.y, x: pos.x, xScale: pos.sx, yScale: pos.sy, rotate: (0,pdf_lib__WEBPACK_IMPORTED_MODULE_0__.degrees)(rot) });
-                }
-    
-            })
-
-            if (this.cropmarks) {
-                this.draw_cropmarks(currPage, side2flag);
+            if (config.destPdf) {
+                this.draw_block_onto_page({
+                    outPDF: config.destPdf,
+                    embeddedPages: destPdfPages,
+                    block_start: block_start,
+                    block_end: block_end,
+                    papersize: this.papersize,
+                    positions: positions,
+                    cropmarks: this.cropmarks,
+                    cutmarks: this.cutmarks,
+                    alt: alt,
+                    side2flag: side2flag
+                });
             }
-
-            if (this.cutmarks) {
-                this.draw_cutmarks(currPage)
-            }
-
-            if (alt) {
-                side2flag = !side2flag;
-            }
-
+            side2flag = this.draw_block_onto_page({
+                outPDF: outPDF,
+                embeddedPages: embeddedPages,
+                block_start: block_start,
+                block_end: block_end,
+                papersize: this.papersize,
+                positions: positions,
+                cropmarks: this.cropmarks,
+                cutmarks: this.cutmarks,
+                alt: alt,
+                side2flag: side2flag
+            });
             block_start += offset;
             block_end += offset;
         }
 
         await outPDF.save().then(pdfBytes => { this.zip.file(outname, pdfBytes); });
-        return outPDF;
+    }
+
+    draw_block_onto_page(config) {
+        const block_start = config.block_start
+        const block_end = config.block_end
+        const papersize = config.papersize
+        const outPDF = config.outPDF
+        const positions = config.positions
+        const cropmarks = config.cropmarks
+        const cutmarks = config.cutmarks
+        const alt = config.alt
+        let side2flag = config.side2flag
+
+        let block = config.embeddedPages.slice(block_start, block_end);
+        let currPage = outPDF.addPage([papersize[0], papersize[1]]);
+
+        block.forEach((page, i) => {
+            if (page == 'b') {
+                // blank page, move on.
+            } else {
+                let pos = positions[i];
+                let rot = pos.rotation;
+                currPage.drawPage(page, { y: pos.y, x: pos.x, xScale: pos.sx, yScale: pos.sy, rotate: (0,pdf_lib__WEBPACK_IMPORTED_MODULE_0__.degrees)(rot) });
+            }
+        });
+        if (cropmarks) {
+            this.draw_cropmarks(currPage, side2flag);
+        }
+        if (cutmarks) {
+            this.draw_cutmarks(currPage)
+        }
+        if (alt) {
+            side2flag = !side2flag;
+        }
+        return side2flag
     }
 
     draw_cropmarks(currPage, side2flag) {
@@ -631,32 +692,54 @@ class Book {
     }
 
     /**
-     * @param pages - a nested list of original source document pages. Single list of list for duplex, two entries for non-duplex
-     *
-     * @return returns a newly created PDF if duplex or null
+     * @param config - object w/ the following parameters:
+     *    - pageIndexes : a nested list of original source document pages. Single list of list for duplex, two entries for non-duplex. Ex: [[4, 3, 2, 5, 6, 1, 0, 7]]
+     *    - aggregatePdf : the destination PDF for aggregated content in duplex signature mode (is null otherwise)
+     *    - embeddedPages : all pages of source document, embedded in the aggregated PDF (is null for non-duplex signature modes)
+     *    - id : string dentifier for signature/file info 
+     *    - isDuplex : boolean
+     *    - fileList : list of filenames for sig filename to be added to (modifies list)
      */
-    async createsignatures(pages, id) {
-        let result = null;
+    async createsignatures(config) {
+        const pages = config.pageIndexes;
+        const id = config.id;
+        console.log("Rebecca: createsignatures : pages : ", pages)
         //      duplex printers print both sides of the sheet, 
-        if (this.duplex) {
+        if (config.isDuplex) {
             // let outduplex = this.outputpath + '/' + id + 'duplex' + '.pdf';
             let outduplex = id + 'duplex' + '.pdf';
-            result = await this.writepages(outduplex, pages[0], false, true);
-            this.filelist.push(outduplex);
+            await this.writepages({
+                outname: outduplex, 
+                pageList: pages[0], 
+                back: false, 
+                alt: true,
+                destPdf: config.aggregatePdf,
+                providedPages: config.embeddedPages
+            });
+            config.fileList.push(outduplex);
         } else {
             //      for non-duplex printers we have two files, print the first, flip 
             //      the sheets over, then print the second. damned inconvenient
             let outname1 = id + 'side1.pdf';
             let outname2 = id + 'side2.pdf';
  
-            await this.writepages(outname1, pages[0], false, false);
-            await this.writepages(outname2, pages[1], true, false);
+            await this.writepages({
+                outname: outname1, 
+                pageList: pages[0], 
+                back: false, 
+                alt: false
+            });
+            await this.writepages({
+                outname: outname2, 
+                pageList: pages[1], 
+                back: true, 
+                alt: false
+            });
 
-            this.filelist.push(outname1);
-            this.filelist.push(outname2);
+            config.fileList.push(outname1);
+            config.fileList.push(outname2);
         }
         console.log("After creating signatures, our filelist looks like: ",this.filelist)
-        return result;
     }
 
     saveZip() {
