@@ -96,7 +96,6 @@ export class Book {
         };
         updateAddOrRemoveCustomPaperOption()
         updatePaperSelectOptionsUnits() // make sure this goes AFTER the Custom update!
-        console.log("Rebecca! Our stuff? ",this.padding_pt);
     }
 
     extractIntFromForm(form, fieldName) {
@@ -167,10 +166,11 @@ export class Book {
     async createpages() {
         this.createpagelist();
         this.managedDoc = await PDFDocument.create()
-        var pages = this.currentdoc.getPages();
+        var pageNumbers = Array.from(Array(this.currentdoc.getPageCount()).keys())
+        let pages = await this.managedDoc.embedPdf(this.currentdoc, pageNumbers);
+
         for (var i = 0; i < pages.length; ++i) {
             var page = pages[i]
-            var embeddedPage = null
             var newPage = this.managedDoc.addPage();
             var rotate90cw = this.source_rotation == '90cw' 
                 || (this.source_rotation == 'out_binding' && i % 2 == 0)
@@ -178,23 +178,29 @@ export class Book {
             var rotate90ccw = this.source_rotation == '90ccw' 
                 || (this.source_rotation == 'out_binding' && i % 2 == 1)
                 || (this.source_rotation == 'in_binding' && i % 2 == 0)
-
             if (this.source_rotation == 'none') {
-                embeddedPage = await this.managedDoc.embedPage(page, undefined, [1, 0, 0, 1, 0, 0]);
-                newPage.setSize(embeddedPage.width, embeddedPage.height);
+                newPage.setSize(page.width, page.height);
+                newPage.drawPage(page);
             } else if (rotate90ccw) {
-                embeddedPage = await this.managedDoc.embedPage(page, undefined, [0, 1, -1, 0, page.getHeight(), 0]); // this is CCW
-                newPage.setSize(embeddedPage.height, embeddedPage.width);
+                newPage.setSize(page.height, page.width);
+                newPage.drawPage(page, {
+                  x: page.height,
+                  y: 0,
+                  rotate: degrees(90),
+                });
             } else if (rotate90cw) {
-                embeddedPage = await this.managedDoc.embedPage(page, undefined, [0, -1, 1, 0, 0, page.getWidth()]); // this is CW
-                newPage.setSize(embeddedPage.height, embeddedPage.width);
+               newPage.setSize(page.height, page.width);
+                newPage.drawPage(page, {
+                  x: 0,
+                  y: page.width,
+                  rotate: degrees(-90),
+                });
             } else {
                 var e = new Error("??? what sorta' layout you think you're going to get?");
                 console.error(e);
                 throw e;
             }
-            newPage.drawPage(embeddedPage);
-            embeddedPage.embed();
+            page.embed();
             this.cropbox = newPage.getCropBox();
         }
 
