@@ -99,6 +99,13 @@
                     </select>
                     <span data-balloon-length="medium" aria-label="Duplex will alternate front and backs of sheets in a single file; Single-sided will split fronts and backs into seperate files." data-balloon-pos="up">ℹ️</span>
                 </span>
+                <span class="row"><label for="print_file">Print File</label>
+                    <select name="print_file" id="print_file">
+                        <option value="aggregated">Aggregated File Only</option>
+                        <option value="both" selected>Both aggregated & per signature files</option>
+                        <option value="signatures">Signature Files Only</option>
+                    </select>
+                </span>
 
                 <span class="row">
                     <label for="paper_rotation_90">Rotate Paper 90° <input type="checkbox" name="paper_rotation_90" id="paper_rotation_90"></label>
