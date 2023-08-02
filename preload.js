@@ -379,7 +379,9 @@ class Book {
 
     /**
      * Generates a new PDF & embeds the prescribed pages of the source PDF into it
+     *
      * @param pageNumbers - an array of page numbers. Ex: [1,5,6,7,8,'b',10] or null to embed all pages from source
+     *          NOTE: re-construction behavior kicks in if there's 'b's in the list
      *
      * @return [newPdf with pages embedded, embedded page array]
      */
@@ -392,14 +394,16 @@ class Book {
             pageNumbers = pageNumbers.filter( p => {return typeof p === 'number'})
         }
         let embeddedPages =  await newPdf.embedPdf(sourcePdf, pageNumbers);
+        // what a gnarly little hack. Letting this sit for now -- 
+        //   --- downstream code requires embeds to be in their 'correct' index possition
+        //    but we want to only embed half the pages for the aggregate single sides
+        //    thus we expand the embedded pages to allow those gaps to return. This is gross & dumb but whatever...
         if (needsReSorting) {
             embeddedPages = embeddedPages.reduce((acc, curVal, curI) => {
-                console.log("Weeeee....",acc)
                 acc[pageNumbers[curI]] = curVal;
                 return acc
             },[])
         }
-        console.log("Rebecca, we got a new embedded pages [",needsReSorting," : ",pageNumbers,"] : ", embeddedPages)
         return [newPdf, embeddedPages]
     }
 
