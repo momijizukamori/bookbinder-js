@@ -51,7 +51,6 @@ export class Book {
     }
 
     update(form) {
-
         this.duplex = form.get('printer_type') == 'duplex';
         this.duplexrotate = form.has('rotate_page');
         this.paper_rotation_90 = form.has('paper_rotation_90');
@@ -61,7 +60,7 @@ export class Book {
         }
 
         this.source_rotation = form.get("source_rotation");
-        
+
         this.print_file = form.get("print_file");
         this.page_scaling = form.get("page_scaling");
         this.page_positioning = form.get("page_positioning");
@@ -105,6 +104,9 @@ export class Book {
         return (isNaN(num)) ? 0 : num;
     }
 
+    /**
+     * Populates [this.currentdoc] from user's file system
+     */
     async openpdf(file) {
         this.inputpdf = file.name;
         this.input = await file.arrayBuffer(); //fs.readFileSync(filepath);
@@ -136,6 +138,9 @@ export class Book {
 
     }
 
+    /**
+     * Populates [this.orderedpages] (array [0, 1, ... this.page_sheets * # of sheets]) 
+     */
     createpagelist() {
         this.pagecount = (this.managedDoc == null) ? this.currentdoc.getPageCount() : this.managedDoc.getPageCount();
         this.orderedpages = Array.from({ length: this.pagecount }, (x, i) => i);
@@ -165,11 +170,14 @@ export class Book {
         console.log("Calculated pagecount [",this.pagecount,"] and ordered pages: ", this.orderedpages)
     }
 
+    /**
+     * Populates [this.managedDoc] with potentially rotated pages
+     *  & populates [this.book] with the correct Book instance
+     */
     async createpages() {
         this.createpagelist();
-        this.managedDoc = await PDFDocument.create()
-        var pageNumbers = Array.from(Array(this.currentdoc.getPageCount()).keys())
-        let pages = await this.managedDoc.embedPdf(this.currentdoc, pageNumbers);
+        let pages;
+        [this.managedDoc, pages] = await this.embedPagesInNewPdf(this.currentdoc)
 
         for (var i = 0; i < pages.length; ++i) {
             var page = pages[i]
@@ -228,6 +236,8 @@ export class Book {
     }
 
     /**
+     * Calls the appropriate builder basec on [this.format]
+     *  to generate PDF & populate Previewer
      * @param isPreview - if it's true we only generate preview content, if it's not true... we still 
      *      generate preview content AND a downloadable zip
      */
@@ -257,17 +267,23 @@ export class Book {
                 fileList: this.filelist
             });
         } else if (this.format == 'standardsig' || this.format == 'customsig') {
-            const aggregatePdf = (this.print_file != "signatures") ? await PDFDocument.create() : null;
-            var pageNumbers = Array.from(Array(this.managedDoc.getPageCount()).keys())
-            let embeddedPages = (this.print_file != "signatures") ? await aggregatePdf.embedPdf(this.managedDoc, pageNumbers) : null;
+            const generateAggregate = this.print_file != "signatures"
+            const generateSignatures = this.print_file != "aggregated"
+            const [pdf0PageNumbers, pdf1PageNumbers] = (!generateAggregate || this.duplex) ? [null, null]
+            : [
+                null,//this.rearrangedpages.reduce((accumulator, currentValue) => {return accumulator.concat(currentValue[0])},[]),
+                null//this.rearrangedpages.reduce((accumulator, currentValue) => {return accumulator.concat(currentValue[1])},[])
+              ]
+            const [aggregatePdf0, embeddedPages0] = (generateAggregate) ? await this.embedPagesInNewPdf(this.managedDoc, pdf0PageNumbers) : [null, null]
+            const [aggregatePdf1, embeddedPages1] = (generateAggregate && !this.duplex) ? await this.embedPagesInNewPdf(this.managedDoc, pdf1PageNumbers) : [null, null]
             const forLoop = async _ => {
                 for (let i = 0; i < this.rearrangedpages.length; i++) {
                     let page = this.rearrangedpages[i];
                     await this.createsignatures({
-                        embeddedPages: embeddedPages,
-                        aggregatePdf: aggregatePdf,
+                        embeddedPages: (generateAggregate) ? [embeddedPages0, embeddedPages1] : null,
+                        aggregatePdfs: (generateAggregate) ? [aggregatePdf0, aggregatePdf1] : null,
                         pageIndexes: page, 
-                        id: `signature${i}`,
+                        id: (generateSignatures) ? `signature${i}` : null,
                         isDuplex: this.duplex,
                         fileList: this.filelist
                     });
@@ -275,16 +291,22 @@ export class Book {
             }
             await forLoop();
 
-            if (this.duplex && this.rearrangedpages.length > 1 && this.print_file != "signatures") {
-                await aggregatePdf.save().then(pdfBytes => { 
+            if (aggregatePdf1 != null) {
+                await aggregatePdf1.save().then(pdfBytes => { 
+                        if (!isPreview) 
+                            this.zip.file('aggregate_side2.pdf', pdfBytes); 
+                    });
+            }
+            if (aggregatePdf0 != null) {
+                await aggregatePdf0.save().then(pdfBytes => { 
                     if (!isPreview) 
-                        this.zip.file('aggregate_book.pdf', pdfBytes); 
+                        this.zip.file((this.duplex) ? 'aggregate_book.pdf' : 'aggregate_side1.pdf', pdfBytes); 
                 });
             }
             var rotationMetaInfo = ((this.paper_rotation_90) ? "_paperRotated" : "")
                 + ((this.source_rotation == 'none') ? "" : `_${this.source_rotation}`)
             this.filename = `${origFileName}${rotationMetaInfo}`
-            resultPDF = aggregatePdf;
+            resultPDF = aggregatePdf0;
         } else if (this.format == 'a9_3_3_4') {
             resultPDF = await this.buildSheets(this.filename, this.book.a9_3_3_4_builder());
         } else if (this.format == 'a10_6_10s') {
@@ -302,7 +324,7 @@ export class Book {
         }
         console.log("Attempting to generate preview for ",resultPDF);
 
-        if (this.duplex && resultPDF != null) {
+        if (resultPDF != null) {
             const pdfDataUri = await resultPDF.saveAsBase64({ dataUri: true });
             const viewerPrefs = resultPDF.catalog.getOrCreateViewerPreferences()
             viewerPrefs.setHideToolbar(false)
@@ -317,8 +339,6 @@ export class Book {
             previewFrame.style.height = `${height}px`;
             previewFrame.style.display = '';
             previewFrame.src = pdfDataUri;
-        } else if (isPreview) {
-            window.alert("I'm sorry, the preivew feature doesn't work with signature only settings yet")
         }
 
         if (!isPreview)
@@ -331,11 +351,28 @@ export class Book {
      * @return the aggregate file w/ all the original pages embedded, but nothing placed
      */
     async create_base_aggregate_files() {
-        
         return aggregatePdf
     }
 
     /**
+     * Generates a new PDF & embeds the prescribed pages of the source PDF into it
+     * @param pageNumbers - an array of page numbers. Ex: [1,5,6,7,8] or null to embed all pages from source
+     *
+     * @return [newPdf with pages embedded, embedded page array]
+     */
+    async embedPagesInNewPdf(sourcePdf, pageNumbers) {
+        const newPdf = await PDFDocument.create();
+        if (pageNumbers == null) {
+            pageNumbers = Array.from(Array(sourcePdf.getPageCount()).keys())
+        }
+        const embeddedPages =  await newPdf.embedPdf(sourcePdf, pageNumbers);
+        return [newPdf, embeddedPages]
+    }
+
+    /**
+     * Part of the Classic (non-Wacky) flow. Called by [createsignatures].
+     *   (conditionally) populates the destPdf and (conditionally) generates the outname PDF
+     *
      * @param config - object /w the following parameters:
      *      - outname : name of pdf added to ongoing zip file. Ex: 'signature1duplex.pdf' (or null if no signature file needed)
      *      - pageList : indicies of pages to assemble. Ex: [12, 11, 10, 13, 14, 9, 8, 15]
@@ -350,7 +387,6 @@ export class Book {
         const printAggregate = config.providedPages != null && config.destPdf != null
         const pagelist = config.pageList;
         const back = config.back;
-        const outPDF = (printSignatures) ? await PDFDocument.create() : null;
         let filteredList = [];
         let blankIndices = [];
         pagelist.forEach((page, i) => {
@@ -360,8 +396,8 @@ export class Book {
                 blankIndices.push(i);
             }
         });
+        const [outPDF, embeddedPages] = (printSignatures) ? await this.embedPagesInNewPdf(this.managedDoc, filteredList) : [null, null];
 
-        let embeddedPages = (printSignatures) ? await outPDF.embedPdf(this.managedDoc, filteredList) : null;
         let destPdfPages = (printAggregate) ? filteredList.map( (pI) => {
             return config.providedPages[pI]
         }) : null
@@ -434,7 +470,7 @@ export class Book {
         let currPage = outPDF.addPage([papersize[0], papersize[1]]);
 
         block.forEach((page, i) => {
-            if (page == 'b') {
+            if (page == 'b' || page === undefined) {
                 // blank page, move on.
             } else {
                 let pos = positions[i];
@@ -616,15 +652,7 @@ export class Book {
             'bottom' : this.padding_pt['bottom'] * sy,
             'top' : this.padding_pt['top'] * sy
         };
-        // if (layout.landscape) {
-        //     padding = {
-        //         'fore_edge' : this.padding_pt['fore_edge'] * sx,
-        //         'binding' : this.padding_pt['binding'] * sx,
-        //         'bottom' : this.padding_pt['bottom'] * sy,
-        //         'top' : this.padding_pt['top'] * sy
-        //     };
-        // }
-       
+
         let positions = []
 
         console.log("Laying out page w/ scaling option [",this.page_scaling,"] & position option [",this.page_positioning,"] -"+
@@ -685,57 +713,60 @@ export class Book {
     }
 
     /**
+     * PDF builder base function for Classic (non-Wacky) layouts. Called by [createoutputfiles]
+     *
      * @param config - object w/ the following parameters:
-     *    - pageIndexes : a nested list of original source document pages. Single list of list for duplex, two entries for non-duplex. Ex: [[4, 3, 2, 5, 6, 1, 0, 7]]
-     *    - aggregatePdfd : the destination PDFs for aggregated content ( [0] for duplex & front, [1] for backs -- value is null if no aggregate printing enabled)
-     *    - embeddedPages : all pages of source document, embedded in the aggregated PDFs (is null for non-duplex signature modes)
-     *    - id : string dentifier for signature/file info 
+     *    - pageIndexes : a nested list of original source document page numbers ordered for layout. ( [0] for duplex & front, [1] for backs -- value is null if no aggregate printing enabled). Ex: [[4, 3, 2, 5, 6, 1, 0, 7]]
+     *    - aggregatePdfs : list of destination PDF(s_ for aggregated content ( [0] for duplex & front, [1] for backs -- value is null if no aggregate printing enabled)
+     *    - embeddedPages : list of lists of embedded pages from source document ( [0] for duplex & front, [1] for backs -- value is null if no aggregate printing enabled)
+     *    - id : string dentifier for signature file name (null if no signature files to be generated)
      *    - isDuplex : boolean
      *    - fileList : list of filenames for sig filename to be added to (modifies list)
      */
     async createsignatures(config) {
-        const printAggregate = this.print_file != "signatures"
-        const printSignatures = this.print_file != "aggregated"
+        const printAggregate = config.aggregatePdfs != null
+        const printSignatures = config.id != null
         const pages = config.pageIndexes;
-        const id = config.id;
-        console.log("Rebecca: createsignatures : pages : ", pages)
         //      duplex printers print both sides of the sheet, 
         if (config.isDuplex) {
-            // let outduplex = this.outputpath + '/' + id + 'duplex' + '.pdf';
-            let outduplex = id + 'duplex' + '.pdf';
+            let outduplex = (printSignatures) ? config.id + 'duplex' + '.pdf' : null;
             await this.writepages({
-                outname: (printSignatures) ? outduplex : null, 
+                outname: outduplex, 
                 pageList: pages[0], 
                 back: false, 
                 alt: true,
-                destPdf: (printAggregate) ? config.aggregatePdf : null,
-                providedPages: (printAggregate) ? config.embeddedPages : null
+                destPdf: (printAggregate) ? config.aggregatePdfs[0] : null,
+                providedPages: (printAggregate) ? config.embeddedPages[0] : null
             });
             if (printSignatures) {
                 config.fileList.push(outduplex);
             }
         } else {
             //      for non-duplex printers we have two files, print the first, flip 
-            //      the sheets over, then print the second. damned inconvenient
-            let outname1 = id + 'side1.pdf';
-            let outname2 = id + 'side2.pdf';
-            const aggregatedBacks = config.aggregatePdf
+            //      the sheets over, then print the second
+            let outname1 = (printSignatures) ? config.id + 'side1.pdf' : null;
+            let outname2 = (printSignatures) ? config.id + 'side2.pdf' : null;
  
             await this.writepages({
-                outname: outname1, 
-                pageList: pages[0], 
-                back: false, 
-                alt: false
+                outname: outname1,
+                pageList: pages[0],
+                back: false,
+                alt: false,
+                destPdf: (printAggregate) ? config.aggregatePdfs[0] : null,
+                providedPages: (printAggregate) ? config.embeddedPages[0] : null
             });
             await this.writepages({
-                outname: outname2, 
-                pageList: pages[1], 
-                back: true, 
-                alt: false
+                outname: outname2,
+                pageList: pages[1],
+                back: true,
+                alt: false,
+                destPdf: (printAggregate) ? config.aggregatePdfs[1] : null,
+                providedPages: (printAggregate) ? config.embeddedPages[1] : null
             });
-
-            config.fileList.push(outname1);
-            config.fileList.push(outname2);
+            if (printSignatures) {
+                config.fileList.push(outname1);
+                config.fileList.push(outname2);
+            }
         }
         console.log("After creating signatures, our filelist looks like: ",this.filelist)
     }
@@ -752,7 +783,11 @@ export class Book {
     /**
      * @param id - base for the final PDF name
      * @param builder - object to help construct this configuration. Object definition: {
-     *      sheetMaker: function that takes the page count as a param and returns an array of sheets,
+     *      sheetMaker: function that takes the page count as a param and returns an array of sheets. A sheet is { 
+     *            num: page number from original doc, 
+     *            isBlank: true renders it blank-- will override any `num` included,
+     *            vFlip: true if rendered upside down (180 rotation)
+     *       },
      *      lineMaker: function that makes a function that generates trim lines for the PDF,
      *      isLandscape: true if we need to have largest dimension be width,
      *      fileNameMod: string to affix to exported file name (contains no buffer begin/end characters)
@@ -763,6 +798,7 @@ export class Book {
         let sheets = builder.sheetMaker(this.pagecount);
         let lineMaker = builder.lineMaker();
         console.log("Working with the sheet descritpion: ", sheets);
+        // embedPagesInNewPdf
         const outPDF = await PDFDocument.create();
         const outPDF_back = await PDFDocument.create();
 
