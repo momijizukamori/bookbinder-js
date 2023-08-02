@@ -291,11 +291,12 @@ class Book {
         } else if (this.format == 'standardsig' || this.format == 'customsig') {
             const generateAggregate = this.print_file != "signatures"
             const generateSignatures = this.print_file != "aggregated"
+            const side1PageNumbers = new Set(this.rearrangedpages.reduce((accumulator, currentValue) => { return accumulator.concat(currentValue[0]) },[]))
             const [pdf0PageNumbers, pdf1PageNumbers] = (!generateAggregate || this.duplex) ? [null, null]
             : [
-                null,//this.rearrangedpages.reduce((accumulator, currentValue) => {return accumulator.concat(currentValue[0])},[]),
-                null//this.rearrangedpages.reduce((accumulator, currentValue) => {return accumulator.concat(currentValue[1])},[])
-              ]
+                Array.from(Array(this.managedDoc.getPageCount()).keys()).map( p => { return (side1PageNumbers.has(p) ? p : 'b')}),
+                Array.from(Array(this.managedDoc.getPageCount()).keys()).map( p => { return (!side1PageNumbers.has(p) ? p : 'b')})
+              ];
             const [aggregatePdf0, embeddedPages0] = (generateAggregate) ? await this.embedPagesInNewPdf(this.managedDoc, pdf0PageNumbers) : [null, null]
             const [aggregatePdf1, embeddedPages1] = (generateAggregate && !this.duplex) ? await this.embedPagesInNewPdf(this.managedDoc, pdf1PageNumbers) : [null, null]
             const forLoop = async _ => {
@@ -378,16 +379,27 @@ class Book {
 
     /**
      * Generates a new PDF & embeds the prescribed pages of the source PDF into it
-     * @param pageNumbers - an array of page numbers. Ex: [1,5,6,7,8] or null to embed all pages from source
+     * @param pageNumbers - an array of page numbers. Ex: [1,5,6,7,8,'b',10] or null to embed all pages from source
      *
      * @return [newPdf with pages embedded, embedded page array]
      */
     async embedPagesInNewPdf(sourcePdf, pageNumbers) {
         const newPdf = await pdf_lib__WEBPACK_IMPORTED_MODULE_0__.PDFDocument.create();
+        const needsReSorting = pageNumbers != null && pageNumbers.includes("b");
         if (pageNumbers == null) {
             pageNumbers = Array.from(Array(sourcePdf.getPageCount()).keys())
+        } else {
+            pageNumbers = pageNumbers.filter( p => {return typeof p === 'number'})
         }
-        const embeddedPages =  await newPdf.embedPdf(sourcePdf, pageNumbers);
+        let embeddedPages =  await newPdf.embedPdf(sourcePdf, pageNumbers);
+        if (needsReSorting) {
+            embeddedPages = embeddedPages.reduce((acc, curVal, curI) => {
+                console.log("Weeeee....",acc)
+                acc[pageNumbers[curI]] = curVal;
+                return acc
+            },[])
+        }
+        console.log("Rebecca, we got a new embedded pages [",needsReSorting," : ",pageNumbers,"] : ", embeddedPages)
         return [newPdf, embeddedPages]
     }
 
@@ -820,7 +832,6 @@ class Book {
         let sheets = builder.sheetMaker(this.pagecount);
         let lineMaker = builder.lineMaker();
         console.log("Working with the sheet descritpion: ", sheets);
-        // embedPagesInNewPdf
         const outPDF = await pdf_lib__WEBPACK_IMPORTED_MODULE_0__.PDFDocument.create();
         const outPDF_back = await pdf_lib__WEBPACK_IMPORTED_MODULE_0__.PDFDocument.create();
 
