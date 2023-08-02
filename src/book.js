@@ -270,10 +270,10 @@ export class Book {
             const generateAggregate = this.print_file != "signatures"
             const generateSignatures = this.print_file != "aggregated"
             const [pdf0PageNumbers, pdf1PageNumbers] = (!generateAggregate || this.duplex) ? [null, null]
-            : [
+            : {return [
                 null,//this.rearrangedpages.reduce((accumulator, currentValue) => {return accumulator.concat(currentValue[0])},[]),
                 null//this.rearrangedpages.reduce((accumulator, currentValue) => {return accumulator.concat(currentValue[1])},[])
-              ]
+              ]}()
             const [aggregatePdf0, embeddedPages0] = (generateAggregate) ? await this.embedPagesInNewPdf(this.managedDoc, pdf0PageNumbers) : [null, null]
             const [aggregatePdf1, embeddedPages1] = (generateAggregate && !this.duplex) ? await this.embedPagesInNewPdf(this.managedDoc, pdf1PageNumbers) : [null, null]
             const forLoop = async _ => {
