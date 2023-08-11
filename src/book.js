@@ -236,7 +236,7 @@ export class Book {
     }
 
     /**
-     * Calls the appropriate builder basec on [this.format]
+     * Calls the appropriate builder based on [this.format]
      *  to generate PDF & populate Previewer
      * @param isPreview - if it's true we only generate preview content, if it's not true... we still 
      *      generate preview content AND a downloadable zip
