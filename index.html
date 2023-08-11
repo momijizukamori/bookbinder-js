@@ -16,6 +16,8 @@
             A Javascript-based app for formatting PDFs for bookbinding. For more information, feature requests, or to
             contribute, view the project's <a href="https://github.com/momijizukamori/bookbinder-js">Github repository</a>.
             If you have issues with this version, you can try the <a href="old/">old version</a> instead, which only supports folio layouts.
+            <center style="font-family:monospace;
+    padding-top: 0.75em;font-variant-caps: small-caps;">current version: 1.0.0</center>
         </div>
         <form id="bookbinder" name="bookbinder">
             <div class="section" id="input">
@@ -99,7 +101,6 @@
                     </select>
                     <span data-balloon-length="medium" aria-label="Duplex will alternate front and backs of sheets in a single file; Single-sided will split fronts and backs into seperate files." data-balloon-pos="up">ℹ️</span>
                 </span>
-
                 <span class="row">
                     <label for="paper_rotation_90">Rotate Paper 90° <input type="checkbox" name="paper_rotation_90" id="paper_rotation_90"></label>
                     <span data-balloon-length="medium" aria-label="This puts your paper in 'landscape' -- layout still happens the same, but the porportions of things will be different" data-balloon-pos="up">ℹ️</span>
@@ -174,6 +175,15 @@
                     Top Margin: <input type="number" id="top_edge_padding_pt" name="top_edge_padding_pt" style="width: 5em;margin-left: 15px;"> pt<BR>
                     Bottom Margin: <input type="number" id="bottom_edge_padding_pt" name="bottom_edge_padding_pt" style="width: 5em;margin-left: 15px;"> pt<BR>
                 </span>
+
+                <span class="row"><label for="print_file">Downloaded File(s)</label>
+                    <select name="print_file" id="print_file">
+                        <option value="aggregated">Aggregated File Only</option>
+                        <option value="both" selected>Both aggregated & per signature files</option>
+                        <option value="signatures">Signature Files Only</option>
+                    </select>
+                </span>
+
 
             </div>
 
@@ -322,7 +332,7 @@
                 <h2>Signature Info</h2>
 
                 <button type="button" name="preview" id="preview" disabled>Preview Output</button>
-                 <sub>(Duplex-only right now, not tested in all browsers)</sub><BR>
+                <span data-balloon-length="medium" aria-label="Will not show previews if 'Signature Files Only' is selected. Only shows one side for 'Single Sided' printing. Not tested on all browsers (or any browsers other than Chrome really...)" data-balloon-pos="up">ℹ️</span>
                 <center>
                     <iframe id="pdf" style="width: 100%; height: 10px;display:none;"></iframe>
                 </center>
