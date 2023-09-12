@@ -25,7 +25,52 @@ export function renderInfoBox(book) {
     totalPages.innerText = outputPages;
 }
 
+/**
+ * Expects a data object describing the overall page layout info:
+ *
+ */
+export function updatePageLayoutInfo(info) {
+  console.log("So much info from updatePageLayoutInfo: ", info)
+  let d = document.getElementById('layout_margin_info')
+  let needsRotation = info.dimensions.layout.rotations[0] == -90 || info.dimensions.layout.rotations[0] == 90 ||  info.dimensions.layout.rotations[0][0] == -90 ||  info.dimensions.layout.rotations[0][0] == 90  
+  d.innerHTML = `
+    Paper size: ${info.papersize[0]}, ${info.papersize[1]}<BR>
+    Source PDF dimensions: ${info.cropbox.width}, ${info.cropbox.height}<BR>
+    Subdivided into ${info.dimensions.layout.rows} rows x ${info.dimensions.layout.cols} cols<BR>
+    Grid cell dimensions: ${info.dimensions.finalx}, ${info.dimensions.finaly}<BR>
+    Pages rotated: ${needsRotation}
+  `
+  console.log("Needs rotation? : "+needsRotation)
+  let scale = Math.min(250/info.papersize[0], 250/info.papersize[1])
+  let dims = [info.papersize[0] * scale, info.papersize[1] * scale]
+  let pp = document.getElementById("overall_page_layout_preview")
+  pp.style.width = `${dims[0]}px`
+  pp.style.height = `${dims[1]}px`
+  dims = [info.dimensions.finalx * info.dimensions.layout.cols * scale, info.dimensions.finaly * info.dimensions.layout.rows * scale]
+  pp = document.getElementById("overall_grid_preview")
+  pp.style.width = `${dims[0]}px`
+  pp.style.height = `${dims[1]}px`
 
+  scale = Math.min(250/info.dimensions.finalx, 250/info.dimensions.finaly)
+  dims = [info.dimensions.finalx * scale, info.dimensions.finaly * scale]
+ if (needsRotation) dims.reverse()
+  pp = document.getElementById("grid_layout_preview")
+  pp.style.width = `${dims[0]}px`
+  pp.style.height = `${dims[1]}px`
+
+  dims = [info.dimensions.pdfOnPage[0]  * scale, info.dimensions.pdfOnPage[1] * scale]
+  pp = document.getElementById("pdf_on_page_layout_preview")
+  if (needsRotation) dims.reverse()
+  pp.style.width = `${dims[0]}px`
+  pp.style.height = `${dims[1]}px`
+  dims = [info.dimensions.xpad * scale, info.dimensions.ypad * scale]
+  if (!needsRotation) dims.reverse()
+  pp.style.margin = `${dims[0]}px ${dims[1]}px`
+}
+/**
+ * Expects a data object describing the overall page layout info:
+ *
+ */
 export function updatePaperSelectOptionsUnits() {
     const paperList = document.getElementById('paper_size');
     const paperListUnit = document.getElementById('paper_size_unit').value

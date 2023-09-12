@@ -254,7 +254,19 @@ class Book {
         } else if (this.format == 'a9_3_3_4' || this.format == 'a10_6_10s' || this.format == 'A7_2_16s' || this.format == '1_3rd' || this.format == '8_zine'|| this.format == 'a_3_6s' || this.format == 'a_4_8s') {
             this.book = new _wacky_imposition_js__WEBPACK_IMPORTED_MODULE_5__.WackyImposition(this.orderedpages, this.duplex, this.format, this.pack_pages)
         }
-        console.log("Created pages for : ",this.book)
+        // dracula
+        console.log("Created pages for : ",this.book);
+        let dim = this.calculate_dimensions();
+
+        (0,_utils_renderUtils_js__WEBPACK_IMPORTED_MODULE_7__.updatePageLayoutInfo)({
+            dimensions: dim,
+            book: this.book,
+            perSheet: this.per_sheet,
+            papersize: this.papersize,
+            cropbox: this.cropbox,
+            managedDoc: this.managedDoc,
+            positions: this.calculatelayout()
+        })
     }
 
     /**
@@ -632,22 +644,14 @@ class Book {
         return [{start: {x: x - _constants_js__WEBPACK_IMPORTED_MODULE_6__.LINE_LEN, y: y}, end: {x: x + _constants_js__WEBPACK_IMPORTED_MODULE_6__.LINE_LEN, y: y}}, {start: {x: x, y: y - _constants_js__WEBPACK_IMPORTED_MODULE_6__.LINE_LEN}, end: {x: x, y: y + _constants_js__WEBPACK_IMPORTED_MODULE_6__.LINE_LEN}}]
     }
 
-
-    /**
-     * When considering page size, don't forget to take into account 
-     *  this.padding_pt's ['top','bottom','binding','fore_edge'] values
-     *
-     * @return an array of objects in the form {rotation: col, sx: sx, sy: sy, x: x, y: y}
-     */
-    calculatelayout(alt_folio){
+    calculate_dimensions() {
+        console.log("Rebecca: calculate_dimensions ")
         let pagex = this.cropbox.width + this.padding_pt['binding'] + this.padding_pt['fore_edge'];
         let pagey = this.cropbox.height + this.padding_pt['top'] + this.padding_pt['bottom'];
 
         let sheetwidth = this.papersize[0];
         let sheetheight = this.papersize[1];
 
-        // Folios are the only type with a different set of layout params for the back
-        // let layout = alt_folio ? PAGE_LAYOUTS['folio_alt'] : this.page_layout;  
         let layout = this.page_layout; 
 
         // Calculate the size of each page box on the sheet
@@ -690,9 +694,6 @@ class Book {
             'bottom' : this.padding_pt['bottom'] * sy,
             'top' : this.padding_pt['top'] * sy
         };
-
-        let positions = []
-
         console.log("Laying out page w/ scaling option [",this.page_scaling,"] & position option [",this.page_positioning,"] -"+
             "\n\tcrop box (x,y): [",this.cropbox.x,", ",this.cropbox.y,"]"+
             "\n\tcrop box (width,height): [",this.cropbox.width,", ",this.cropbox.height,"]"+
@@ -707,46 +708,68 @@ class Book {
             "\n\tpadding (bottom/binding/top/fore edge): [",padding['bottom'],", ",padding['binding'],",",padding['top'],", ",padding['fore_edge'],"]" 
             +"");
         console.log("WHAT IS GOING ON?? : layout ", layout)
-        console.log("WWHYYyyyyyy?  ", layout.rotations)
+        return {
+            ypad: ypad,
+            xpad: xpad,
+            padding: padding,
+            finalx: finalx,
+            finaly: finaly,
+            layout: layout,
+            pdfOnPage: [bookwidth, bookheight],
+            sy: sy,
+            sx: sx
+        }
+    }
 
+    /**
+     * When considering page size, don't forget to take into account 
+     *  this.padding_pt's ['top','bottom','binding','fore_edge'] values
+     *
+     * @return an array of objects in the form {rotation: col, sx: sx, sy: sy, x: x, y: y}
+     */
+    calculatelayout(alt_folio){
+        // vampire
+        let l = this.calculate_dimensions()
+        let positions = []
 
-        layout.rotations.forEach((row, i) => {
+        l.layout.rotations.forEach((row, i) => {
             row.forEach((col, j) => {
                 // page_positioning has 2 options: centered, binding_alinged
 
                 // value tracking white space to left and right of an open book/page spread
-                let leftRightPageGap = ([90,-90].includes(col)) ? ypad : xpad;
+                let leftRightPageGap = ([90,-90].includes(col)) ? l.ypad : l.xpad;
 
                 // amount to inset by, relative to fore edge, on left side of book
-                let xForeEdgeShift = padding['fore_edge'] + ((this.page_positioning == 'centered' ) ? leftRightPageGap : 2 * leftRightPageGap);
+                let xForeEdgeShift = l.padding['fore_edge'] + ((this.page_positioning == 'centered' ) ? leftRightPageGap : 2 * leftRightPageGap);
                 // amount to inset by, relative to binding, on right side of book
-                let xBindingShift = padding['binding'] + ((this.page_positioning == 'centered' ) ? leftRightPageGap : 0);
+                let xBindingShift = l.padding['binding'] + ((this.page_positioning == 'centered' ) ? leftRightPageGap : 0);
 
                 let isLeftPage = j % 2 == 0; //page on 'left' side of open book
-                let x = (j * finalx) + ((j % 2 == 0 ) ? xForeEdgeShift : xBindingShift);
-                let y = (i * finaly) + ypad + padding['bottom'] * sy;
+                let x = (j * l.finalx) + ((j % 2 == 0 ) ? xForeEdgeShift : xBindingShift);
+                let y = (i * l.finaly) + l.ypad + l.padding['bottom'] * l.sy;
 
                 if ([-180].includes(col)) { // upside-down page
                     let isLeftPage = j % 2 == 1; //page on 'left' (right side on screen)
-                    y = finaly + (i * finaly) - ypad - padding['bottom'] * sy;
-                    x = finalx + (j * finalx) - ((j % 2 == 0) ? xBindingShift : xForeEdgeShift);
+                    y = l.finaly + (i * l.finaly) - l.ypad - l.padding['bottom'] * l.sy;
+                    x = l.finalx + (j * l.finalx) - ((j % 2 == 0) ? xBindingShift : xForeEdgeShift);
                 }
 
                 if ([90].includes(col)) {   // 'top' of page is on left, right side of screen
                     let isLeftPage = i % 2 == 0; // page is on 'left' (top side of screen)
-                    x = (1 + j) * finalx - padding['bottom'] - xpad;// + padding['top'];
-                    y = (i * finaly) + ((isLeftPage) ? xForeEdgeShift : xBindingShift);// + ((isLeftPage) ? 2 * ypad : 0);//(this.padding_pt['binding'] * sx * 2));
+                    x = (1 + j) * l.finalx - l.padding['bottom'] - l.xpad;// + padding['top'];
+                    y = (i * l.finaly) + ((isLeftPage) ? xForeEdgeShift : xBindingShift);// + ((isLeftPage) ? 2 * ypad : 0);//(this.padding_pt['binding'] * sx * 2));
                 }
                 if ([-90].includes(col)) {  // 'top' of page is on the right, left sight of screen
                     let isLeftPage = i % 2 == 1; // page is on 'left' (bottom side of screen)
-                    x = j * finalx + padding['bottom'] + xpad;
-                    y = ((1+i) * finaly) - ((isLeftPage) ? xForeEdgeShift : xBindingShift);// - ((isLeftPage) ? 0 + this.padding_pt['binding'] * sx : (2 * ypad) - (this.padding_pt['binding'] * sx));
+                    x = j * l.finalx + l.padding['bottom'] + l.xpad;
+                    y = ((1+i) * l.finaly) - ((isLeftPage) ? xForeEdgeShift : xBindingShift);// - ((isLeftPage) ? 0 + this.padding_pt['binding'] * sx : (2 * ypad) - (this.padding_pt['binding'] * sx));
                 }
 
                 console.log(">> (", i, ",",j,")[",col,"] : [",x,", ",y,"] :: [xForeEdgeShift: ",xForeEdgeShift,"][xBindingShift: ",xBindingShift,"]");
-                positions.push({rotation: col, sx: sx, sy: sy, x: x, y: y})
+                positions.push({rotation: col, sx: l.sx, sy: l.sy, x: x, y: y})
             })
         })
+        console.log("And in the end of it all, (calculatelayout) we get: ",positions)
         return positions;
     }
 
@@ -31608,6 +31631,7 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony export */   renderPaperSelectOptions: () => (/* binding */ renderPaperSelectOptions),
 /* harmony export */   renderWacky: () => (/* binding */ renderWacky),
 /* harmony export */   updateAddOrRemoveCustomPaperOption: () => (/* binding */ updateAddOrRemoveCustomPaperOption),
+/* harmony export */   updatePageLayoutInfo: () => (/* binding */ updatePageLayoutInfo),
 /* harmony export */   updatePaperSelectOptionsUnits: () => (/* binding */ updatePaperSelectOptionsUnits)
 /* harmony export */ });
 /* harmony import */ var _constants__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(177);
@@ -31638,7 +31662,52 @@ function renderInfoBox(book) {
     totalPages.innerText = outputPages;
 }
 
+/**
+ * Expects a data object describing the overall page layout info:
+ *
+ */
+function updatePageLayoutInfo(info) {
+  console.log("So much info from updatePageLayoutInfo: ", info)
+  let d = document.getElementById('layout_margin_info')
+  let needsRotation = info.dimensions.layout.rotations[0] == -90 || info.dimensions.layout.rotations[0] == 90 ||  info.dimensions.layout.rotations[0][0] == -90 ||  info.dimensions.layout.rotations[0][0] == 90  
+  d.innerHTML = `
+    Paper size: ${info.papersize[0]}, ${info.papersize[1]}<BR>
+    Source PDF dimensions: ${info.cropbox.width}, ${info.cropbox.height}<BR>
+    Subdivided into ${info.dimensions.layout.rows} rows x ${info.dimensions.layout.cols} cols<BR>
+    Grid cell dimensions: ${info.dimensions.finalx}, ${info.dimensions.finaly}<BR>
+    Pages rotated: ${needsRotation}
+  `
+  console.log("Needs rotation? : "+needsRotation)
+  let scale = Math.min(250/info.papersize[0], 250/info.papersize[1])
+  let dims = [info.papersize[0] * scale, info.papersize[1] * scale]
+  let pp = document.getElementById("overall_page_layout_preview")
+  pp.style.width = `${dims[0]}px`
+  pp.style.height = `${dims[1]}px`
+  dims = [info.dimensions.finalx * info.dimensions.layout.cols * scale, info.dimensions.finaly * info.dimensions.layout.rows * scale]
+  pp = document.getElementById("overall_grid_preview")
+  pp.style.width = `${dims[0]}px`
+  pp.style.height = `${dims[1]}px`
 
+  scale = Math.min(250/info.dimensions.finalx, 250/info.dimensions.finaly)
+  dims = [info.dimensions.finalx * scale, info.dimensions.finaly * scale]
+ if (needsRotation) dims.reverse()
+  pp = document.getElementById("grid_layout_preview")
+  pp.style.width = `${dims[0]}px`
+  pp.style.height = `${dims[1]}px`
+
+  dims = [info.dimensions.pdfOnPage[0]  * scale, info.dimensions.pdfOnPage[1] * scale]
+  pp = document.getElementById("pdf_on_page_layout_preview")
+  if (needsRotation) dims.reverse()
+  pp.style.width = `${dims[0]}px`
+  pp.style.height = `${dims[1]}px`
+  dims = [info.dimensions.xpad * scale, info.dimensions.ypad * scale]
+  if (!needsRotation) dims.reverse()
+  pp.style.margin = `${dims[0]}px ${dims[1]}px`
+}
+/**
+ * Expects a data object describing the overall page layout info:
+ *
+ */
 function updatePaperSelectOptionsUnits() {
     const paperList = document.getElementById('paper_size');
     const paperListUnit = document.getElementById('paper_size_unit').value

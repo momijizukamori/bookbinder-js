@@ -62,3 +62,44 @@ body, .wrapper, #bookbinder {
 .instruction-indent {
     margin-left:  25px;
 }
+
+.show_layout_info {
+    border: 1px solid black;
+    pointer-events: none;
+}
+.overall_page {
+    border: 1px solid red;
+    width: 150px;
+    height: 150px;
+    margin-left: 10%;
+    background: #ff00004d;
+    padding-left: 20px;
+    padding-top: 6px;
+    padding-right: 20px;
+    padding-bottom: 60px;
+    pointer-events: none;
+}
+.grid_layout {
+    border: 1px solid blue;
+    background: #0000ff54;
+    pointer-events: none;
+}
+.grid_layout_page {
+    border: 1px solid purple;
+    width: 150px;
+    height: 20px;
+    margin-left: 250px;
+    background: #80008063;
+    position: absolute;
+    pointer-events: none;
+}
+.pdf_layout_page {
+    border: 1px solid orange;
+    width: 20px;
+    height: 20px;
+    position: absolute;
+    margin: 0px;
+    padding: 0px;
+    background: #ffa50042;
+    pointer-events: none;
+}
