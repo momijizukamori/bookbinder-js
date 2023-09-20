@@ -644,7 +644,6 @@ export class Book {
      * }
      */
     calculate_dimensions() {
-        console.log("Rebecca: calculate_dimensions ")
         let onlyPos = function(v) { return (v > 0) ? v : 0 }
         let onlyNeg = function(v) { return (v < 0) ? v : 0 }
         // PDF + margins (positive)
@@ -659,7 +658,6 @@ export class Book {
 
 
         // if pages are rotated a quarter-turn in this layout, we need to swap the width and height measurements
-        console.log("Rebecca: we rotating??? "+layout.landscape)
         if (layout.landscape) {
             let temp = finalx;
             finalx = finaly;
@@ -764,7 +762,7 @@ export class Book {
                 } else if ([90].includes(col)) {   // 'top' of page is on left, right side of screen
                     isLeftPage = i % 2 == 0; // page is on 'left' (top side of screen)
                     x = (1 + j) * cellHeight - yBottomShift;
-                    y = (1 + i) * cellWidth + ((isLeftPage) ? xBindingShift : xForeEdgeShift);
+                    y = i * cellWidth + ((isLeftPage) ? xBindingShift : xForeEdgeShift);
 
                 } else if ([-90].includes(col)) {  // 'top' of page is on the right, left sight of screen
                     isLeftPage = i % 2 == 1; // page is on 'left' (bottom side of screen)
@@ -776,7 +774,7 @@ export class Book {
                 positions.push({rotation: col, sx: l.pdfScale[0], sy: l.pdfScale[1], x: x, y: y})
             })
         })
-        console.log("Rebecca And in the end of it all, (calculatelayout) we get: ",positions)
+        console.log("And in the end of it all, (calculatelayout) we get: ",positions)
         return positions;
     }
 
