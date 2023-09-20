@@ -64,9 +64,6 @@ export function updatePageLayoutInfo(info) {
   `
   document.getElementById("pdf_scale_dimensions").innerText = `${info.dimensions.pdfScale[0].toFixed(2)}, ${info.dimensions.pdfScale[1].toFixed(2)}`
   document.getElementById("pdf_page_rotation_info").innerText = `${needsRotation}`
-  document.getElementById("layout_debug_info").innerHTML = ``
-  
-  
 }
 /**
  * Expects a data object describing the overall page layout info:

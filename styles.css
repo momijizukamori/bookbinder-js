@@ -66,6 +66,7 @@ body, .wrapper, #bookbinder {
 #show_layout_info {
     display: none;
     margin-left: 10px;
+    margin-bottom: 20px;
 }
 .layout_spine_label {
     transform: rotate(-90deg);
