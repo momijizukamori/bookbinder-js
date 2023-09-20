@@ -30,42 +30,41 @@ export function renderInfoBox(book) {
  *
  */
 export function updatePageLayoutInfo(info) {
+  document.getElementById("show_layout_info").style.display = 'block'
   console.log("So much info from updatePageLayoutInfo: ", info)
-  let d = document.getElementById('layout_margin_info')
   let needsRotation = info.dimensions.layout.rotations[0] == -90 || info.dimensions.layout.rotations[0] == 90 ||  info.dimensions.layout.rotations[0][0] == -90 ||  info.dimensions.layout.rotations[0][0] == 90  
-  d.innerHTML = `
-    Paper size: ${info.papersize[0]}, ${info.papersize[1]}<BR>
-    Source PDF dimensions: ${info.cropbox.width}, ${info.cropbox.height}<BR>
-    Subdivided into ${info.dimensions.layout.rows} rows x ${info.dimensions.layout.cols} cols<BR>
-    Grid cell dimensions: ${info.dimensions.finalx}, ${info.dimensions.finaly}<BR>
-    Pages rotated: ${needsRotation}
-  `
-  console.log("Needs rotation? : "+needsRotation)
-  let scale = Math.min(250/info.papersize[0], 250/info.papersize[1])
-  let dims = [info.papersize[0] * scale, info.papersize[1] * scale]
-  let pp = document.getElementById("overall_page_layout_preview")
-  pp.style.width = `${dims[0]}px`
-  pp.style.height = `${dims[1]}px`
-  dims = [info.dimensions.finalx * info.dimensions.layout.cols * scale, info.dimensions.finaly * info.dimensions.layout.rows * scale]
-  pp = document.getElementById("overall_grid_preview")
-  pp.style.width = `${dims[0]}px`
-  pp.style.height = `${dims[1]}px`
+  let basicRotationInDegs = (needsRotation) ? 90 : 0
+  //   Paper size: ${info.papersize[0]}, ${info.papersize[1]}<BR>
+  let paperDims = [info.dimensions.finalx, info.dimensions.finaly]
+  if (needsRotation) paperDims.reverse()
+  let pdfDims = [info.dimensions.xPdfWidthFunc(basicRotationInDegs), info.dimensions.yPdfHeightFunc(basicRotationInDegs)]
+  let pdfScale = [info.dimensions.sx, info.dimensions.sy]
 
-  scale = Math.min(250/info.dimensions.finalx, 250/info.dimensions.finaly)
-  dims = [info.dimensions.finalx * scale, info.dimensions.finaly * scale]
- if (needsRotation) dims.reverse()
-  pp = document.getElementById("grid_layout_preview")
-  pp.style.width = `${dims[0]}px`
-  pp.style.height = `${dims[1]}px`
+  let scale = Math.min(Math.min(250/paperDims[0], 250/paperDims[1]), Math.min(250/pdfDims[0], 250/pdfDims[1]))
+  
+  let dims = [paperDims[0] * scale, paperDims[1] * scale]
+  let displayDiv = document.getElementById("grid_layout_preview") // blue box
+  displayDiv.style.width = `${dims[0]}px`
+  displayDiv.style.height = `${dims[1]}px`
 
-  dims = [info.dimensions.pdfOnPage[0]  * scale, info.dimensions.pdfOnPage[1] * scale]
-  pp = document.getElementById("pdf_on_page_layout_preview")
-  if (needsRotation) dims.reverse()
-  pp.style.width = `${dims[0]}px`
-  pp.style.height = `${dims[1]}px`
-  dims = [info.dimensions.xpad * scale, info.dimensions.ypad * scale]
-  if (!needsRotation) dims.reverse()
-  pp.style.margin = `${dims[0]}px ${dims[1]}px`
+  dims = [pdfDims[0] * scale, pdfDims[1] * scale]
+  displayDiv = document.getElementById("pdf_on_page_layout_preview")  // orange box
+  displayDiv.style.width = `${dims[0]}px`
+  displayDiv.style.height = `${dims[1]}px`
+
+  dims = [info.dimensions.xBindingShiftFunc(basicRotationInDegs) * scale, info.dimensions.yTopShiftFunc(basicRotationInDegs) * scale]
+  displayDiv.style.margin = `${dims[1]}px ${dims[0]}px`
+
+  document.getElementById("page_grid_layout").innerText = `${info.dimensions.layout.rows} rows x ${info.dimensions.layout.cols} cols`
+  document.getElementById("page_grid_dimensions").innerText = `${paperDims[0]}, ${paperDims[1]}`
+  document.getElementById("pdf_source_dimensions").innerText = `${info.cropbox.width}, ${info.cropbox.height}`
+  document.getElementById("pdf_page_dimensions").innerText = `${pdfDims[0].toFixed(2)}, ${pdfDims[1].toFixed(2)}`
+  document.getElementById("pdf_offset_dimensions").innerText = `${info.dimensions.xBindingShiftFunc(basicRotationInDegs).toFixed(2)} from spine, ${info.dimensions.yTopShiftFunc(basicRotationInDegs).toFixed(2)} from top`
+  document.getElementById("pdf_scale_dimensions").innerText = `${pdfScale[0].toFixed(2)}, ${pdfScale[1].toFixed(2)}`
+  document.getElementById("pdf_page_rotation_info").innerText = `${needsRotation}`
+  document.getElementById("layout_debug_info").innerHTML = ``
+  
+  
 }
 /**
  * Expects a data object describing the overall page layout info:

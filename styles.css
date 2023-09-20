@@ -63,43 +63,60 @@ body, .wrapper, #bookbinder {
     margin-left:  25px;
 }
 
-.show_layout_info {
-    border: 1px solid black;
-    pointer-events: none;
+#show_layout_info {
+    display: none;
+    margin-left: 10px;
 }
-.overall_page {
-    border: 1px solid red;
-    width: 150px;
-    height: 150px;
-    margin-left: 10%;
-    background: #ff00004d;
-    padding-left: 20px;
-    padding-top: 6px;
-    padding-right: 20px;
-    padding-bottom: 60px;
-    pointer-events: none;
-}
-.grid_layout {
-    border: 1px solid blue;
-    background: #0000ff54;
-    pointer-events: none;
+.layout_spine_label {
+    transform: rotate(-90deg);
+    position: absolute;
+    text-align: center;
+    padding: 0px;
+    height: 40px;
+    margin: 105px -123px;
+    width: 250px;
+    font-family: monospace;
+    letter-spacing: 14px;
 }
 .grid_layout_page {
     border: 1px solid purple;
-    width: 150px;
-    height: 20px;
-    margin-left: 250px;
+    width: 250px;
+    height: 250px;
+    margin-left: 0px;
     background: #80008063;
-    position: absolute;
     pointer-events: none;
 }
 .pdf_layout_page {
     border: 1px solid orange;
-    width: 20px;
-    height: 20px;
+    width: 150px;
+    height: 24px;
     position: absolute;
     margin: 0px;
     padding: 0px;
     background: #ffa50042;
     pointer-events: none;
+}
+.layout_margin_info {
+    position: absolute;
+    padding-left: 255px;
+    width: 480px;
+    font-size: small;
+}
+.stripes_paper{
+    background: repeating-linear-gradient(
+        45deg,
+        #606dbc,
+        #606dbc 10px,
+        #465298 10px,
+        #465298 20px
+    );
+}
+.stripes_pdf {
+    background: repeating-linear-gradient(
+        133deg,
+        #ffeb3b3b,
+        #ffc1078c 10px,
+        #ff9800 10px,
+        #FF9800 15px
+    );
 }

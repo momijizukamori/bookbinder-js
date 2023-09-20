@@ -622,19 +622,39 @@ export class Book {
         return [{start: {x: x - LINE_LEN, y: y}, end: {x: x + LINE_LEN, y: y}}, {start: {x: x, y: y - LINE_LEN}, end: {x: x, y: y + LINE_LEN}}]
     }
 
+    /**
+     * Looks at [this.cripbox] and [this.padding_pt] and [this.papersize] and [this.page_layout] and [this.page_scaling]
+     * in order to calculate the information needed to render a PDF page within a layout cell. It provides several functions
+     * in the return object that calculate the positioning and scaling needed when provided the rotation information.
+     *
+     * When calculating 'x' and 'y' values, those are relative to a laid out PDF page, not necessarily paper sheet x & y
+     *
+     * @return the object: {
+     *      layoutCell: 2 dimensional array of the largest possible space the PDF page could take within the layout (and not overflow) 
+     *      pdfSize: 2 dimensional array of dimensions for the PDF page + margins
+     *      pdfScale: 2 dimensional array of scaling factors for the raw PDF so it fits in layoutCell (w/ margins)
+     *      xForeEdgeShiftFunc: requires the page rotation, in degrees.
+     *      xBindingShiftFunc: requires the page rotation, in degrees.
+     *      xPdfWidthFunc:  requires the page rotation, in degrees.
+     *      yPdfHeightFunc: requires the page rotation, in degrees.
+     *      yTopShiftFunc:  requires the page rotation, in degrees.
+     *      yBottomShiftFunc:  requires the page rotation, in degrees.
+     * }
+     */
     calculate_dimensions() {
         console.log("Rebecca: calculate_dimensions ")
-        let pagex = this.cropbox.width + this.padding_pt['binding'] + this.padding_pt['fore_edge'];
-        let pagey = this.cropbox.height + this.padding_pt['top'] + this.padding_pt['bottom'];
+        let onlyPos = function(v) { 
+            return (v > 0) ? v : 0
+        }
 
-        let sheetwidth = this.papersize[0];
-        let sheetheight = this.papersize[1];
+        let pagex = this.cropbox.width + onlyPos(this.padding_pt['binding']) + onlyPos(this.padding_pt['fore_edge']);
+        let pagey = this.cropbox.height + onlyPos(this.padding_pt['top']) + onlyPos(this.padding_pt['bottom']);
 
         let layout = this.page_layout; 
 
         // Calculate the size of each page box on the sheet
-        let finalx = sheetwidth / layout.cols;
-        let finaly = sheetheight / layout.rows;
+        let finalx = this.papersize[0] / layout.cols;
+        let finaly = this.papersize[1] / layout.rows;
 
 
         // if pages are rotated a quarter-turn in this layout, we need to swap the width and height measurements
@@ -657,6 +677,13 @@ export class Book {
             sy = finaly / pagey;
         }  // else = centered retains 1 x 1
 
+        let padding = {
+            'fore_edge' : this.padding_pt['fore_edge'] * sx,
+            'binding' : this.padding_pt['binding'] * sx,
+            'bottom' : this.padding_pt['bottom'] * sy,
+            'top' : this.padding_pt['top'] * sy
+        };
+        
         let bookheight = pagey * sy;            //       height of imposed page
         let bookwidth = pagex * sx;             //       width of imposed page
 
@@ -666,26 +693,33 @@ export class Book {
         let xoffset = this.cropbox.x * sx;
         let yoffset = this.cropbox.y * sy;
 
-        let padding = {
-            'fore_edge' : this.padding_pt['fore_edge'] * sx,
-            'binding' : this.padding_pt['binding'] * sx,
-            'bottom' : this.padding_pt['bottom'] * sy,
-            'top' : this.padding_pt['top'] * sy
-        };
-        console.log("Laying out page w/ scaling option [",this.page_scaling,"] & position option [",this.page_positioning,"] -"+
-            "\n\tcrop box (x,y): [",this.cropbox.x,", ",this.cropbox.y,"]"+
-            "\n\tcrop box (width,height): [",this.cropbox.width,", ",this.cropbox.height,"]"+
-            "\n\tsource size + padding (page): [",pagex,", ",pagey,"]"+
-            "\n\tprinted paper size (sheetwidth): [",sheetwidth,", ",sheetheight,"]"+
-            "\n\tcols/rows: [",layout.cols,", ",layout.rows,"]"+
-            "\n\tmax space to work with (final): [",finalx,", ",finaly,"]"+
-            "\n\tscaling: [",sx,", ",sy,"]"+
-            "\n\tbookheight: [",bookwidth,", ",bookheight,"]"+
-            "\n\tpadding: [",xpad,", ",ypad,"]"+
-            "\n\toffset: [",xoffset,", ",yoffset,"]" +
-            "\n\tpadding (bottom/binding/top/fore edge): [",padding['bottom'],", ",padding['binding'],",",padding['top'],", ",padding['fore_edge'],"]" 
-            +"");
-        console.log("WHAT IS GOING ON?? : layout ", layout)
+        // page_positioning has 2 options: centered, binding_alinged
+        let xForeEdgeShiftFunc = function(pageRotation) {
+            // amount to inset by, relative to fore edge, on left side of book
+            let leftRightPageGap = ([90,-90].includes(pageRotation)) ? ypad : xpad;
+            return padding['fore_edge']*sx + ((this.page_positioning == 'centered' ) ? leftRightPageGap : 2 * leftRightPageGap);
+        }
+        let xBindingShiftFunc = function(pageRotation) {
+            // amount to inset by, relative to binding, on right side of book
+            let leftRightPageGap = ([90,-90].includes(pageRotation)) ? ypad : xpad; 
+            return padding['binding']*sx + ((this.page_positioning == 'centered' ) ? leftRightPageGap : 0);
+        }
+        let yTopShiftFunc = function(pageRotation) {
+            let topBottomPageGap = ([90,-90].includes(pageRotation)) ?  xpad : ypad; 
+            return padding['top']*sy + topBottomPageGap ;
+        }
+        let yBottomShiftFunc = function(pageRotation) {
+            let topBottomPageGap = ([90,-90].includes(pageRotation)) ?  xpad : ypad; 
+            return padding['bottom']*sy + topBottomPageGap ;
+        }
+        let xPdfWidthFunc = function(pageRotation) {
+            let rawWidth = ([90,-90].includes(pageRotation)) ?  bookheight : bookwidth; 
+            return rawWidth - padding['fore_edge']*sx - padding['binding']*sx
+        }
+        let yPdfHeightFunc = function(pageRotation) {
+            let rawHeight = ([90,-90].includes(pageRotation)) ?  bookwidth : bookheight; 
+            return rawHeight - padding['top']*sy - padding['bottom']*sy
+        }
         return {
             ypad: ypad,
             xpad: xpad,
@@ -695,7 +729,17 @@ export class Book {
             layout: layout,
             pdfOnPage: [bookwidth, bookheight],
             sy: sy,
-            sx: sx
+            sx: sx,
+            pdfScale: [sx, sy],
+            pdfSize: [pagex, pagey],
+            layoutCell: [finalx, finaly],
+            xForeEdgeShiftFunc: xForeEdgeShiftFunc,
+            xBindingShiftFunc: xBindingShiftFunc,
+            xPdfWidthFunc: xPdfWidthFunc,
+            yPdfHeightFunc: yPdfHeightFunc,
+            yTopShiftFunc: yTopShiftFunc,
+            yBottomShiftFunc: yBottomShiftFunc,
+            page_positioning: this.page_positioning
         }
     }
 
@@ -712,35 +756,31 @@ export class Book {
 
         l.layout.rotations.forEach((row, i) => {
             row.forEach((col, j) => {
-                // page_positioning has 2 options: centered, binding_alinged
 
-                // value tracking white space to left and right of an open book/page spread
                 let leftRightPageGap = ([90,-90].includes(col)) ? l.ypad : l.xpad;
 
-                // amount to inset by, relative to fore edge, on left side of book
-                let xForeEdgeShift = l.padding['fore_edge'] + ((this.page_positioning == 'centered' ) ? leftRightPageGap : 2 * leftRightPageGap);
-                // amount to inset by, relative to binding, on right side of book
-                let xBindingShift = l.padding['binding'] + ((this.page_positioning == 'centered' ) ? leftRightPageGap : 0);
+                let xForeEdgeShift = l.xForeEdgeShiftFunc(col);
+                let xBindingShift = l.xBindingShiftFunc(col);
 
                 let isLeftPage = j % 2 == 0; //page on 'left' side of open book
-                let x = (j * l.finalx) + ((j % 2 == 0 ) ? xForeEdgeShift : xBindingShift);
+                let x = (j * l.finalx) + ((isLeftPage) ? xForeEdgeShift : xBindingShift);
                 let y = (i * l.finaly) + l.ypad + l.padding['bottom'] * l.sy;
 
                 if ([-180].includes(col)) { // upside-down page
                     let isLeftPage = j % 2 == 1; //page on 'left' (right side on screen)
                     y = l.finaly + (i * l.finaly) - l.ypad - l.padding['bottom'] * l.sy;
-                    x = l.finalx + (j * l.finalx) - ((j % 2 == 0) ? xBindingShift : xForeEdgeShift);
+                    x = l.finalx + (j * l.finalx) - ((isLeftPage) ? xBindingShift : xForeEdgeShift);
                 }
 
                 if ([90].includes(col)) {   // 'top' of page is on left, right side of screen
                     let isLeftPage = i % 2 == 0; // page is on 'left' (top side of screen)
                     x = (1 + j) * l.finalx - l.padding['bottom'] - l.xpad;// + padding['top'];
-                    y = (i * l.finaly) + ((isLeftPage) ? xForeEdgeShift : xBindingShift);// + ((isLeftPage) ? 2 * ypad : 0);//(this.padding_pt['binding'] * sx * 2));
+                    y = (i * l.finaly) + ((isLeftPage) ? xForeEdgeShift : xBindingShift);
                 }
                 if ([-90].includes(col)) {  // 'top' of page is on the right, left sight of screen
                     let isLeftPage = i % 2 == 1; // page is on 'left' (bottom side of screen)
                     x = j * l.finalx + l.padding['bottom'] + l.xpad;
-                    y = ((1+i) * l.finaly) - ((isLeftPage) ? xForeEdgeShift : xBindingShift);// - ((isLeftPage) ? 0 + this.padding_pt['binding'] * sx : (2 * ypad) - (this.padding_pt['binding'] * sx));
+                    y = ((1+i) * l.finaly) - ((isLeftPage) ? xForeEdgeShift : xBindingShift);
                 }
 
                 console.log(">> (", i, ",",j,")[",col,"] : [",x,", ",y,"] :: [xForeEdgeShift: ",xForeEdgeShift,"][xBindingShift: ",xBindingShift,"]");
