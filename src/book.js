@@ -623,7 +623,7 @@ export class Book {
     }
 
     /**
-     * Looks at [this.cripbox] and [this.padding_pt] and [this.papersize] and [this.page_layout] and [this.page_scaling]
+     * Looks at [this.cropbox] and [this.padding_pt] and [this.papersize] and [this.page_layout] and [this.page_scaling]
      * in order to calculate the information needed to render a PDF page within a layout cell. It provides several functions
      * in the return object that calculate the positioning and scaling needed when provided the rotation information.
      *
@@ -754,17 +754,17 @@ export class Book {
                 let x = (j * cellWidth) + ((isLeftPage) ? xForeEdgeShift : xBindingShift);
                 let y = (i * cellHeight) + yBottomShift;
 
-                if ([-180].includes(col)) { // upside-down page
+                if (col == -180) { // upside-down page
                     isLeftPage = j % 2 == 1; //page on 'left' (right side on screen)
                     y = (i + 1) * cellHeight - yBottomShift;
                     x = (j + 1) * cellWidth - ((isLeftPage) ? xForeEdgeShift : xBindingShift);
 
-                } else if ([90].includes(col)) {   // 'top' of page is on left, right side of screen
+                } else if (col == 90) {   // 'top' of page is on left, right side of screen
                     isLeftPage = i % 2 == 0; // page is on 'left' (top side of screen)
                     x = (1 + j) * cellHeight - yBottomShift;
                     y = i * cellWidth + ((isLeftPage) ? xBindingShift : xForeEdgeShift);
 
-                } else if ([-90].includes(col)) {  // 'top' of page is on the right, left sight of screen
+                } else if (col == -90) {  // 'top' of page is on the right, left sight of screen
                     isLeftPage = i % 2 == 1; // page is on 'left' (bottom side of screen)
                     x = j * cellHeight + yBottomShift;
                     y = (1+i) * cellWidth - ((isLeftPage) ? xForeEdgeShift : xBindingShift);

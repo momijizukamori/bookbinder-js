@@ -63,6 +63,23 @@ body, .wrapper, #bookbinder {
     margin-left:  25px;
 }
 
+.layout_margin_user_input {
+    width:225px;
+    margin-top:15px;
+    margin-bottom:15px;
+    text-align: right;
+}
+.layout_margin_user_input_field {
+    width: 4em;
+    margin-left: 10px;
+}
+.layout_margin_description {
+    width:225px;
+    position: absolute;
+    margin-left: 250px;
+    font-size: smaller;
+}
+
 #show_layout_info {
     display: none;
     margin-left: 10px;
@@ -120,4 +137,14 @@ body, .wrapper, #bookbinder {
         #ff9800 10px,
         #FF9800 15px
     );
+}
+.stripes_sample_box {
+    width:20px;
+    height:20px;
+    display:inline-block;
+}
+.pdf_offset_dimensions_box {
+    padding-left: 10px;
+    display: inline-block;
+    vertical-align: top;
 }

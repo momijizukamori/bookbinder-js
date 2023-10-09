@@ -161,31 +161,31 @@
                 </span>
 
                 <span class="row">
-                    <div style="width:225px;position: absolute;margin-left: 250px;font-size: smaller;">
+                    <div class="layout_margin_description">
                         White Space Manipulation. All values are in points, relative to original document.<BR><BR>1 point = 1/72 inch
                     </div>
-                    <div style="width:225px;margin-top:15px;margin-bottom:15px;text-align: right;">
-                        Fore-Edge Margin: <input type="number" id="main_fore_edge_padding_pt" name="main_fore_edge_padding_pt" style="width: 4em;margin-left: 10px;"><sub>pt</sub></BR>
-                        Binding Margin: <input type="number" id="binding_edge_padding_pt" name="binding_edge_padding_pt" style="width: 4em;margin-left: 10px;"><sub>pt</sub></BR>
-                        Top Margin: <input type="number" id="top_edge_padding_pt" name="top_edge_padding_pt" style="width: 4em;margin-left: 10px;"><sub>pt</sub></BR>
-                        Bottom Margin: <input type="number" id="bottom_edge_padding_pt" name="bottom_edge_padding_pt" style="width: 4em;margin-left: 10px;"><sub>pt</sub></BR>
+                    <div class="layout_margin_user_input">
+                        Fore-Edge Margin: <input type="number" id="main_fore_edge_padding_pt" name="main_fore_edge_padding_pt" class="layout_margin_user_input_field"><sub>pt</sub></BR>
+                        Binding Margin: <input type="number" id="binding_edge_padding_pt" name="binding_edge_padding_pt" class="layout_margin_user_input_field"><sub>pt</sub></BR>
+                        Top Margin: <input type="number" id="top_edge_padding_pt" name="top_edge_padding_pt"  class="layout_margin_user_input_field"><sub>pt</sub></BR>
+                        Bottom Margin: <input type="number" id="bottom_edge_padding_pt" name="bottom_edge_padding_pt"  class="layout_margin_user_input_field"><sub>pt</sub></BR>
                     </div>
                 </span>
 
                 <span class="row" id="show_layout_info">
                     <div class="layout_spine_label">spine</div>
                     <div class="layout_margin_info" id="layout_margin_info">
-                        <div class="stripes_paper" style="width:20px;height:20px;display:inline-block;"></div> 
+                        <div class="stripes_paper stripes_sample_box"></div>
                         <b>Paper/Layout Dimensions</b>
                         layout: <span id="page_grid_layout"></span><BR>
                         max page size: <span id="page_grid_dimensions"></span><BR>
                         <br>
-                        <div class="stripes_pdf" style="width:20px;height:20px;display:inline-block;"></div> 
+                        <div class="stripes_pdf stripes_sample_box"></div>
                         <b>PDF Dimensions</b><BR>
                         source: <span id="pdf_source_dimensions"></span><BR>
                         on page: <span id="pdf_page_dimensions"></span><BR>
                         scaling: <span id="pdf_scale_dimensions"></span><BR>
-                        offset: <div style="display:inline;"><div id="pdf_offset_dimensions" style="padding-left: 10px;display: inline-block;vertical-align: top;"></div></div><BR>
+                        offset: <div style="display:inline;"><div id="pdf_offset_dimensions" class="pdf_offset_dimensions_box"></div></div><BR>
                         rotated: <span id="pdf_page_rotation_info"></span><BR>
                         <BR>
                         (<i>all dimensions are in Points</i>)
