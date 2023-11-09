@@ -25,7 +25,50 @@ export function renderInfoBox(book) {
     totalPages.innerText = outputPages;
 }
 
+/**
+ * Expects a data object describing the overall page layout info:
+ *
+ */
+export function updatePageLayoutInfo(info) {
+  document.getElementById("show_layout_info").style.display = 'block'
+  console.log("So much info from updatePageLayoutInfo: ", info)
+  let needsRotation = info.dimensions.layout.rotations[0] == -90 || info.dimensions.layout.rotations[0] == 90 ||  info.dimensions.layout.rotations[0][0] == -90 ||  info.dimensions.layout.rotations[0][0] == 90  
+  //   Paper size: ${info.papersize[0]}, ${info.papersize[1]}<BR>
+  let paperDims = info.dimensions.layoutCell
+  let pdfDims = [info.dimensions.xPdfWidthFunc(), info.dimensions.yPdfHeightFunc()]
 
+  let scale = Math.min(Math.min(250/paperDims[0], 250/paperDims[1]), Math.min(250/pdfDims[0], 250/pdfDims[1]))
+  
+  let dims = [paperDims[0] * scale, paperDims[1] * scale]
+  let displayDiv = document.getElementById("grid_layout_preview") // blue box
+  displayDiv.style.width = `${dims[0]}px`
+  displayDiv.style.height = `${dims[1]}px`
+
+  dims = [pdfDims[0] * scale, pdfDims[1] * scale]
+  displayDiv = document.getElementById("pdf_on_page_layout_preview")  // orange box
+  displayDiv.style.width = `${dims[0]}px`
+  displayDiv.style.height = `${dims[1]}px`
+
+  dims = [info.dimensions.xBindingShiftFunc() * scale, info.dimensions.yTopShiftFunc() * scale]
+  displayDiv.style.margin = `${dims[1]}px ${dims[0]}px`
+
+  document.getElementById("page_grid_layout").innerText = `${info.dimensions.layout.rows} rows x ${info.dimensions.layout.cols} cols`
+  document.getElementById("page_grid_dimensions").innerText = `${paperDims[0]}, ${paperDims[1]}`
+  document.getElementById("pdf_source_dimensions").innerText = `${info.cropbox.width}, ${info.cropbox.height}`
+  document.getElementById("pdf_page_dimensions").innerText = `${pdfDims[0].toFixed(2)}, ${pdfDims[1].toFixed(2)}`
+  document.getElementById("pdf_offset_dimensions").innerHTML = `
+  ${info.dimensions.xBindingShiftFunc().toFixed(2)} from spine <BR>
+  ${info.dimensions.yTopShiftFunc().toFixed(2)} from top <BR>
+  ${info.dimensions.xForeEdgeShiftFunc().toFixed(2)} from fore edge <BR>
+  ${info.dimensions.yBottomShiftFunc().toFixed(2)} from bottom
+  `
+  document.getElementById("pdf_scale_dimensions").innerText = `${info.dimensions.pdfScale[0].toFixed(2)}, ${info.dimensions.pdfScale[1].toFixed(2)}`
+  document.getElementById("pdf_page_rotation_info").innerText = `${needsRotation}`
+}
+/**
+ * Expects a data object describing the overall page layout info:
+ *
+ */
 export function updatePaperSelectOptionsUnits() {
     const paperList = document.getElementById('paper_size');
     const paperListUnit = document.getElementById('paper_size_unit').value

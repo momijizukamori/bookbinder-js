@@ -62,3 +62,89 @@ body, .wrapper, #bookbinder {
 .instruction-indent {
     margin-left:  25px;
 }
+
+.layout_margin_user_input {
+    width:225px;
+    margin-top:15px;
+    margin-bottom:15px;
+    text-align: right;
+}
+.layout_margin_user_input_field {
+    width: 4em;
+    margin-left: 10px;
+}
+.layout_margin_description {
+    width:225px;
+    position: absolute;
+    margin-left: 250px;
+    font-size: smaller;
+}
+
+#show_layout_info {
+    display: none;
+    margin-left: 10px;
+    margin-bottom: 20px;
+}
+.layout_spine_label {
+    transform: rotate(-90deg);
+    position: absolute;
+    text-align: center;
+    padding: 0px;
+    height: 40px;
+    margin: 105px -123px;
+    width: 250px;
+    font-family: monospace;
+    letter-spacing: 14px;
+}
+.grid_layout_page {
+    border: 1px solid purple;
+    width: 250px;
+    height: 250px;
+    margin-left: 0px;
+    background: #80008063;
+    pointer-events: none;
+}
+.pdf_layout_page {
+    border: 1px solid orange;
+    width: 150px;
+    height: 24px;
+    position: absolute;
+    margin: 0px;
+    padding: 0px;
+    background: #ffa50042;
+    pointer-events: none;
+}
+.layout_margin_info {
+    position: absolute;
+    padding-left: 255px;
+    width: 480px;
+    font-size: small;
+}
+.stripes_paper{
+    background: repeating-linear-gradient(
+        45deg,
+        #606dbc,
+        #606dbc 10px,
+        #465298 10px,
+        #465298 20px
+    );
+}
+.stripes_pdf {
+    background: repeating-linear-gradient(
+        133deg,
+        #ffeb3b3b,
+        #ffc1078c 10px,
+        #ff9800 10px,
+        #FF9800 15px
+    );
+}
+.stripes_sample_box {
+    width:20px;
+    height:20px;
+    display:inline-block;
+}
+.pdf_offset_dimensions_box {
+    padding-left: 10px;
+    display: inline-block;
+    vertical-align: top;
+}
