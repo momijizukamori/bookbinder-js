@@ -229,7 +229,9 @@ export class Book {
                 this.book.createsigconfig();
             }
             this.rearrangedpages = this.book.pagelist;
-        } else if (this.format == 'a9_3_3_4' || this.format == 'a10_6_10s' || this.format == 'A7_2_16s' || this.format == '1_3rd' || this.format == '8_zine'|| this.format == 'a_3_6s' || this.format == 'a_4_8s') {
+        } else if (this.format == 'a9_3_3_4' || this.format == 'a10_6_10s' || this.format == 'A7_2_16s' 
+            || this.format == '1_3rd' || this.format == '8_zine'|| this.format == 'a_3_6s' 
+            || this.format == 'a_4_8s' || this.format == 'thin_octavo') {
             this.book = new WackyImposition(this.orderedpages, this.duplex, this.format, this.pack_pages)
         }
         // dracula
@@ -334,6 +336,8 @@ export class Book {
             resultPDF = await this.buildSheets(this.filename, this.book.page_1_3rd_builder());
         } else if (this.format == '8_zine') {
             resultPDF = await this.buildSheets(this.filename, this.book.page_8_zine_builder());
+        } else if (this.format == 'thin_octavo') {
+            resultPDF = await this.buildSheets(this.filename, this.book.page_thin_octavo_builder());
         }
         console.log("Attempting to generate preview for ",resultPDF);
 

@@ -251,7 +251,9 @@ class Book {
                 this.book.createsigconfig();
             }
             this.rearrangedpages = this.book.pagelist;
-        } else if (this.format == 'a9_3_3_4' || this.format == 'a10_6_10s' || this.format == 'A7_2_16s' || this.format == '1_3rd' || this.format == '8_zine'|| this.format == 'a_3_6s' || this.format == 'a_4_8s') {
+        } else if (this.format == 'a9_3_3_4' || this.format == 'a10_6_10s' || this.format == 'A7_2_16s' 
+            || this.format == '1_3rd' || this.format == '8_zine'|| this.format == 'a_3_6s' 
+            || this.format == 'a_4_8s' || this.format == 'thin_octavo') {
             this.book = new _wacky_imposition_js__WEBPACK_IMPORTED_MODULE_5__.WackyImposition(this.orderedpages, this.duplex, this.format, this.pack_pages)
         }
         // dracula
@@ -356,6 +358,8 @@ class Book {
             resultPDF = await this.buildSheets(this.filename, this.book.page_1_3rd_builder());
         } else if (this.format == '8_zine') {
             resultPDF = await this.buildSheets(this.filename, this.book.page_8_zine_builder());
+        } else if (this.format == 'thin_octavo') {
+            resultPDF = await this.buildSheets(this.filename, this.book.page_thin_octavo_builder());
         }
         console.log("Attempting to generate preview for ",resultPDF);
 
@@ -31055,7 +31059,19 @@ class WackyImposition{
       } else if (format == "8_zine") {
         this.sheets = 1;
         this.sigconfig = [1];
+      } else if (format == "thin_octavo") {
+        this.sheets = 1;
+        this.sigconfig = [1];
       }
+    }
+
+    page_thin_octavo_builder() {
+        return {
+            sheetMaker: this.build_thin_octavo_sheetList.bind(this),
+            lineMaker: this.build_thin_octavo_lineFunction.bind(this),
+            isLandscape: false,
+            fileNameMod: "thin_octavo" + ((this.isPacked) ? "_packed" : "_spread")
+        }
     }
 
     page_8_zine_builder() {
@@ -31124,6 +31140,68 @@ class WackyImposition{
 
     // ---------------- the real guts of the layout
 
+    /**
+     * It's an octavo with a different folding pattern than the main. (4 folio stacked atop each other) 
+     *   Added on request by a user
+     *
+     * @param pageCount - total pages in document
+     * @return an array of sheets. Assumes 1st is "front", 2nd is "back", 3rd is "front", etc. 
+     *      Each sheet is an array of rows, containing a list of page objects
+     */
+    build_thin_octavo_sheetList(pageCount) {
+        let p = this.page;
+        let f = this.flipPage;
+        let sheets = [];
+        let sheetCount = Math.ceil(pageCount / 16.0);
+        console.log("Building the thin_octavo layout. Given ",pageCount," page count, there will be ",sheetCount," sheets...");
+        for (let sheet=0; sheet < sheetCount; ++sheet ) {
+            let i = sheet * 16 - 1;
+            let front = [
+                this.auditForBlanks([p(i+16), p(i+1)], pageCount),
+                this.auditForBlanks([f(i+13), f(i+4)], pageCount),
+                this.auditForBlanks([p(i+12), p(i+5)], pageCount),
+                this.auditForBlanks([f(i+9), f(i+8)], pageCount),
+            ];
+            let back = [
+                this.auditForBlanks([p(i+2), p(i+15)], pageCount),
+                this.auditForBlanks([f(i+3), f(i+14)], pageCount),
+                this.auditForBlanks([p(i+6), p(i+11)], pageCount),
+                this.auditForBlanks([f(i+7), f(i+10)], pageCount),
+            ]
+            sheets.push(front);
+            sheets.push(back);
+        }
+        return sheets;
+    }
+
+    /**
+     * @return a FUNCTION. The function takes as it's parameter:
+     *       Object definition: {
+     *           gap: [leftGap, topGap],
+     *           renderPageSize: [width, height],
+     *           paperSize: [width, height],
+     *           isFront: boolean,
+     *           isPacked: boolean
+     *       }
+     *       and returns: a list of lines, as described by PDF-lib.js's `PDFPageDrawLineOptions` object
+     */
+    build_thin_octavo_lineFunction() {
+        return info => {
+            let vGap = row => { return (info.isPacked) ? info.gap[1] : info.gap[1] * (2 * row); };
+            let hGap = col => { return (info.isPacked) ? info.gap[0] : col * info.gap[0]};
+            let foldMarks = [];
+            [0,1,2,3,4].forEach( row => {
+                [0,1,2].forEach( page => {
+                    foldMarks = foldMarks.concat(this.crosshairMark(
+                        hGap(page) + info.renderPageSize[0] * page,
+                        vGap(row) + info.renderPageSize[1] * row,
+                        5
+                        ));
+                });
+            });
+            return foldMarks;
+        };
+    }
 
     /**
      * It's an 8 page zine. Same page count every time....
@@ -31380,6 +31458,7 @@ class WackyImposition{
         let backFunc = i => {return [page(i+16),page(i+13),page(i+12),page(i+17),page(i+20),page(i+9),page(i+8),page(i+1),page(i+4),page(i+5)];};
         return this.build_strips_sheetList(6, 5, pageCount, frontFunc, backFunc);
     }
+
 
     /**
      * @param rows - number of rows for page
@@ -31797,6 +31876,8 @@ function renderWacky() {
         document.getElementById('a_3_6s').checked ||
         document.getElementById('a_4_8s').checked ||
         document.getElementById('A7_2_16s').checked ||
+        document.getElementById('thin_octavo').checked ||
+        document.getElementById('8_zine').checked ||
         document.getElementById('1_3rd').checked;
     console.log('Is a wacky layout? ', isWacky);
     document
