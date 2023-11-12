@@ -133,6 +133,8 @@ export function renderWacky() {
         document.getElementById('a_3_6s').checked ||
         document.getElementById('a_4_8s').checked ||
         document.getElementById('A7_2_16s').checked ||
+        document.getElementById('thin_octavo').checked ||
+        document.getElementById('8_zine').checked ||
         document.getElementById('1_3rd').checked;
     console.log('Is a wacky layout? ', isWacky);
     document
