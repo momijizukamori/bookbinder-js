@@ -12,6 +12,7 @@ export class Signatures {
 		this.duplexrotate = duplexrotate || false;
 
 		this.pagelist = [];
+		this.pagelistdetails = [];
 
 		this.sheets = Math.ceil(pages.length / this.per_sheet);
 
@@ -38,6 +39,7 @@ export class Signatures {
 			this.inputpagelist.push(...blanks);
 		}
 		this.pagelist = [];
+		this.pagelistdetails = [];
 		this.signaturepagelists = [];
 
 		this.splitpagelist();
@@ -46,12 +48,14 @@ export class Signatures {
 
 		this.sigconfig = this.generatesignatureindex();
 		this.pagelist = [];
+		this.pagelistdetails = [];
 		this.signaturepagelists = [];
 
 		this.splitpagelist();
 	}
 
 	splitpagelist() {
+		console.log("Rebecca: splitpagelist()")
 		let point = 0;
 		let splitpoints = [0];
 
@@ -60,7 +64,7 @@ export class Signatures {
 			point = point + (number * this.per_sheet);
 			splitpoints.push(point);
 		});
-
+		console.log("   -- splitPoints ",splitpoints)
 
 		for (let i = 0; i < this.sigconfig.length; i++) {
 			let start = splitpoints[i];
@@ -71,17 +75,21 @@ export class Signatures {
 		}
 
 		let newsigs = [];
+		let newsigsdetails = [];
 
 		//      Use the booklet class for each signature
 		this.signaturepagelists.forEach(pagerange => {
 			let newlist = new Booklet(pagerange, this.duplex, this.per_sheet, this.duplexrotate);
+			console.log("   ---- went from "+pagerange+" to ",newlist)
+			console.log("   ------ is ",newlist.pagelistdetails)
 			newsigs.push(newlist.pagelist);
+			newsigsdetails.push(newlist.pagelistdetails);
 		});
 
 		this.pagelist = newsigs;
+		this.pagelistdetails = newsigsdetails;
 	}
 	generatesignatureindex() {
-
 		let preliminarytotal = Math.floor(this.sheets / this.sigsize);
 		let modulus = this.sheets % this.sigsize;
 		let signaturetotal = preliminarytotal;
@@ -89,19 +97,16 @@ export class Signatures {
 		let result = [];
 
 		if (modulus > 0) {
-
 			//      need an extra signature
 			signaturetotal += 1;
 			flag = true;
 		}
-
 
 		//      calculate how many signatures are the full size and how many are one sheet short.
 		let factor = signaturetotal - (this.sigsize - 1);
 		factor += (modulus - 1);
 
 		for(let i = 0; i < signaturetotal; i++) {
-
 			if (i >= factor && flag) {
 				result.push(this.sigsize - 1);
 			} else {
@@ -109,6 +114,7 @@ export class Signatures {
 			}
 		}
 
+		console.log("Rebeccca generatesignatureindex() = ",result)
 		return result;
 	}
 }

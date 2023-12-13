@@ -6,6 +6,7 @@ export class Booklet {
 
         this.sigconfig = [1];
         this.pagelist = duplex ? [[]] : [[], []];
+        this.pagelistdetails = duplex ? [[]] : [[], []];
         this.sheets = 1;
         this.per_sheet = per_sheet;
         this.rotate = duplexrotate;
@@ -30,10 +31,16 @@ export class Booklet {
             let back_block = pages.slice(back_start, back_end);
 
             let block = [...front_block, ...back_block];
+            console.log("  ~~ in loop ("+front_start+" - "+back_end+")   w/ "+front_block+" & "+back_block+" of "+pages.length+":: ", block)
 
             front_config.forEach((pnum) => {
                 let page = block[pnum - 1]; //page layouts are 1-indexed, not 0-index
                 this.pagelist[0].push(page);
+                this.pagelistdetails[0].push({ 
+                    info: page, 
+                    isSigStart:front_start == 0 && pnum == 1, 
+                    isSigEnd: back_end == pages.length && pnum == pages.length/2
+                });
             });
 
             const backlist = this.duplex ? 0 : 1;
@@ -41,6 +48,11 @@ export class Booklet {
             back_config.forEach((pnum) => {
                 let page = block[pnum - 1];
                 this.pagelist[backlist].push(page);
+                this.pagelistdetails[backlist].push({
+                    info: page, 
+                    isSigStart:front_start == 0 && pnum == 1, 
+                    isSigEnd: back_end == pages.length && pnum == pages.length/2
+                });
             });
 
             // Update all our counters

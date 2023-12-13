@@ -37,13 +37,14 @@ export class Book {
         this.cropbox = null;
 
         this.orderedpages = [];      //  ordered list of page numbers (consecutive)
-        this.rearrangedpages = [];      //  reordered list of page numbers (signatures etc.)
+        this.rearrangedpages = [];   // array (length = num of sigs) of arrays of objects, contains `info` (number or 'b') and `isSigStart`. Defined ordered pages for layout
         this.filelist = [];      //  list of ouput filenames and path
         this.zip = null;
         this.page_layout = PAGE_LAYOUTS.folio;
         this.per_sheet = 8; //number of pages to print per sheet.
         this.cropmarks = false;
         this.cutmarks = false;
+        this.pdf_edge_marks = false;
 
         this.fore_edge_padding_pt = 0;  // (wacky only atm) -- to track buffer space on non-binding edge
         this.pack_pages = true;     // (wacky only atm) - to track if the white space should be distributed
@@ -67,6 +68,7 @@ export class Book {
         this.flyleaf = form.has('flyleaf');
         this.cropmarks = form.has('cropmarks');
         this.cutmarks = form.has('cutmarks');
+        this.pdf_edge_marks = form.has('pdf_edge_marks')
         this.format = form.get('sig_format');
         let siglength = parseInt(form.get('sig_length'), 10);
         if (!isNaN(siglength)) {
@@ -125,7 +127,6 @@ export class Book {
               });
             } else {
                 if (!this.cropbox) {
-
                     const cropBox = page.getCropBox();
                     const bleedBox = page.getBleedBox();
                     const trimBox = page.getTrimBox();
@@ -222,17 +223,17 @@ export class Book {
             this.book = new PerfectBound(this.orderedpages, this.duplex);
         } else if (this.format == 'standardsig' || this.format == 'customsig') {
             this.book = new Signatures(this.orderedpages, this.duplex, this.sigsize, this.per_sheet, this.duplexrotate);
-
             if (this.customsig) {
                 this.book.setsigconfig(this.signatureconfig);
             } else {
                 this.book.createsigconfig();
             }
-            this.rearrangedpages = this.book.pagelist;
+            this.rearrangedpages = this.book.pagelistdetails;
+            //console.log("Rebecca - the rearrangedpages look like ",this.rearrangedpages)
+            //console.log("Rebecca --- but the real magic is: "+summ+" :: ", this.book.pagelistdetails)
         } else if (this.format == 'a9_3_3_4' || this.format == 'a10_6_10s' || this.format == 'A7_2_16s' || this.format == '1_3rd' || this.format == '8_zine'|| this.format == 'a_3_6s' || this.format == 'a_4_8s') {
             this.book = new WackyImposition(this.orderedpages, this.duplex, this.format, this.pack_pages)
         }
-        // dracula
         console.log("Created pages for : ",this.book);
         let dim = this.calculate_dimensions();
 
@@ -281,6 +282,8 @@ export class Book {
         } else if (this.format == 'standardsig' || this.format == 'customsig') {
             const generateAggregate = this.print_file != "signatures"
             const generateSignatures = this.print_file != "aggregated"
+            // REBECCA : TODO !! FIXME
+            console.log("rebecca FIX THIS")
             const side1PageNumbers = new Set(this.rearrangedpages.reduce((accumulator, currentValue) => { return accumulator.concat(currentValue[0]) },[]))
             const [pdf0PageNumbers, pdf1PageNumbers] = (!generateAggregate || this.duplex) ? [null, null]
             : [
@@ -291,11 +294,11 @@ export class Book {
             const [aggregatePdf1, embeddedPages1] = (generateAggregate && !this.duplex) ? await this.embedPagesInNewPdf(this.managedDoc, pdf1PageNumbers) : [null, null]
             const forLoop = async _ => {
                 for (let i = 0; i < this.rearrangedpages.length; i++) {
-                    let page = this.rearrangedpages[i];
+                    let signature = this.rearrangedpages[i];
                     await this.createsignatures({
                         embeddedPages: (generateAggregate) ? [embeddedPages0, embeddedPages1] : null,
                         aggregatePdfs: (generateAggregate) ? [aggregatePdf0, aggregatePdf1] : null,
-                        pageIndexes: page, 
+                        pageIndexDetails: signature, 
                         id: (generateSignatures) ? `signature${i}` : null,
                         isDuplex: this.duplex,
                         fileList: this.filelist
@@ -378,6 +381,7 @@ export class Book {
     async embedPagesInNewPdf(sourcePdf, pageNumbers) {
         const newPdf = await PDFDocument.create();
         const needsReSorting = pageNumbers != null && pageNumbers.includes("b");
+        console.log("Looking at embedPagesInNewPdf >> needsReSorting : "+needsReSorting)
         if (pageNumbers == null) {
             pageNumbers = Array.from(Array(sourcePdf.getPageCount()).keys())
         } else {
@@ -393,6 +397,8 @@ export class Book {
                 acc[pageNumbers[curI]] = curVal;
                 return acc
             },[])
+        } else {
+            embeddedPages.forEach((page, i) => {})
         }
         return [newPdf, embeddedPages]
     }
@@ -403,7 +409,7 @@ export class Book {
      *
      * @param config - object /w the following parameters:
      *      - outname : name of pdf added to ongoing zip file. Ex: 'signature1duplex.pdf' (or null if no signature file needed)
-     *      - pageList : indicies of pages to assemble. Ex: [12, 11, 10, 13, 14, 9, 8, 15]
+     *      - pageListDetails : indicies of pages to assemble. Ex: [12, 11, 10, 13, 14, 9, 8, 15]
      *      - back : is 'back' of page  (boolean)
      *      - alt : alternate pages (boolean)
      *      - destPdf : PDF to write to, in addition to PDF created w/ `outname` (or null)
@@ -413,13 +419,13 @@ export class Book {
     async writepages(config) {
         const printSignatures = config.outname != null
         const printAggregate = config.providedPages != null && config.destPdf != null
-        const pagelist = config.pageList;
+        const pageListDetails = config.pageListDetails;
         const back = config.back;
         let filteredList = [];
         let blankIndices = [];
-        pagelist.forEach((page, i) => {
-            if (page != 'b') {
-                filteredList.push(page);
+        pageListDetails.forEach((page, i) => {
+            if (page.info != 'b') {
+                filteredList.push(page.info);
             } else {
                 blankIndices.push(i);
             }
@@ -444,12 +450,15 @@ export class Book {
         let positions = this.calculatelayout(alt_folio);
 
         let side2flag = back;
-    
-        while (block_end <= pagelist.length) {
+
+        while (block_end <= pageListDetails.length) {
+            let sigDetails = config.pageListDetails.slice(block_start, block_end)
+            console.log("Looking at writepages, I see "+this.pdf_edge_marks+" for "+block_start+" -> "+block_end+" :: ",sigDetails)
             if (printAggregate) {
                 this.draw_block_onto_page({
                     outPDF: config.destPdf,
                     embeddedPages: destPdfPages,
+                    sigDetails: sigDetails,
                     block_start: block_start,
                     block_end: block_end,
                     papersize: this.papersize,
@@ -464,6 +473,7 @@ export class Book {
                 side2flag = this.draw_block_onto_page({
                     outPDF: outPDF,
                     embeddedPages: embeddedPages,
+                    sigDetails: sigDetails,
                     block_start: block_start,
                     block_end: block_end,
                     papersize: this.papersize,
@@ -484,6 +494,7 @@ export class Book {
     }
 
     draw_block_onto_page(config) {
+        const sigDetails = config.sigDetails
         const block_start = config.block_start
         const block_end = config.block_end
         const papersize = config.papersize
@@ -496,14 +507,38 @@ export class Book {
 
         let block = config.embeddedPages.slice(block_start, block_end);
         let currPage = outPDF.addPage([papersize[0], papersize[1]]);
-
+        console.log("Signature details, ", sigDetails)
+        
         block.forEach((page, i) => {
             if (page == 'b' || page === undefined) {
                 // blank page, move on.
             } else {
                 let pos = positions[i];
                 let rot = pos.rotation;
+                let lineWidth = 3;
+                let mod = (rot == -180) ? -1 : 1;
+                let top = (rot == -90) ? {x: pos.x, y: pos.y} : {x: pos.x, y: pos.y + (lineWidth/2 * mod * -1)}
+                let height = mod * (page.height * pos.sy + lineWidth/2);
+                let bottom = (rot == -90) ? {x: pos.x + height, y: pos.y} : {x: pos.x, y: pos.y + height}
+                let halfGapX = (rot == -90) ? 0 : 20;
+                let halfGapY = (rot == -90) ? 20 : 0;
+                //console.log("      > "+pos.x+" - "+pos.y+" : "+pos.sx.toFixed(3)+" - "+ pos.sy.toFixed(3) +" :: "+rot+" / "+mod+":: "+page.width +" - "+page.height+" >> ("+top.x.toFixed(2)+","+top.y.toFixed(2)+") -> ("+bottom.x.toFixed(2)+","+bottom.y.toFixed(2)+")")
                 currPage.drawPage(page, { y: pos.y, x: pos.x, xScale: pos.sx, yScale: pos.sy, rotate: degrees(rot) });
+            }
+            if (sigDetails[i].isSigStart || sigDetails[i].isSigEnd) {
+                console.log(" !!!! I SEE AN EDGE! ("+sigDetails[i].info+") ("+((sigDetails[i].isSigStart) ? 'start' : 'end')+") ",sigDetails[i]," @ ",positions[i])
+                this.draw_spine_marks(currPage, sigDetails[i], positions[i])
+                // let pos = positions[i];
+                // let rot = pos.rotation;
+                // let lineWidth = 3;
+                // let mod = (rot == -180) ? -1 : 1;
+                // let top = (rot == -90) ? {x: pos.x, y: pos.y} : {x: pos.x, y: pos.y + (lineWidth/2 * mod * -1)}
+                // let height = mod * (page.height * pos.sy + lineWidth/2);
+                // let bottom = (rot == -90) ? {x: pos.x + height, y: pos.y} : {x: pos.x, y: pos.y + height}
+                // let halfGapX = (rot == -90) ? 0 : 20;
+                // let halfGapY = (rot == -90) ? 20 : 0;
+                // currPage.drawLine({start: {x: top.x - halfGapX, y: top.y - halfGapY}, end: {x: top.x + halfGapX, y: top.y + halfGapY}, thickness: lineWidth });
+                // currPage.drawLine({start: {x: bottom.x - halfGapX, y: bottom.y - halfGapY}, end: {x: bottom.x + halfGapX, y: bottom.y + halfGapY}, thickness: lineWidth });
             }
         });
         if (cropmarks) {
@@ -516,6 +551,38 @@ export class Book {
             side2flag = !side2flag;
         }
         return side2flag
+    }
+
+    /*
+     * @param curPage - PDFPage
+     * @param sigDetails - object w/ {info (page # or 'b'), isSigStart (boolean), isSigEnd (boolean)}
+     * @param position - object w/ {rotation (degrees), sx, sy, x, y}
+     */
+    draw_spine_marks(curPage, sigDetails, position) {
+        // curPage.drawCircle({
+        //   x: (sigDetails.isSigStart) ? position.spineMarkTop[0] : position.spineMarkBottom[0],
+        //   y: (sigDetails.isSigStart) ? position.spineMarkTop[1] : position.spineMarkBottom[1],
+        //   size: 10,
+        //   borderWidth: 2,
+        //   borderColor: grayscale(0.5),
+        //   color: (sigDetails.isSigStart) ? rgb(0,1,0) : rgb(1, 0, 0),
+        //   opacity: 0.5,
+        //   borderOpacity: 0.75,
+        // });
+        let w = 5;
+        curPage.drawLine({
+          start: { 
+            x: (sigDetails.isSigStart) ? position.spineMarkTop[0] : position.spineMarkBottom[0], 
+            y: ((sigDetails.isSigStart) ? position.spineMarkTop[1] : position.spineMarkBottom[1] ) - w/2
+            },
+          end: { 
+            x: (sigDetails.isSigStart) ? position.spineMarkTop[0] : position.spineMarkBottom[0], 
+            y: ((sigDetails.isSigStart) ? position.spineMarkTop[1] : position.spineMarkBottom[1] ) + w/2
+            },
+          thickness: 2,
+          color: rgb(1,1,1),
+          opacity: 1,
+        })
     }
 
     draw_cropmarks(currPage, side2flag) {
@@ -737,7 +804,6 @@ export class Book {
      * @return an array of objects in the form {rotation: col, sx: sx, sy: sy, x: x, y: y}
      */
     calculatelayout(alt_folio){
-        // vampire
         let l = this.calculate_dimensions()
         let cellWidth = l.layoutCell[0]
         let cellHeight = l.layoutCell[1]
@@ -753,25 +819,35 @@ export class Book {
                 let isLeftPage = j % 2 == 0; //page on 'left' side of open book
                 let x = (j * cellWidth) + ((isLeftPage) ? xForeEdgeShift : xBindingShift);
                 let y = (i * cellHeight) + yBottomShift;
+                let spineMarkTop = [(j * cellWidth), ((i + 1) * cellHeight)]
+                let spineMarkBottom = [(j * cellWidth), (i * cellHeight)]
 
                 if (col == -180) { // upside-down page
                     isLeftPage = j % 2 == 1; //page on 'left' (right side on screen)
                     y = (i + 1) * cellHeight - yBottomShift;
                     x = (j + 1) * cellWidth - ((isLeftPage) ? xForeEdgeShift : xBindingShift);
+                    spineMarkTop = [(j + 1) * cellWidth, (i + 1) * cellHeight];
+                    spineMarkBottom = [(j + 1) * cellWidth, i * cellHeight];
 
                 } else if (col == 90) {   // 'top' of page is on left, right side of screen
                     isLeftPage = i % 2 == 0; // page is on 'left' (top side of screen)
                     x = (1 + j) * cellHeight - yBottomShift;
                     y = i * cellWidth + ((isLeftPage) ? xBindingShift : xForeEdgeShift);
+                    spineMarkTop = [(1 + j) * cellHeight, i * cellWidth];
+                    spineMarkBottom = [j * cellHeight, i * cellWidth];
 
                 } else if (col == -90) {  // 'top' of page is on the right, left sight of screen
                     isLeftPage = i % 2 == 1; // page is on 'left' (bottom side of screen)
                     x = j * cellHeight + yBottomShift;
                     y = (1+i) * cellWidth - ((isLeftPage) ? xForeEdgeShift : xBindingShift);
+                    spineMarkTop = [(j+1) * cellHeight - yTopShift, (i+1) * cellWidth];
+                    spineMarkBottom = [j * cellHeight + yBottomShift, i * cellWidth];
                 }
 
                 console.log(">> (", i, ",",j,")[",col,"] : [",x,", ",y,"] :: [xForeEdgeShift: ",xForeEdgeShift,"][xBindingShift: ",xBindingShift,"]");
-                positions.push({rotation: col, sx: l.pdfScale[0], sy: l.pdfScale[1], x: x, y: y})
+                positions.push({rotation: col, sx: l.pdfScale[0], sy: l.pdfScale[1], x: x, y: y,
+                    spineMarkTop: spineMarkTop, 
+                    spineMarkBottom: spineMarkBottom})
             })
         })
         console.log("And in the end of it all, (calculatelayout) we get: ",positions)
@@ -782,7 +858,7 @@ export class Book {
      * PDF builder base function for Classic (non-Wacky) layouts. Called by [createoutputfiles]
      *
      * @param config - object w/ the following parameters:
-     *    - pageIndexes : a nested list of original source document page numbers ordered for layout. ( [0] for duplex & front, [1] for backs -- value is null if no aggregate printing enabled). Ex: [[4, 3, 2, 5, 6, 1, 0, 7]]
+     *    - pageIndexDetails : a nested list of original source document page numbers ordered for layout. ( [0] for duplex & front, [1] for backs -- value is null if no aggregate printing enabled). Ex: [[4, 3, 2, 5, 6, 1, 0, 7]]
      *    - aggregatePdfs : list of destination PDF(s_ for aggregated content ( [0] for duplex & front, [1] for backs -- value is null if no aggregate printing enabled)
      *    - embeddedPages : list of lists of embedded pages from source document ( [0] for duplex & front, [1] for backs -- value is null if no aggregate printing enabled)
      *    - id : string dentifier for signature file name (null if no signature files to be generated)
@@ -792,13 +868,13 @@ export class Book {
     async createsignatures(config) {
         const printAggregate = config.aggregatePdfs != null
         const printSignatures = config.id != null
-        const pages = config.pageIndexes;
+        const pages = config.pageIndexDetails;
         //      duplex printers print both sides of the sheet, 
         if (config.isDuplex) {
             let outduplex = (printSignatures) ? config.id + 'duplex' + '.pdf' : null;
             await this.writepages({
                 outname: outduplex, 
-                pageList: pages[0], 
+                pageListDetails: pages[0], 
                 back: false, 
                 alt: true,
                 destPdf: (printAggregate) ? config.aggregatePdfs[0] : null,
@@ -815,7 +891,7 @@ export class Book {
  
             await this.writepages({
                 outname: outname1,
-                pageList: pages[0],
+                pageListDetails: pages[0],
                 back: false,
                 alt: false,
                 destPdf: (printAggregate) ? config.aggregatePdfs[0] : null,
@@ -823,7 +899,7 @@ export class Book {
             });
             await this.writepages({
                 outname: outname2,
-                pageList: pages[1],
+                pageListDetails: pages[1],
                 back: true,
                 alt: false,
                 destPdf: (printAggregate) ? config.aggregatePdfs[1] : null,
