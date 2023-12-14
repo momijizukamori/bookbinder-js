@@ -579,8 +579,8 @@ export class Book {
             x: (sigDetails.isSigStart) ? position.spineMarkTop[0] : position.spineMarkBottom[0], 
             y: ((sigDetails.isSigStart) ? position.spineMarkTop[1] : position.spineMarkBottom[1] ) + w/2
             },
-          thickness: 2,
-          color: rgb(1,1,1),
+          thickness: 1,
+          color: rgb(0,0,0),
           opacity: 1,
         })
     }

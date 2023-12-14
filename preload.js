@@ -601,9 +601,9 @@ class Book {
             x: (sigDetails.isSigStart) ? position.spineMarkTop[0] : position.spineMarkBottom[0], 
             y: ((sigDetails.isSigStart) ? position.spineMarkTop[1] : position.spineMarkBottom[1] ) + w/2
             },
-          thickness: 2,
-          color: (0,pdf_lib__WEBPACK_IMPORTED_MODULE_0__.rgb)(0.75, 0.2, 0.2),
-          opacity: 0.75,
+          thickness: 1,
+          color: (0,pdf_lib__WEBPACK_IMPORTED_MODULE_0__.rgb)(0,0,0),
+          opacity: 1,
         })
     }
 
@@ -30873,24 +30873,26 @@ class Booklet {
             console.log("  ~~ in loop ("+front_start+" - "+back_end+")   w/ "+front_block+" & "+back_block+" of "+pages.length+":: ", block)
 
             front_config.forEach((pnum) => {
+                console.log("Looking at "+pnum+" for FRONT "+front_start+" -> "+back_end+" out of "+pages.length)
                 let page = block[pnum - 1]; //page layouts are 1-indexed, not 0-index
                 this.pagelist[0].push(page);
                 this.pagelistdetails[0].push({ 
                     info: page, 
                     isSigStart:front_start == 0 && pnum == 1, 
-                    isSigEnd: back_end == pages.length && pnum == pages.length/2
+                    isSigEnd: front_start == 0 && pnum == block.length
                 });
             });
 
             const backlist = this.duplex ? 0 : 1;
 
             back_config.forEach((pnum) => {
+                console.log("Looking at "+pnum+" for BACK "+front_start+" -> "+back_end+" out of "+pages.length)
                 let page = block[pnum - 1];
                 this.pagelist[backlist].push(page);
                 this.pagelistdetails[backlist].push({
                     info: page, 
                     isSigStart:front_start == 0 && pnum == 1, 
-                    isSigEnd: back_end == pages.length && pnum == pages.length/2
+                    isSigEnd: front_start == 0 && pnum == block.length
                 });
             });
 
