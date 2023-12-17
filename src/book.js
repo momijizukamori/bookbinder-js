@@ -8,28 +8,14 @@ import { PAGE_LAYOUTS, PAGE_SIZES, TARGET_BOOK_SIZE, LINE_LEN } from './constant
 import { updatePaperSelectOptionsUnits, updateAddOrRemoveCustomPaperOption, updatePageLayoutInfo} from './utils/renderUtils.js';
 import JSZip from 'jszip';
 export class Book {
-    constructor() {
+    /** @param { import("./models/configuration.js").Configuration } configuration */
+    constructor(configuration) {
         this.inputpdf = null;    //  string with pdf filepath
         this.password = null;    //  if necessary
 
-        this.duplex = false; //FIXME
-        this.duplexrotate = true;
-        this.papersize = PAGE_SIZES.A4;   //  default for europe
-        this.paper_rotation_90 = false; // make the printed page landscape [for landscaped layouts, results in portait]
-
-        this.print_file = 'both';   //valid options: [aggregated, both, signatures]
-        // valid rotation options: [none, 90cw, 90ccw, out_binding, in_binding]
-        this.source_rotation = 'none'; // new feature to rotate pages on the sheets 2023/3/09
         this.managedDoc = null; // original PDF with the pages rotated per source_rotation - use THIS for laying out pages
 
-        this.page_scaling = 'lockratio';
-        this.page_positioning = 'centered';
-        this.flyleaf = false;
         this.spineoffset = false;
-        this.format = 'standardsig';
-        this.sigsize = 4;       //  preferred signature size
-        this.customsig = null;
-        this.signatureconfig = [];  //  signature configuration
 
         this.input = null;    //  opened pdf file
         this.currentdoc = null;    //  uploaded PDF [Itext PDFReader object] untouched by source_rotation - use managedDoc for layout
@@ -40,68 +26,47 @@ export class Book {
         this.rearrangedpages = [];      //  reordered list of page numbers (signatures etc.)
         this.filelist = [];      //  list of ouput filenames and path
         this.zip = null;
-        this.page_layout = PAGE_LAYOUTS.folio;
-        this.per_sheet = 8; //number of pages to print per sheet.
-        this.cropmarks = false;
-        this.cutmarks = false;
 
-        this.fore_edge_padding_pt = 0;  // (wacky only atm) -- to track buffer space on non-binding edge
-        this.pack_pages = true;     // (wacky only atm) - to track if the white space should be distributed
-        this.padding_pt = {'top': 0, 'bottom': 0, 'binding': 0, 'fore_edge': 0}
+        this.update(configuration);
     }
 
-    update(form) {
-        this.duplex = form.get('printer_type') == 'duplex';
-        this.duplexrotate = form.has('rotate_page');
-        this.paper_rotation_90 = form.has('paper_rotation_90');
-        this.papersize = PAGE_SIZES[form.get('paper_size')];
-        if (this.paper_rotation_90) {
+    /** @param { import("./models/configuration.js").Configuration } configuration */
+    update(configuration) {
+        this.duplex = configuration.printerType == 'duplex';
+        this.duplexrotate = configuration.rotatePage;
+        this.paper_rotation_90 = configuration.paperRotation90;
+        this.papersize = PAGE_SIZES[configuration.paperSize];
+        if (configuration.paperRotation90) {
             this.papersize = [this.papersize[1], this.papersize[0]]
         }
 
-        this.source_rotation = form.get("source_rotation");
-
-        this.print_file = form.get("print_file");
-        this.page_scaling = form.get("page_scaling");
-        this.page_positioning = form.get("page_positioning");
-        this.flyleaf = form.has('flyleaf');
-        this.cropmarks = form.has('cropmarks');
-        this.cutmarks = form.has('cutmarks');
-        this.format = form.get('sig_format');
-        let siglength = parseInt(form.get('sig_length'), 10);
-        if (!isNaN(siglength)) {
-            this.sigsize = siglength;
-        }
+        this.source_rotation = configuration.sourceRotation;
+        this.print_file = configuration.printFile;
+        this.page_scaling = configuration.pageScaling;
+        this.page_positioning = configuration.pagePositioning;
+        this.flyleaf = configuration.flyleaf;
+        this.cropmarks = configuration.cropMarks;
+        this.cutmarks = configuration.cutMarks;
+        this.format = configuration.sigFormat;
+        this.sigsize = configuration.sigLength;
         this.customsig = this.format == 'customsig';
         if (this.customsig) {
-            this.signatureconfig = [];
-            let format = form.get('custom_sig');
-            format.split(/, */).forEach(number => {
-                let num = parseInt(number, 10);
-                if (!isNaN(num)) {
-                    this.signatureconfig.push(num);
-                }
-            });
+            this.signatureconfig = configuration.customSigLength;
         }
 
-        this.page_layout = form.get('pagelayout') == null ? 'folio' : PAGE_LAYOUTS[form.get('pagelayout')];
+        this.page_layout = PAGE_LAYOUTS[configuration.pageLayout];
         this.per_sheet = this.page_layout.per_sheet;
-        this.pack_pages = form.get('wacky_spacing') == 'wacky_pack';
-        this.fore_edge_padding_pt = this.extractIntFromForm(form, 'fore_edge_padding_pt')
+        this.pack_pages = configuration.wackySpacing == 'wacky_pack';
+        this.fore_edge_padding_pt = configuration.foreEdgePaddingPt
 
         this.padding_pt = {
-            'top' : this.extractIntFromForm(form, 'top_edge_padding_pt'),
-            'bottom': this.extractIntFromForm(form, 'bottom_edge_padding_pt'),
-            'binding': this.extractIntFromForm(form, 'binding_edge_padding_pt'),
-            'fore_edge': this.extractIntFromForm(form, 'main_fore_edge_padding_pt')
+            'top' : configuration.topEdgePaddingPt,
+            'bottom': configuration.bottomEdgePaddingPt,
+            'binding': configuration.bindingEdgePaddingPt,
+            'fore_edge': configuration.foreEdgePaddingPt,
         };
         updateAddOrRemoveCustomPaperOption()
         updatePaperSelectOptionsUnits() // make sure this goes AFTER the Custom update!
-    }
-
-    extractIntFromForm(form, fieldName) {
-        let num = parseInt(form.get(fieldName))
-        return (isNaN(num)) ? 0 : num;
     }
 
     /**

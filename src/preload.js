@@ -7,7 +7,7 @@ import { renderPaperSelectOptions } from './utils/renderUtils.js';
 window.addEventListener('DOMContentLoaded', () => {
     // render dynamic content
     renderPaperSelectOptions();
-    loadForm();
+    const configuration = loadForm();
 
     // grab DOM elements
     const generate = document.getElementById('generate');
@@ -17,7 +17,7 @@ window.addEventListener('DOMContentLoaded', () => {
     const inputs = document.querySelectorAll('input, select');
 
     // spin up a book to pass to listeners
-    const book = new Book();
+    const book = new Book(configuration);
 
     // add event listeners to grabbed elements
     inputs.forEach((input) => {

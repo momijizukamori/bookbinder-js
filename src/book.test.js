@@ -1,4 +1,5 @@
-import { Book } from './book';
+import { Book } from "./book";
+import { schema } from "./models/configuration";
 
 describe('Book model', () => {
     // TODO confirm that this is what a newly created book (that is, without any settings changed) should look like; I've copied the result from how it currently works assuming it's working as-intended
@@ -35,8 +36,9 @@ describe('Book model', () => {
         cutmarks: false,
     };
     it('returns a new Book', () => {
+        const defaultConfiguration = schema.parse({});
         const expected = defaultBook;
-        const actual = new Book();
+        const actual = new Book(defaultConfiguration);
         expect(actual).toEqual(expected);
     });
     // TODO test update

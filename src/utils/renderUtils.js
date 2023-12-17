@@ -144,8 +144,9 @@ export function renderWacky() {
     document.getElementById('book_size').style.opacity = isWacky ? 0.3 : 1.0;
 }
 
-export function renderFormFromSettings(bookSettings) {
-    if (bookSettings.duplex) {
+/** @param { import("../models/configuration").Configuration } configuration */
+export function renderFormFromSettings(configuration) {
+    if (configuration.printerType == 'duplex') {
         document
             .querySelector('#printer_type > option[value="duplex"]')
             .setAttribute('selected', '');
@@ -177,7 +178,7 @@ export function renderFormFromSettings(bookSettings) {
     //         .removeAttribute('selected');
     // }
 
-    if (bookSettings.duplexrotate) {
+    if (configuration.rotatePage) {
         document
             .querySelector('input[name="rotate_page"')
             .setAttribute('checked', '');
@@ -189,14 +190,39 @@ export function renderFormFromSettings(bookSettings) {
 
     document.querySelector('option[value="A4"]').removeAttribute('selected');
     document
-        .querySelector('option[value="' + bookSettings.papersize + '"]')
+        .querySelector('option[value="' + configuration.paperSize + '"]')
         .setAttribute('selected', '');
 
-    document.getElementById(bookSettings.format).setAttribute('checked', '');
+    document.getElementById(configuration.sigFormat).setAttribute('checked', '');
     document
-        .getElementById(bookSettings.pagelayout)
+        .getElementById(configuration.pageLayout)
         .setAttribute('checked', '');
     document
         .querySelector('input[name="sig_length')
-        .setAttribute('value', bookSettings.sigsize);
+        .setAttribute('value', configuration.sigLength);
+
+    // TODO: SET EVERYTHING ELSE. It would be nice to not have to manage these, and to have it be automatic for every input.
+    /* configuration.bindingEdgePaddingPt
+    configuration.bottomEdgePaddingPt
+    configuration.cropMarks
+    configuration.customSigLength
+    configuration.cutMarks
+    configuration.fileDownload
+    configuration.flyleaf
+    configuration.foreEdgePaddingPt
+    configuration.mainForeEdgePaddingPt
+    configuration.pageLayout
+    configuration.pagePositioning
+    configuration.pageScaling
+    configuration.paperRotation90
+    configuration.paperSize
+    configuration.paperSizeUnit
+    configuration.printFile
+    configuration.printerType
+    configuration.rotatePage
+    configuration.sigFormat
+    configuration.sigLength
+    configuration.sourceRotation
+    configuration.topEdgePaddingPt
+    configuration.wackySpacing */
 }
