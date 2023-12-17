@@ -20,6 +20,7 @@
   "dependencies": {
     "file-saver": "^2.0.5",
     "jszip": "^3.7.1",
-    "pdf-lib": "^1.16.0"
+    "pdf-lib": "^1.16.0",
+    "zod": "^3.22.4"
   }
 }
