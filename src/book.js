@@ -34,7 +34,7 @@ export class Book {
 
     /** @param { import("./models/configuration.js").Configuration } configuration */
     update(configuration) {
-        this.duplex = configuration.printerType == 'duplex';
+        this.duplex = configuration.printerType === 'duplex';
         this.duplexrotate = configuration.rotatePage;
         this.paper_rotation_90 = configuration.paperRotation90;
         this.papersize = PAGE_SIZES[configuration.paperSize];
@@ -53,14 +53,14 @@ export class Book {
         if (configuration.sigFormat === "standardsig") {
             this.sigsize = configuration.sigLength;
         }
-        this.customsig = this.format == 'customsig';
+        this.customsig = this.format === 'customsig';
         if (this.customsig) {
             this.signatureconfig = configuration.customSigLength;
         }
 
         this.page_layout = PAGE_LAYOUTS[configuration.pageLayout];
         this.per_sheet = this.page_layout.per_sheet;
-        this.pack_pages = configuration.wackySpacing == 'wacky_pack';
+        this.pack_pages = configuration.wackySpacing === 'wacky_pack';
         this.fore_edge_padding_pt = configuration.foreEdgePaddingPt
 
         this.padding_pt = {
