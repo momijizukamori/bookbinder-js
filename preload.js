@@ -36,6 +36,8 @@ class Book {
         this.password = null;    //  if necessary
 
         this.managedDoc = null; // original PDF with the pages rotated per source_rotation - use THIS for laying out pages
+        
+        this.signatureconfig = [];
 
         this.spineoffset = false;
 
@@ -54,7 +56,7 @@ class Book {
 
     /** @param { import("./models/configuration.js").Configuration } configuration */
     update(configuration) {
-        this.duplex = configuration.printerType == 'duplex';
+        this.duplex = configuration.printerType === 'duplex';
         this.duplexrotate = configuration.rotatePage;
         this.paper_rotation_90 = configuration.paperRotation90;
         this.papersize = _constants_js__WEBPACK_IMPORTED_MODULE_6__.PAGE_SIZES[configuration.paperSize];
@@ -73,14 +75,14 @@ class Book {
         if (configuration.sigFormat === "standardsig") {
             this.sigsize = configuration.sigLength;
         }
-        this.customsig = this.format == 'customsig';
+        this.customsig = this.format === 'customsig';
         if (this.customsig) {
             this.signatureconfig = configuration.customSigLength;
         }
 
         this.page_layout = _constants_js__WEBPACK_IMPORTED_MODULE_6__.PAGE_LAYOUTS[configuration.pageLayout];
         this.per_sheet = this.page_layout.per_sheet;
-        this.pack_pages = configuration.wackySpacing == 'wacky_pack';
+        this.pack_pages = configuration.wackySpacing === 'wacky_pack';
         this.fore_edge_padding_pt = configuration.foreEdgePaddingPt
 
         this.padding_pt = {
@@ -32292,6 +32294,17 @@ __webpack_require__.r(__webpack_exports__);
 
 
 
+const commaSeparatedNumberList = zod__WEBPACK_IMPORTED_MODULE_1__.z
+    .union([zod__WEBPACK_IMPORTED_MODULE_1__.z.string(), zod__WEBPACK_IMPORTED_MODULE_1__.z.array(zod__WEBPACK_IMPORTED_MODULE_1__.z.number())])
+    .transform((val) => {
+        if (Array.isArray(val)) {
+            return val;
+        }
+
+        return val.split(/, */);
+    })
+    .pipe(zod__WEBPACK_IMPORTED_MODULE_1__.z.array(zod__WEBPACK_IMPORTED_MODULE_1__.z.coerce.number()));
+
 const coercedBoolean = zod__WEBPACK_IMPORTED_MODULE_1__.z
     .union([
         zod__WEBPACK_IMPORTED_MODULE_1__.z
@@ -32310,7 +32323,7 @@ const urlSafe = (schema) => schema.optional().catch(() => undefined);
 const sourceRotation = urlSafe(zod__WEBPACK_IMPORTED_MODULE_1__.z.enum(["none", "90cw", "90ccw", "out_binding", "in_binding"])).default("none");
 
 /** @type { keyof typeof import("../constants").PAGE_SIZES } */
-const availablePaperSizes = Object.keys(_constants__WEBPACK_IMPORTED_MODULE_0__.PAGE_SIZES); //?
+const availablePaperSizes = Object.keys(_constants__WEBPACK_IMPORTED_MODULE_0__.PAGE_SIZES);
 
 const paperSize = urlSafe(zod__WEBPACK_IMPORTED_MODULE_1__.z.enum(availablePaperSizes)).default("LETTER");
 
@@ -32352,7 +32365,7 @@ const schema = zod__WEBPACK_IMPORTED_MODULE_1__.z.object({
     bottomEdgePaddingPt: urlSafe(zod__WEBPACK_IMPORTED_MODULE_1__.z.coerce.number()).default(0),
     sigFormat,
     sigLength: urlSafe(zod__WEBPACK_IMPORTED_MODULE_1__.z.coerce.number()).default(8), // Specific to standard
-    customSigLength: urlSafe(zod__WEBPACK_IMPORTED_MODULE_1__.z.coerce.number()), // Specific to custom.
+    customSigLength: urlSafe(commaSeparatedNumberList).default([]), // Specific to custom.
     foreEdgePaddingPt: urlSafe(zod__WEBPACK_IMPORTED_MODULE_1__.z.coerce.number()).default(0), // specific to wacky small
     wackySpacing, // specific to wacky small
     flyleaf: urlSafe(coercedBoolean).default(false),
@@ -36779,7 +36792,7 @@ window.addEventListener('DOMContentLoaded', () => {
     const preview = document.getElementById('preview');
     const bookbinderForm = document.getElementById('bookbinder');
     const fileInput = document.getElementById('input_file');
-    const inputs = document.querySelectorAll('input, select, radio, checkbox');
+    const inputs = document.querySelectorAll('input, select');
 
     // spin up a book to pass to listeners
     const book = new _book_js__WEBPACK_IMPORTED_MODULE_0__.Book(configuration);

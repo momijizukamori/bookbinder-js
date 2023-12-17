@@ -14,7 +14,7 @@ window.addEventListener('DOMContentLoaded', () => {
     const preview = document.getElementById('preview');
     const bookbinderForm = document.getElementById('bookbinder');
     const fileInput = document.getElementById('input_file');
-    const inputs = document.querySelectorAll('input, select, radio, checkbox');
+    const inputs = document.querySelectorAll('input, select');
 
     // spin up a book to pass to listeners
     const book = new Book(configuration);
