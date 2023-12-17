@@ -146,83 +146,64 @@ export function renderWacky() {
 
 /** @param { import("../models/configuration").Configuration } configuration */
 export function renderFormFromSettings(configuration) {
-    if (configuration.printerType == 'duplex') {
-        document
-            .querySelector('#printer_type > option[value="duplex"]')
-            .setAttribute('selected', '');
-        document
-            .querySelector('#printer_type > option[value="single"]')
-            .removeAttribute('selected');
-    } else {
-        document
-            .querySelector('#printer_type > option[value="single"]')
-            .setAttribute('selected', '');
-        document
-            .querySelector('#printer_type > option[value="duplex"]')
-            .removeAttribute('selected');
-    }
+    // Clear all checked attributes
+    document.querySelectorAll("[type=radio]").forEach((e) => e.removeAttribute("checked"));
+    document.querySelectorAll("[type=checkbox]").forEach((e) => e.removeAttribute("checked"));
 
-    // if (bookSettings.lockratio) {
-    //     document
-    //         .querySelector('option[value="lockratio"]')
-    //         .setAttribute('selected', '');
-    //     document
-    //         .querySelector('option[value="stretch"]')
-    //         .removeAttribute('selected');
-    // } else {
-    //     document
-    //         .querySelector('option[value="stretch"]')
-    //         .setAttribute('selected', '');
-    //     document
-    //         .querySelector('option[value="lockratio"]')
-    //         .removeAttribute('selected');
-    // }
+    // Set checkboxes
+    if (configuration.paperRotation90) {
+        document.querySelector("input[name='paper_rotation_90']").setAttribute("checked", "");
+    }
 
     if (configuration.rotatePage) {
-        document
-            .querySelector('input[name="rotate_page"')
-            .setAttribute('checked', '');
-    } else {
-        document
-            .querySelector('input[name="rotate_page"')
-            .removeAttribute('checked');
+        document.querySelector("input[name='rotate_page']").setAttribute("checked", "");
     }
 
-    document.querySelector('option[value="A4"]').removeAttribute('selected');
-    document
-        .querySelector('option[value="' + configuration.paperSize + '"]')
-        .setAttribute('selected', '');
+    if (configuration.flyleaf) {
+        document.querySelector("input[name='flyleaf']").setAttribute("checked", "");
+    }
 
-    document.getElementById(configuration.sigFormat).setAttribute('checked', '');
-    document
-        .getElementById(configuration.pageLayout)
-        .setAttribute('checked', '');
-    document
-        .querySelector('input[name="sig_length')
-        .setAttribute('value', configuration.sigLength);
+    if (configuration.cropMarks) {
+        document.querySelector("input[name='cropmarks']").setAttribute("checked", "");
+    }
 
-    // TODO: SET EVERYTHING ELSE. It would be nice to not have to manage these, and to have it be automatic for every input.
-    /* configuration.bindingEdgePaddingPt
-    configuration.bottomEdgePaddingPt
-    configuration.cropMarks
-    configuration.customSigLength
-    configuration.cutMarks
-    configuration.fileDownload
-    configuration.flyleaf
-    configuration.foreEdgePaddingPt
-    configuration.mainForeEdgePaddingPt
-    configuration.pageLayout
-    configuration.pagePositioning
-    configuration.pageScaling
-    configuration.paperRotation90
-    configuration.paperSize
-    configuration.paperSizeUnit
-    configuration.printFile
-    configuration.printerType
-    configuration.rotatePage
-    configuration.sigFormat
-    configuration.sigLength
-    configuration.sourceRotation
-    configuration.topEdgePaddingPt
-    configuration.wackySpacing */
+    if (configuration.cutMarks) {
+        document.querySelector("input[name='cutmarks']").setAttribute("checked", "");
+    }
+
+    // Set radio options
+    document.querySelector(`input[name="pagelayout"][value="${configuration.pageLayout}"]`).setAttribute("checked", "");
+    document.querySelector(`input[name="sig_format"][value="${configuration.sigFormat}"]`).setAttribute("checked", "");
+    document.querySelector(`input[name="wacky_spacing"][value="${configuration.wackySpacing}"]`).setAttribute("checked", "");
+    document.querySelector(`input[name="source_rotation"][value="${configuration.sourceRotation}"]`).setAttribute("checked", "");
+
+    // Set freeform inputs
+    document.querySelector('input[name="main_fore_edge_padding_pt"]').value = configuration.mainForeEdgePaddingPt;
+    document.querySelector('input[name="binding_edge_padding_pt"]').value = configuration.bindingEdgePaddingPt;
+    document.querySelector('input[name="top_edge_padding_pt"]').value = configuration.topEdgePaddingPt;
+    document.querySelector('input[name="bottom_edge_padding_pt"]').value = configuration.bottomEdgePaddingPt;
+    document.querySelector('input[name="fore_edge_padding_pt"]').value = configuration.foreEdgePaddingPt;
+
+    // Set select options
+    document.querySelector('select[name="page_scaling"]').value = configuration.pageScaling;
+    document.querySelector('select[name="page_positioning"]').value = configuration.pagePositioning;
+    document.querySelector('select[name="print_file"]').value = configuration.printFile;
+    document.querySelector('select[name="paper_size"]').value = configuration.paperSize;
+    document.querySelector('select[name="paper_size_unit"]').value = configuration.paperSizeUnit;
+    document.querySelector('select[name="printer_type"]').value = configuration.printerType;
+
+    // Set options which are not always present
+    if (configuration.paperSizeCustomHeight !== undefined) {
+        document.querySelector('input[name="paper_size_custom_height"]').value = configuration.paperSizeCustomHeight;
+    }
+
+    if (configuration.paperSizeCustomWidth !== undefined) {
+        document.querySelector('input[name="paper_size_custom_width"]').value = configuration.paperSizeCustomWidth;
+    }
+
+    if (configuration.sigFormat == "customsig") {
+        document.querySelector("input[name='custom_sig']").value = configuration.customSigLength;
+    } else {
+        document.querySelector("input[name='sig_length']").value = configuration.sigLength;
+    }
 }

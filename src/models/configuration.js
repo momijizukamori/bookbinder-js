@@ -6,10 +6,10 @@ const coercedBoolean = z
         z
             .string()
             .toLowerCase()
-            .pipe(z.enum(["true", "false"])),
+            .pipe(z.enum(["true", "false", "on"])),
         z.boolean(),
     ])
-    .transform((val) => val === "true" || val === true);
+    .transform((val) => val === "true" || val === "on" || val === true);
 
 /**
  * @type {<Output=unknown, Def extends (import("zod").ZodTypeDef)=(import("zod").ZodTypeDef), Input=Output>(schema: ZodType<Output, Def, Input>) => ZodType<Output | undefined, Def, Input | undefined>}
@@ -29,9 +29,9 @@ const printerType = urlSafe(z.enum(["single", "duplex"])).default("single");
 
 const pageLayout = urlSafe(z.enum(["folio", "quarto", "octavo", "sextodecimo"])).default("folio");
 
-const pageScaling = urlSafe(z.enum(["centered", "lockratio", "stretch"]).default("lockratio"));
+const pageScaling = urlSafe(z.enum(["centered", "lockratio", "stretch"])).default("lockratio");
 
-const pagePositioning = urlSafe(z.enum(["centered", "binding_aligned"]).default("centered"));
+const pagePositioning = urlSafe(z.enum(["centered", "binding_aligned"])).default("centered");
 
 const sigFormat = urlSafe(z.enum(["perfect", "standardsig", "customsig", "1_3rd", "A7_2_16s", "8_zine", "a_3_6s", "a9_3_3_4", "a_4_8s", "a10_6_10s"])).default("standardsig");
 

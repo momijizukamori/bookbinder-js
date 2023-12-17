@@ -1,9 +1,12 @@
-import { saveForm, updateRenderedForm } from './formUtils';
+import { saveForm, updateRenderedForm } from "./formUtils";
+import { updatePaperSelectOptionsUnits, updateAddOrRemoveCustomPaperOption} from './renderUtils';
 
 export function handleInputChange(book, bookbinderForm) {
     const formData = new FormData(bookbinderForm);
     const updatedConfiguration = saveForm(formData);
-    book.update(updatedConfiguration)
+    book.update(updatedConfiguration);
+    updateAddOrRemoveCustomPaperOption()
+    updatePaperSelectOptionsUnits() // make sure this goes AFTER the Custom update!
     if (book.inputpdf) {
         updateRenderedForm(book);
     }

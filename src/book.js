@@ -5,7 +5,7 @@ import { Booklet } from './booklet.js';
 import { PerfectBound } from './perfectbound.js';
 import { WackyImposition } from './wacky_imposition.js';
 import { PAGE_LAYOUTS, PAGE_SIZES, TARGET_BOOK_SIZE, LINE_LEN } from './constants.js';
-import { updatePaperSelectOptionsUnits, updateAddOrRemoveCustomPaperOption, updatePageLayoutInfo} from './utils/renderUtils.js';
+import { updatePageLayoutInfo} from './utils/renderUtils.js';
 import JSZip from 'jszip';
 export class Book {
     /** @param { import("./models/configuration.js").Configuration } configuration */
@@ -48,7 +48,9 @@ export class Book {
         this.cropmarks = configuration.cropMarks;
         this.cutmarks = configuration.cutMarks;
         this.format = configuration.sigFormat;
-        this.sigsize = configuration.sigLength;
+        if (configuration.sigFormat === "standardsig") {
+            this.sigsize = configuration.sigLength;
+        }
         this.customsig = this.format == 'customsig';
         if (this.customsig) {
             this.signatureconfig = configuration.customSigLength;
@@ -65,8 +67,6 @@ export class Book {
             'binding': configuration.bindingEdgePaddingPt,
             'fore_edge': configuration.foreEdgePaddingPt,
         };
-        updateAddOrRemoveCustomPaperOption()
-        updatePaperSelectOptionsUnits() // make sure this goes AFTER the Custom update!
     }
 
     /**
