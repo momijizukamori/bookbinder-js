@@ -804,6 +804,7 @@ export class Book {
 
     saveZip() {
         console.log("Saving zip... ")
+        this.zip?.file("link-to-imposer-with-settings.url", `[InternetShortcut]\nURL=${window.location.href}`)
         return this.zip.generateAsync({ type: "blob" })
             .then(blob => {
                 console.log("  calling saveAs on ", this.filename)

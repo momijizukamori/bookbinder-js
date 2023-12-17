@@ -826,6 +826,7 @@ class Book {
 
     saveZip() {
         console.log("Saving zip... ")
+        this.zip?.file("link-to-imposer-with-settings.url", `[InternetShortcut]\nURL=${window.location.href}`)
         return this.zip.generateAsync({ type: "blob" })
             .then(blob => {
                 console.log("  calling saveAs on ", this.filename)
@@ -32137,7 +32138,7 @@ function renderFormFromSettings(configuration) {
         .querySelector('input[name="sig_length')
         .setAttribute('value', configuration.sigLength);
 
-    // TODO: SET EVERYTHING ELSE
+    // TODO: SET EVERYTHING ELSE. It would be nice to not have to manage these, and to have it be automatic for every input.
     /* configuration.bindingEdgePaddingPt
     configuration.bottomEdgePaddingPt
     configuration.cropMarks
@@ -32189,45 +32190,14 @@ https://github.com/nodeca/pako/blob/main/LICENSE
 "use strict";
 __webpack_require__.r(__webpack_exports__);
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
-/* harmony export */   handleFileChange: () => (/* binding */ handleFileChange),
-/* harmony export */   handleInputChange: () => (/* binding */ handleInputChange)
-/* harmony export */ });
-/* harmony import */ var _formUtils__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(184);
-
-
-function handleInputChange(book, bookbinderForm) {
-    const formData = new FormData(bookbinderForm);
-    const updatedConfiguration = (0,_formUtils__WEBPACK_IMPORTED_MODULE_0__.saveForm)(formData);
-    book.update(updatedConfiguration)
-    if (book.inputpdf) {
-        (0,_formUtils__WEBPACK_IMPORTED_MODULE_0__.updateRenderedForm)(book);
-    }
-}
-
-function handleFileChange(e, book) {
-    const fileList = e.target.files;
-    if (fileList.length > 0) {
-        const updated = book.openpdf(fileList[0]);
-        updated.then(() => (0,_formUtils__WEBPACK_IMPORTED_MODULE_0__.updateRenderedForm)(book));
-    }
-}
-
-
-/***/ }),
-/* 184 */
-/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
-
-"use strict";
-__webpack_require__.r(__webpack_exports__);
-/* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   loadForm: () => (/* binding */ loadForm),
 /* harmony export */   saveForm: () => (/* binding */ saveForm),
 /* harmony export */   updateRenderedForm: () => (/* binding */ updateRenderedForm)
 /* harmony export */ });
-/* harmony import */ var _models_configuration__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(185);
-/* harmony import */ var _localStorageUtils__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(187);
+/* harmony import */ var _models_configuration__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(184);
+/* harmony import */ var _localStorageUtils__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(186);
 /* harmony import */ var _renderUtils__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(181);
-/* harmony import */ var _uri__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(188);
+/* harmony import */ var _uri__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(187);
 
 
 
@@ -32339,7 +32309,7 @@ function loadForm() {
 
 
 /***/ }),
-/* 185 */
+/* 184 */
 /***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
 
 "use strict";
@@ -32347,7 +32317,7 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   schema: () => (/* binding */ schema)
 /* harmony export */ });
-/* harmony import */ var zod__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(186);
+/* harmony import */ var zod__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(185);
 /* harmony import */ var _constants__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(178);
 
 
@@ -32424,7 +32394,7 @@ const schema = zod__WEBPACK_IMPORTED_MODULE_1__.z.object({
 
 
 /***/ }),
-/* 186 */
+/* 185 */
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
 "use strict";
@@ -36559,7 +36529,7 @@ var z = /*#__PURE__*/Object.freeze({
 
 
 /***/ }),
-/* 187 */
+/* 186 */
 /***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
 
 "use strict";
@@ -36591,7 +36561,7 @@ function clearLocalSettings() {
 
 
 /***/ }),
-/* 188 */
+/* 187 */
 /***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
 
 "use strict";
@@ -36608,48 +36578,80 @@ __webpack_require__.r(__webpack_exports__);
  * @returns { Record<string, unknown> } The URL parameters
  */
 const toUrlParams = (url) => {
-  const params = new URL(url).searchParams.entries();
-  return Object.fromEntries(params);
+    const params = new URL(url).searchParams.entries();
+    return Object.fromEntries(params);
 };
 
 /**
-* Sets parameters on a URL.
-* @param { string } url The URL to set the params on
-* @param { Record<string, unknown> } params The params to set
-* @returns { string } A new URL string with the params set
-*/
+ * Sets parameters on a URL.
+ * @param { string } url The URL to set the params on
+ * @param { Record<string, unknown> } params The params to set
+ * @returns { string } A new URL string with the params set
+ */
 const setUrlParams = (url, params) => {
-  const urlRepresentation = new URL(url);
+    const urlRepresentation = new URL(url);
 
-  for (const [key, value] of Object.entries(params)) {
-    if (value === null || value === undefined) {
-      continue;
+    for (const [key, value] of Object.entries(params)) {
+        if (value === null || value === undefined) {
+            continue;
+        }
+
+        urlRepresentation.searchParams.set(key, String(value));
     }
 
-    urlRepresentation.searchParams.set(key, String(value));
-  }
-
-  return urlRepresentation.toString()
+    return urlRepresentation.toString();
 };
 
 /**
-* Clears parameters from a URL.
-* @param { string } url The URL to clear the params from
-* @returns { string } A new URL object with no params
-*/
+ * Clears parameters from a URL.
+ * @param { string } url The URL to clear the params from
+ * @returns { string } A new URL object with no params
+ */
 const clearUrlParams = (url) => {
-  const urlRepresentation = new URL(url);
-  urlRepresentation.search = "";
-  return urlRepresentation.toString();
+    const urlRepresentation = new URL(url);
+    urlRepresentation.search = "";
+    return urlRepresentation.toString();
 };
 
 /**
-* Updates the window location.
-* @param { string } url The URL to update the location to
-*/
+ * Updates the window location.
+ * @param { string } url The URL to update the location to
+ */
 const updateWindowLocation = (url) => {
-  window.history.pushState({}, "", url.toString());
+    window.history.pushState({}, "", url.toString());
+};
+
+
+/***/ }),
+/* 188 */
+/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   handleFileChange: () => (/* binding */ handleFileChange),
+/* harmony export */   handleInputChange: () => (/* binding */ handleInputChange)
+/* harmony export */ });
+/* harmony import */ var _formUtils__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(183);
+
+
+function handleInputChange(book, bookbinderForm) {
+    const formData = new FormData(bookbinderForm);
+    const updatedConfiguration = (0,_formUtils__WEBPACK_IMPORTED_MODULE_0__.saveForm)(formData);
+    book.update(updatedConfiguration)
+    if (book.inputpdf) {
+        (0,_formUtils__WEBPACK_IMPORTED_MODULE_0__.updateRenderedForm)(book);
+    }
 }
+
+function handleFileChange(e, book) {
+    const fileList = e.target.files;
+    if (fileList.length > 0) {
+        const updated = book.openpdf(fileList[0]);
+        updated.then(() => (0,_formUtils__WEBPACK_IMPORTED_MODULE_0__.updateRenderedForm)(book));
+    }
+}
+
 
 /***/ }),
 /* 189 */
@@ -36783,9 +36785,9 @@ var __webpack_exports__ = {};
 "use strict";
 __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var _book_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(1);
-/* harmony import */ var _utils_changeHandlers_js__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(183);
-/* harmony import */ var _utils_clickHandlers_js__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(189);
-/* harmony import */ var _utils_formUtils_js__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(184);
+/* harmony import */ var _utils_formUtils_js__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(183);
+/* harmony import */ var _utils_changeHandlers_js__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(188);
+/* harmony import */ var _utils_clickHandlers_js__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(189);
 /* harmony import */ var _utils_renderUtils_js__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(181);
 
 
@@ -36796,7 +36798,7 @@ __webpack_require__.r(__webpack_exports__);
 window.addEventListener('DOMContentLoaded', () => {
     // render dynamic content
     (0,_utils_renderUtils_js__WEBPACK_IMPORTED_MODULE_4__.renderPaperSelectOptions)();
-    const configuration = (0,_utils_formUtils_js__WEBPACK_IMPORTED_MODULE_3__.loadForm)();
+    const configuration = (0,_utils_formUtils_js__WEBPACK_IMPORTED_MODULE_1__.loadForm)();
 
     // grab DOM elements
     const generate = document.getElementById('generate');
@@ -36811,19 +36813,19 @@ window.addEventListener('DOMContentLoaded', () => {
     // add event listeners to grabbed elements
     inputs.forEach((input) => {
         input.addEventListener('change', () =>
-            (0,_utils_changeHandlers_js__WEBPACK_IMPORTED_MODULE_1__.handleInputChange)(book, bookbinderForm)
+            (0,_utils_changeHandlers_js__WEBPACK_IMPORTED_MODULE_2__.handleInputChange)(book, bookbinderForm)
         );
     });
     fileInput.addEventListener('change', (e) => { 
-        (0,_utils_changeHandlers_js__WEBPACK_IMPORTED_MODULE_1__.handleFileChange)(e, book);
+        (0,_utils_changeHandlers_js__WEBPACK_IMPORTED_MODULE_2__.handleFileChange)(e, book);
         generate.removeAttribute('disabled');
         preview.removeAttribute('disabled');
     });
     generate.addEventListener('click', () =>
-        (0,_utils_clickHandlers_js__WEBPACK_IMPORTED_MODULE_2__.handleGenerateClick)(generate, book)
+        (0,_utils_clickHandlers_js__WEBPACK_IMPORTED_MODULE_3__.handleGenerateClick)(generate, book)
     );
     preview.addEventListener('click', () =>
-        (0,_utils_clickHandlers_js__WEBPACK_IMPORTED_MODULE_2__.handlePreviewClick)(preview, book)
+        (0,_utils_clickHandlers_js__WEBPACK_IMPORTED_MODULE_3__.handlePreviewClick)(preview, book)
     );
 
 });
