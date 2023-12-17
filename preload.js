@@ -70,7 +70,9 @@ class Book {
         this.cropmarks = configuration.cropMarks;
         this.cutmarks = configuration.cutMarks;
         this.format = configuration.sigFormat;
-        this.sigsize = configuration.sigLength;
+        if (configuration.sigFormat === "standardsig") {
+            this.sigsize = configuration.sigLength;
+        }
         this.customsig = this.format == 'customsig';
         if (this.customsig) {
             this.signatureconfig = configuration.customSigLength;
@@ -87,8 +89,6 @@ class Book {
             'binding': configuration.bindingEdgePaddingPt,
             'fore_edge': configuration.foreEdgePaddingPt,
         };
-        (0,_utils_renderUtils_js__WEBPACK_IMPORTED_MODULE_7__.updateAddOrRemoveCustomPaperOption)()
-        ;(0,_utils_renderUtils_js__WEBPACK_IMPORTED_MODULE_7__.updatePaperSelectOptionsUnits)() // make sure this goes AFTER the Custom update!
     }
 
     /**
@@ -32083,85 +32083,66 @@ function renderWacky() {
 
 /** @param { import("../models/configuration").Configuration } configuration */
 function renderFormFromSettings(configuration) {
-    if (configuration.printerType == 'duplex') {
-        document
-            .querySelector('#printer_type > option[value="duplex"]')
-            .setAttribute('selected', '');
-        document
-            .querySelector('#printer_type > option[value="single"]')
-            .removeAttribute('selected');
-    } else {
-        document
-            .querySelector('#printer_type > option[value="single"]')
-            .setAttribute('selected', '');
-        document
-            .querySelector('#printer_type > option[value="duplex"]')
-            .removeAttribute('selected');
-    }
+    // Clear all checked attributes
+    document.querySelectorAll("[type=radio]").forEach((e) => e.removeAttribute("checked"));
+    document.querySelectorAll("[type=checkbox]").forEach((e) => e.removeAttribute("checked"));
 
-    // if (bookSettings.lockratio) {
-    //     document
-    //         .querySelector('option[value="lockratio"]')
-    //         .setAttribute('selected', '');
-    //     document
-    //         .querySelector('option[value="stretch"]')
-    //         .removeAttribute('selected');
-    // } else {
-    //     document
-    //         .querySelector('option[value="stretch"]')
-    //         .setAttribute('selected', '');
-    //     document
-    //         .querySelector('option[value="lockratio"]')
-    //         .removeAttribute('selected');
-    // }
+    // Set checkboxes
+    if (configuration.paperRotation90) {
+        document.querySelector("input[name='paper_rotation_90']").setAttribute("checked", "");
+    }
 
     if (configuration.rotatePage) {
-        document
-            .querySelector('input[name="rotate_page"')
-            .setAttribute('checked', '');
-    } else {
-        document
-            .querySelector('input[name="rotate_page"')
-            .removeAttribute('checked');
+        document.querySelector("input[name='rotate_page']").setAttribute("checked", "");
     }
 
-    document.querySelector('option[value="A4"]').removeAttribute('selected');
-    document
-        .querySelector('option[value="' + configuration.paperSize + '"]')
-        .setAttribute('selected', '');
+    if (configuration.flyleaf) {
+        document.querySelector("input[name='flyleaf']").setAttribute("checked", "");
+    }
 
-    document.getElementById(configuration.sigFormat).setAttribute('checked', '');
-    document
-        .getElementById(configuration.pageLayout)
-        .setAttribute('checked', '');
-    document
-        .querySelector('input[name="sig_length')
-        .setAttribute('value', configuration.sigLength);
+    if (configuration.cropMarks) {
+        document.querySelector("input[name='cropmarks']").setAttribute("checked", "");
+    }
 
-    // TODO: SET EVERYTHING ELSE. It would be nice to not have to manage these, and to have it be automatic for every input.
-    /* configuration.bindingEdgePaddingPt
-    configuration.bottomEdgePaddingPt
-    configuration.cropMarks
-    configuration.customSigLength
-    configuration.cutMarks
-    configuration.fileDownload
-    configuration.flyleaf
-    configuration.foreEdgePaddingPt
-    configuration.mainForeEdgePaddingPt
-    configuration.pageLayout
-    configuration.pagePositioning
-    configuration.pageScaling
-    configuration.paperRotation90
-    configuration.paperSize
-    configuration.paperSizeUnit
-    configuration.printFile
-    configuration.printerType
-    configuration.rotatePage
-    configuration.sigFormat
-    configuration.sigLength
-    configuration.sourceRotation
-    configuration.topEdgePaddingPt
-    configuration.wackySpacing */
+    if (configuration.cutMarks) {
+        document.querySelector("input[name='cutmarks']").setAttribute("checked", "");
+    }
+
+    // Set radio options
+    document.querySelector(`input[name="pagelayout"][value="${configuration.pageLayout}"]`).setAttribute("checked", "");
+    document.querySelector(`input[name="sig_format"][value="${configuration.sigFormat}"]`).setAttribute("checked", "");
+    document.querySelector(`input[name="wacky_spacing"][value="${configuration.wackySpacing}"]`).setAttribute("checked", "");
+    document.querySelector(`input[name="source_rotation"][value="${configuration.sourceRotation}"]`).setAttribute("checked", "");
+
+    // Set freeform inputs
+    document.querySelector('input[name="main_fore_edge_padding_pt"]').value = configuration.mainForeEdgePaddingPt;
+    document.querySelector('input[name="binding_edge_padding_pt"]').value = configuration.bindingEdgePaddingPt;
+    document.querySelector('input[name="top_edge_padding_pt"]').value = configuration.topEdgePaddingPt;
+    document.querySelector('input[name="bottom_edge_padding_pt"]').value = configuration.bottomEdgePaddingPt;
+    document.querySelector('input[name="fore_edge_padding_pt"]').value = configuration.foreEdgePaddingPt;
+
+    // Set select options
+    document.querySelector('select[name="page_scaling"]').value = configuration.pageScaling;
+    document.querySelector('select[name="page_positioning"]').value = configuration.pagePositioning;
+    document.querySelector('select[name="print_file"]').value = configuration.printFile;
+    document.querySelector('select[name="paper_size"]').value = configuration.paperSize;
+    document.querySelector('select[name="paper_size_unit"]').value = configuration.paperSizeUnit;
+    document.querySelector('select[name="printer_type"]').value = configuration.printerType;
+
+    // Set options which are not always present
+    if (configuration.paperSizeCustomHeight !== undefined) {
+        document.querySelector('input[name="paper_size_custom_height"]').value = configuration.paperSizeCustomHeight;
+    }
+
+    if (configuration.paperSizeCustomWidth !== undefined) {
+        document.querySelector('input[name="paper_size_custom_width"]').value = configuration.paperSizeCustomWidth;
+    }
+
+    if (configuration.sigFormat == "customsig") {
+        document.querySelector("input[name='custom_sig']").value = configuration.customSigLength;
+    } else {
+        document.querySelector("input[name='sig_length']").value = configuration.sigLength;
+    }
 }
 
 
@@ -32203,50 +32184,39 @@ __webpack_require__.r(__webpack_exports__);
 
 
 
-const formToConfigurationMap = {
-    source_rotation: "sourceRotation",
-    paper_size: "paperSize",
-    paper_size_unit: "paperSizeUnit",
-    printer_type: "printerType",
-    rotate_page: "rotatePage",
-    paper_rotation_90: "paperRotation90",
-    pagelayout: "pageLayout",
-    cropmarks: "cropMarks",
-    cutmarks: "cutMarks",
-    page_scaling: "pageScaling",
-    page_positioning: "pagePositioning",
-    main_fore_edge_padding_pt: "mainForeEdgePaddingPt",
-    binding_edge_padding_pt: "bindingEdgePaddingPt",
-    top_edge_padding_pt: "topEdgePaddingPt",
-    bottom_edge_padding_pt: "bottomEdgePaddingPt",
-    sig_format: "sigFormat",
-    sig_length: "sigLength",
-    custom_sig: "customSigLength",
-    fore_edge_padding_pt: "foreEdgePaddingPt",
-    wacky_spacing: "wackySpacing",
-    file_download: "fileDownload",
-    print_file: "printFile",
-    flyleaf: "flyleaf",
-    paper_size_custom_width: "paperSizeCustomWidth",
-    paper_size_custom_height: "paperSizeCustomHeight",
-};
-
 /**
  * Parses a Form into a common Configiration.
  * @param { FormData } form The form to parse into a configuration
  * @returns { import("../models/configuration").Configuration } The configuration
  */
-const fromFormToConfiguration = (form) => {
-    const formAsKeyValueTuples = Array.from(form.entries());
-    const unparsedConfig = formAsKeyValueTuples.reduce(
-        (acc, [key, value]) => ({
-            ...acc,
-            [formToConfigurationMap[key]]: value,
-        }),
-        {}
-    );
-    return _models_configuration__WEBPACK_IMPORTED_MODULE_0__.schema.parse(unparsedConfig);
-};
+const fromFormToConfiguration = (form) =>
+    _models_configuration__WEBPACK_IMPORTED_MODULE_0__.schema.parse({
+        sourceRotation: form.get("source_rotation"),
+        paperSize: form.get("paper_size"),
+        paperSizeUnit: form.get("paper_size_unit"),
+        printerType: form.get("printer_type"),
+        rotatePage: form.has("rotate_page"),
+        paperRotation90: form.has("paper_rotation_90"),
+        pageLayout: form.get("pagelayout"),
+        cropMarks: form.has("cropmarks"),
+        cutMarks: form.has("cutmarks"),
+        pageScaling: form.get("page_scaling"),
+        pagePositioning: form.get("page_positioning"),
+        mainForeEdgePaddingPt: form.get("main_fore_edge_padding_pt"),
+        bindingEdgePaddingPt: form.get("binding_edge_padding_pt"),
+        topEdgePaddingPt: form.get("top_edge_padding_pt"),
+        bottomEdgePaddingPt: form.get("bottom_edge_padding_pt"),
+        sigFormat: form.get("sig_format"),
+        sigLength: form.get("sig_length"),
+        customSigLength: form.get("custom_sig"),
+        foreEdgePaddingPt: form.get("fore_edge_padding_pt"),
+        wackySpacing: form.get("wacky_spacing"),
+        fileDownload: form.get("file_download"),
+        printFile: form.get("print_file"),
+        flyleaf: form.has("flyleaf"),
+        paperSizeCustomWidth: form.get("paper_size_custom_width"),
+        paperSizeCustomHeight: form.get("paper_size_custom_height"),
+    });
 
 /**
  * Sets the configuration to the URL.
@@ -32327,10 +32297,10 @@ const coercedBoolean = zod__WEBPACK_IMPORTED_MODULE_1__.z
         zod__WEBPACK_IMPORTED_MODULE_1__.z
             .string()
             .toLowerCase()
-            .pipe(zod__WEBPACK_IMPORTED_MODULE_1__.z.enum(["true", "false"])),
+            .pipe(zod__WEBPACK_IMPORTED_MODULE_1__.z.enum(["true", "false", "on"])),
         zod__WEBPACK_IMPORTED_MODULE_1__.z.boolean(),
     ])
-    .transform((val) => val === "true" || val === true);
+    .transform((val) => val === "true" || val === "on" || val === true);
 
 /**
  * @type {<Output=unknown, Def extends (import("zod").ZodTypeDef)=(import("zod").ZodTypeDef), Input=Output>(schema: ZodType<Output, Def, Input>) => ZodType<Output | undefined, Def, Input | undefined>}
@@ -32350,9 +32320,9 @@ const printerType = urlSafe(zod__WEBPACK_IMPORTED_MODULE_1__.z.enum(["single", "
 
 const pageLayout = urlSafe(zod__WEBPACK_IMPORTED_MODULE_1__.z.enum(["folio", "quarto", "octavo", "sextodecimo"])).default("folio");
 
-const pageScaling = urlSafe(zod__WEBPACK_IMPORTED_MODULE_1__.z.enum(["centered", "lockratio", "stretch"]).default("lockratio"));
+const pageScaling = urlSafe(zod__WEBPACK_IMPORTED_MODULE_1__.z.enum(["centered", "lockratio", "stretch"])).default("lockratio");
 
-const pagePositioning = urlSafe(zod__WEBPACK_IMPORTED_MODULE_1__.z.enum(["centered", "binding_aligned"]).default("centered"));
+const pagePositioning = urlSafe(zod__WEBPACK_IMPORTED_MODULE_1__.z.enum(["centered", "binding_aligned"])).default("centered");
 
 const sigFormat = urlSafe(zod__WEBPACK_IMPORTED_MODULE_1__.z.enum(["perfect", "standardsig", "customsig", "1_3rd", "A7_2_16s", "8_zine", "a_3_6s", "a9_3_3_4", "a_4_8s", "a10_6_10s"])).default("standardsig");
 
@@ -36633,12 +36603,16 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony export */   handleInputChange: () => (/* binding */ handleInputChange)
 /* harmony export */ });
 /* harmony import */ var _formUtils__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(183);
+/* harmony import */ var _renderUtils__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(181);
+
 
 
 function handleInputChange(book, bookbinderForm) {
     const formData = new FormData(bookbinderForm);
     const updatedConfiguration = (0,_formUtils__WEBPACK_IMPORTED_MODULE_0__.saveForm)(formData);
-    book.update(updatedConfiguration)
+    book.update(updatedConfiguration);
+    (0,_renderUtils__WEBPACK_IMPORTED_MODULE_1__.updateAddOrRemoveCustomPaperOption)()
+    ;(0,_renderUtils__WEBPACK_IMPORTED_MODULE_1__.updatePaperSelectOptionsUnits)() // make sure this goes AFTER the Custom update!
     if (book.inputpdf) {
         (0,_formUtils__WEBPACK_IMPORTED_MODULE_0__.updateRenderedForm)(book);
     }
@@ -36805,7 +36779,7 @@ window.addEventListener('DOMContentLoaded', () => {
     const preview = document.getElementById('preview');
     const bookbinderForm = document.getElementById('bookbinder');
     const fileInput = document.getElementById('input_file');
-    const inputs = document.querySelectorAll('input, select');
+    const inputs = document.querySelectorAll('input, select, radio, checkbox');
 
     // spin up a book to pass to listeners
     const book = new _book_js__WEBPACK_IMPORTED_MODULE_0__.Book(configuration);
