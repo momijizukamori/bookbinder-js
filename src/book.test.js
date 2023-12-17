@@ -46,6 +46,7 @@ describe("Book model", () => {
         paper_rotation_90: false,
         source_rotation: "none",
         print_file: "both",
+        signatureconfig: [],
     };
 
     it("returns a new Book", () => {

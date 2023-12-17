@@ -1,6 +1,17 @@
 import { ZodType, z } from "zod";
 import { PAGE_SIZES } from "../constants";
 
+const commaSeparatedNumberList = z
+    .union([z.string(), z.array(z.number())])
+    .transform((val) => {
+        if (Array.isArray(val)) {
+            return val;
+        }
+
+        return val.split(/, */);
+    })
+    .pipe(z.array(z.coerce.number()));
+
 const coercedBoolean = z
     .union([
         z
@@ -19,7 +30,7 @@ const urlSafe = (schema) => schema.optional().catch(() => undefined);
 const sourceRotation = urlSafe(z.enum(["none", "90cw", "90ccw", "out_binding", "in_binding"])).default("none");
 
 /** @type { keyof typeof import("../constants").PAGE_SIZES } */
-const availablePaperSizes = Object.keys(PAGE_SIZES); //?
+const availablePaperSizes = Object.keys(PAGE_SIZES);
 
 const paperSize = urlSafe(z.enum(availablePaperSizes)).default("LETTER");
 
@@ -61,7 +72,7 @@ export const schema = z.object({
     bottomEdgePaddingPt: urlSafe(z.coerce.number()).default(0),
     sigFormat,
     sigLength: urlSafe(z.coerce.number()).default(8), // Specific to standard
-    customSigLength: urlSafe(z.coerce.number()), // Specific to custom.
+    customSigLength: urlSafe(commaSeparatedNumberList).default([]), // Specific to custom.
     foreEdgePaddingPt: urlSafe(z.coerce.number()).default(0), // specific to wacky small
     wackySpacing, // specific to wacky small
     flyleaf: urlSafe(coercedBoolean).default(false),

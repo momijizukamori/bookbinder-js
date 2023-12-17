@@ -14,6 +14,8 @@ export class Book {
         this.password = null;    //  if necessary
 
         this.managedDoc = null; // original PDF with the pages rotated per source_rotation - use THIS for laying out pages
+        
+        this.signatureconfig = [];
 
         this.spineoffset = false;
 
