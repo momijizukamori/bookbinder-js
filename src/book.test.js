@@ -1,7 +1,7 @@
 // This Source Code Form is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/. 
-
+import { expect, describe, it } from 'vitest';
 import { Book } from './book';
 
 describe('Book model', () => {
@@ -12,7 +12,6 @@ describe('Book model', () => {
         duplex: false,
         duplexrotate: true,
         papersize: [595, 842],
-        lockratio: true,
         flyleaf: false,
         spineoffset: false,
         format: 'standardsig',
@@ -37,6 +36,21 @@ describe('Book model', () => {
         per_sheet: 8,
         cropmarks: false,
         cutmarks: false,
+        fore_edge_padding_pt: 0,
+        managedDoc: null,
+        pack_pages: true,
+        padding_pt: {
+            binding: 0,
+            bottom: 0,
+            fore_edge: 0,
+            top: 0
+        },
+        page_positioning: 'centered',
+        page_scaling: 'lockratio',
+        paper_rotation_90: false,
+        print_file: "both",
+        source_rotation: "none"
+       
     };
     it('returns a new Book', () => {
         const expected = defaultBook;
