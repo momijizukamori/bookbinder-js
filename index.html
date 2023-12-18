@@ -6,7 +6,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="https://unpkg.com/balloon-css/balloon.min.css">
     <link rel="stylesheet" type="text/css" href="./styles.css">
-    <script type="text/javascript" src="./preload.js"></script>
+    <script type="module" src="/src/main.js"></script>
+    <meta charset="UTF-8">
 </head>
 
 <body>
@@ -35,16 +36,16 @@
 
                 <span class="row"><input type="radio" id="none" name="source_rotation" value="none" checked>
                     <label for="none">no modification</label>
-                    <details style="padding-left:40px;"><summary> Details</summary><IMG SRC="img/noRotationDiagram.png" width="100px"/></details>
+                    <details style="padding-left:40px;"><summary> Details</summary><IMG SRC="/img/noRotationDiagram.png" width="100px"/></details>
                 </span>
                 <span class="row"><input type="radio" id="90cw" name="source_rotation" value="90cw">
                     <label for="90cw">rotate all pages 90° clockwise</label>
-                    <details style="padding-left:40px;"><summary> Details</summary><IMG SRC="img/90cwDiagram.png" width="100px"/></details>
+                    <details style="padding-left:40px;"><summary> Details</summary><IMG SRC="/img/90cwDiagram.png" width="100px"/></details>
                 </span>
 
                 <span class="row"><input type="radio" id="90ccw" name="source_rotation" value="90ccw">
                     <label for="90ccw">rotate all pages 90° counter clockwise (anti clockwise)</label>
-                    <details style="padding-left:40px;"><summary> Details</summary><IMG SRC="img/90ccwDiagram.png" width="100px"/></details>
+                    <details style="padding-left:40px;"><summary> Details</summary><IMG SRC="/img/90ccwDiagram.png" width="100px"/></details>
                 </span>
                 <span class="row"><input type="radio" id="out_binding" name="source_rotation" value="out_binding">
                     <label for="out_binding">Out binding </label>
@@ -52,7 +53,7 @@
                      <summary> Details</summary> 
                      For books with the bound edge at the bottom of the page -- rotate all odd pages 90° clockwise, all even pages 90° anti-clockwise
                      <BR/>
-                     <IMG SRC="img/bottomBindingDiagram.png" width="100px"/>
+                     <IMG SRC="/img/bottomBindingDiagram.png" width="100px"/>
                     </details>
                 </span>
                 <span class="row"><input type="radio" id="in_binding" name="source_rotation" value="in_binding">
@@ -60,7 +61,7 @@
                         <details style="padding-left:40px;">
                      <summary> Details</summary> 
                      For books with the bound edge at the top of the page -- rotate all odd pages 90° anti-clockwise, all even pages 90° clockwise <BR>
-                     <IMG SRC="img/topBindingDiagram.png" width="100px">
+                     <IMG SRC="/img/topBindingDiagram.png" width="100px">
                      </details>
                  </span>
             </div>
@@ -270,7 +271,7 @@
                     <details>
                         <summary>Instructions</summary>
                         <p>
-                        <center><img src="img/2_sig_4x4_diagram.png" style='height: 100%; width: 100%; object-fit: contain'></center>
+                        <center><img src="/img/2_sig_4x4_diagram.png" style='height: 100%; width: 100%; object-fit: contain'></center>
                         Cut the vertical center line. You can also cut the horizontal lines if you like, or just fold it up as detailed above.
                         </p>
                     </details>
@@ -310,7 +311,7 @@
                     <details>
                         <summary>Instructions</summary>
                         <p>
-                        <center><img src="img/3_3_4_diagram.png" style='height: 100%; width: 100%; object-fit: contain'></center>
+                        <center><img src="/img/3_3_4_diagram.png" style='height: 100%; width: 100%; object-fit: contain'></center>
                         Cut along the cut lines. Fold up the 3 folio signatures, then the 4 folio.
                         </p>
                     </details></span>
@@ -341,7 +342,7 @@
                         <br>
                         Thankfully most small layouts fit on one page-- easy enough to do a test print and make sure you're duplexing correctly (if that's your route)
                         </p><p>
-                        <center><img src="img/6_10s_diagram.png" style='height: 100%; width: 100%; object-fit: contain'></center>
+                        <center><img src="/img/6_10s_diagram.png" style='height: 100%; width: 100%; object-fit: contain'></center>
                         Cut out the rows. Fold up the folios like a big zig-zag (two per face). Then fold the first 2 folios into a signature and the last 3 folios into a signature. I often cut them apart only when I'm stitching things together.
                         </p><p>
                         Note that when folding, it's important for the <b>center of the folios to line up</b>. That's what I measure against (less so fretting about folding exactly at the edge). Remember! Printer skew is a real thing!
