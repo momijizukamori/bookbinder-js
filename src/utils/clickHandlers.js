@@ -1,3 +1,6 @@
+import { resetForm } from "./formUtils";
+import { updateAddOrRemoveCustomPaperOption, updatePaperSelectOptionsUnits } from "./renderUtils";
+
 export function handleGenerateClick(generateEl, book) {
 	generateEl.setAttribute('disabled', true);
 	generateEl.innerText = 'Generating, this may take a little while...';
@@ -31,4 +34,11 @@ export function handlePreviewClick(previewEl, book) {
 			previewEl.removeAttribute('disabled');
 			previewEl.innerText = 'Preview Output';
 		});
+}
+
+export function handleResetSettingsClick(book) {
+		const defaultConfiguration = resetForm();
+		book.update(defaultConfiguration);
+    updateAddOrRemoveCustomPaperOption();
+    updatePaperSelectOptionsUnits();
 }

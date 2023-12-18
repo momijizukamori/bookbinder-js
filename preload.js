@@ -32086,35 +32086,35 @@ function renderWacky() {
 /** @param { import("../models/configuration").Configuration } configuration */
 function renderFormFromSettings(configuration) {
     // Clear all checked attributes
-    document.querySelectorAll("[type=radio]").forEach((e) => e.removeAttribute("checked"));
-    document.querySelectorAll("[type=checkbox]").forEach((e) => e.removeAttribute("checked"));
+    document.querySelectorAll("[type=radio]").forEach((e) => { e.checked = false });
+    document.querySelectorAll("[type=checkbox]").forEach((e) => { e.checked = false });
 
     // Set checkboxes
     if (configuration.paperRotation90) {
-        document.querySelector("input[name='paper_rotation_90']").setAttribute("checked", "");
+        document.querySelector("input[name='paper_rotation_90']").checked = true;
     }
 
     if (configuration.rotatePage) {
-        document.querySelector("input[name='rotate_page']").setAttribute("checked", "");
+        document.querySelector("input[name='rotate_page']").checked = true;
     }
 
     if (configuration.flyleaf) {
-        document.querySelector("input[name='flyleaf']").setAttribute("checked", "");
+        document.querySelector("input[name='flyleaf']").checked = true;
     }
 
     if (configuration.cropMarks) {
-        document.querySelector("input[name='cropmarks']").setAttribute("checked", "");
+        document.querySelector("input[name='cropmarks']").checked = true;
     }
 
     if (configuration.cutMarks) {
-        document.querySelector("input[name='cutmarks']").setAttribute("checked", "");
+        document.querySelector("input[name='cutmarks']").checked = true;
     }
 
     // Set radio options
-    document.querySelector(`input[name="pagelayout"][value="${configuration.pageLayout}"]`).setAttribute("checked", "");
-    document.querySelector(`input[name="sig_format"][value="${configuration.sigFormat}"]`).setAttribute("checked", "");
-    document.querySelector(`input[name="wacky_spacing"][value="${configuration.wackySpacing}"]`).setAttribute("checked", "");
-    document.querySelector(`input[name="source_rotation"][value="${configuration.sourceRotation}"]`).setAttribute("checked", "");
+    document.querySelector(`input[name="pagelayout"][value="${configuration.pageLayout}"]`).checked = true;
+    document.querySelector(`input[name="sig_format"][value="${configuration.sigFormat}"]`).checked = true;
+    document.querySelector(`input[name="wacky_spacing"][value="${configuration.wackySpacing}"]`).checked = true;
+    document.querySelector(`input[name="source_rotation"][value="${configuration.sourceRotation}"]`).checked = true;
 
     // Set freeform inputs
     document.querySelector('input[name="main_fore_edge_padding_pt"]').value = configuration.mainForeEdgePaddingPt;
@@ -32174,6 +32174,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
 __webpack_require__.r(__webpack_exports__);
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   loadForm: () => (/* binding */ loadForm),
+/* harmony export */   resetForm: () => (/* binding */ resetForm),
 /* harmony export */   saveForm: () => (/* binding */ saveForm),
 /* harmony export */   updateRenderedForm: () => (/* binding */ updateRenderedForm)
 /* harmony export */ });
@@ -32248,7 +32249,6 @@ const loadConfiguration = () => {
  * @param { import("../book").Book } book The book to update the form from
  */
 function updateRenderedForm(book) {
-    console.log("Form updated....");
     book.createpages().then(() => {
         console.log("... pages created");
         (0,_renderUtils__WEBPACK_IMPORTED_MODULE_2__.renderPageCount)(book);
@@ -32278,6 +32278,15 @@ function loadForm() {
     (0,_renderUtils__WEBPACK_IMPORTED_MODULE_2__.renderFormFromSettings)(configuration);
     return configuration;
 }
+
+/**
+ * Resets the form to the default configuration.
+ */
+const resetForm = () => {
+    (0,_localStorageUtils__WEBPACK_IMPORTED_MODULE_1__.clearLocalSettings)();
+    (0,_uri__WEBPACK_IMPORTED_MODULE_3__.updateWindowLocation)((0,_uri__WEBPACK_IMPORTED_MODULE_3__.clearUrlParams)(window.location.href));
+    return loadForm();
+};
 
 
 /***/ }),
@@ -36648,8 +36657,14 @@ function handleFileChange(e, book) {
 __webpack_require__.r(__webpack_exports__);
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   handleGenerateClick: () => (/* binding */ handleGenerateClick),
-/* harmony export */   handlePreviewClick: () => (/* binding */ handlePreviewClick)
+/* harmony export */   handlePreviewClick: () => (/* binding */ handlePreviewClick),
+/* harmony export */   handleResetSettingsClick: () => (/* binding */ handleResetSettingsClick)
 /* harmony export */ });
+/* harmony import */ var _formUtils__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(183);
+/* harmony import */ var _renderUtils__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(181);
+
+
+
 function handleGenerateClick(generateEl, book) {
 	generateEl.setAttribute('disabled', true);
 	generateEl.innerText = 'Generating, this may take a little while...';
@@ -36683,6 +36698,13 @@ function handlePreviewClick(previewEl, book) {
 			previewEl.removeAttribute('disabled');
 			previewEl.innerText = 'Preview Output';
 		});
+}
+
+function handleResetSettingsClick(book) {
+		const defaultConfiguration = (0,_formUtils__WEBPACK_IMPORTED_MODULE_0__.resetForm)();
+		book.update(defaultConfiguration);
+    (0,_renderUtils__WEBPACK_IMPORTED_MODULE_1__.updateAddOrRemoveCustomPaperOption)();
+    (0,_renderUtils__WEBPACK_IMPORTED_MODULE_1__.updatePaperSelectOptionsUnits)();
 }
 
 /***/ })
@@ -36790,6 +36812,7 @@ window.addEventListener('DOMContentLoaded', () => {
     // grab DOM elements
     const generate = document.getElementById('generate');
     const preview = document.getElementById('preview');
+    const resetSettings = document.getElementById('reset_settings');
     const bookbinderForm = document.getElementById('bookbinder');
     const fileInput = document.getElementById('input_file');
     const inputs = document.querySelectorAll('input, select');
@@ -36814,7 +36837,10 @@ window.addEventListener('DOMContentLoaded', () => {
     preview.addEventListener('click', () =>
         (0,_utils_clickHandlers_js__WEBPACK_IMPORTED_MODULE_3__.handlePreviewClick)(preview, book)
     );
-
+    resetSettings.addEventListener('click', () => {
+        console.log('Resetting settings...');
+        (0,_utils_clickHandlers_js__WEBPACK_IMPORTED_MODULE_3__.handleResetSettingsClick)(book);
+    });
 });
 
 })();

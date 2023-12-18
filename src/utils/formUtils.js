@@ -1,7 +1,7 @@
 import { schema } from "../models/configuration";
-import { getLocalSettings, setLocalSettings } from "./localStorageUtils";
+import { clearLocalSettings, getLocalSettings, setLocalSettings } from "./localStorageUtils";
 import { renderFormFromSettings, renderInfoBox, renderPageCount, renderWacky } from "./renderUtils";
-import { setUrlParams, toUrlParams, updateWindowLocation } from "./uri";
+import { clearUrlParams, setUrlParams, toUrlParams, updateWindowLocation } from "./uri";
 
 /**
  * Parses a Form into a common Configiration.
@@ -65,7 +65,6 @@ const loadConfiguration = () => {
  * @param { import("../book").Book } book The book to update the form from
  */
 export function updateRenderedForm(book) {
-    console.log("Form updated....");
     book.createpages().then(() => {
         console.log("... pages created");
         renderPageCount(book);
@@ -95,3 +94,12 @@ export function loadForm() {
     renderFormFromSettings(configuration);
     return configuration;
 }
+
+/**
+ * Resets the form to the default configuration.
+ */
+export const resetForm = () => {
+    clearLocalSettings();
+    updateWindowLocation(clearUrlParams(window.location.href));
+    return loadForm();
+};

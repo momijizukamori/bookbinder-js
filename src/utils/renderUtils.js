@@ -147,35 +147,35 @@ export function renderWacky() {
 /** @param { import("../models/configuration").Configuration } configuration */
 export function renderFormFromSettings(configuration) {
     // Clear all checked attributes
-    document.querySelectorAll("[type=radio]").forEach((e) => e.removeAttribute("checked"));
-    document.querySelectorAll("[type=checkbox]").forEach((e) => e.removeAttribute("checked"));
+    document.querySelectorAll("[type=radio]").forEach((e) => { e.checked = false });
+    document.querySelectorAll("[type=checkbox]").forEach((e) => { e.checked = false });
 
     // Set checkboxes
     if (configuration.paperRotation90) {
-        document.querySelector("input[name='paper_rotation_90']").setAttribute("checked", "");
+        document.querySelector("input[name='paper_rotation_90']").checked = true;
     }
 
     if (configuration.rotatePage) {
-        document.querySelector("input[name='rotate_page']").setAttribute("checked", "");
+        document.querySelector("input[name='rotate_page']").checked = true;
     }
 
     if (configuration.flyleaf) {
-        document.querySelector("input[name='flyleaf']").setAttribute("checked", "");
+        document.querySelector("input[name='flyleaf']").checked = true;
     }
 
     if (configuration.cropMarks) {
-        document.querySelector("input[name='cropmarks']").setAttribute("checked", "");
+        document.querySelector("input[name='cropmarks']").checked = true;
     }
 
     if (configuration.cutMarks) {
-        document.querySelector("input[name='cutmarks']").setAttribute("checked", "");
+        document.querySelector("input[name='cutmarks']").checked = true;
     }
 
     // Set radio options
-    document.querySelector(`input[name="pagelayout"][value="${configuration.pageLayout}"]`).setAttribute("checked", "");
-    document.querySelector(`input[name="sig_format"][value="${configuration.sigFormat}"]`).setAttribute("checked", "");
-    document.querySelector(`input[name="wacky_spacing"][value="${configuration.wackySpacing}"]`).setAttribute("checked", "");
-    document.querySelector(`input[name="source_rotation"][value="${configuration.sourceRotation}"]`).setAttribute("checked", "");
+    document.querySelector(`input[name="pagelayout"][value="${configuration.pageLayout}"]`).checked = true;
+    document.querySelector(`input[name="sig_format"][value="${configuration.sigFormat}"]`).checked = true;
+    document.querySelector(`input[name="wacky_spacing"][value="${configuration.wackySpacing}"]`).checked = true;
+    document.querySelector(`input[name="source_rotation"][value="${configuration.sourceRotation}"]`).checked = true;
 
     // Set freeform inputs
     document.querySelector('input[name="main_fore_edge_padding_pt"]').value = configuration.mainForeEdgePaddingPt;
