@@ -1,3 +1,5 @@
+import { expect, describe, it } from 'vitest';
+
 import { Signatures } from './signatures';
 
 describe('Signatures model', () => {

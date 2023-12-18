@@ -7,16 +7,13 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "test": "jest"
+    "test": "vitest"
   },
   "author": "momijizukamori@gmail.com",
   "license": "MPL",
   "devDependencies": {
-    "@babel/core": "^7.17.5",
-    "@babel/preset-env": "^7.16.11",
-    "babel-jest": "^27.5.1",
-    "jest": "^27.5.1",
-    "vite": "^5.0.10"
+    "vite": "^5.0.10",
+    "vitest": "^1.0.4"
   },
   "dependencies": {
     "file-saver": "^2.0.5",

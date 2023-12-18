@@ -1,3 +1,5 @@
+import { expect, describe, it } from 'vitest';
+
 import { WackyImposition } from './wacky_imposition';
 
 describe('WackyImposition model', () => {
