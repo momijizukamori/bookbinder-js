@@ -2,7 +2,7 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/. 
 
-import {Booklet} from './booklet.js';
+import { BOOKLET_LAYOUTS } from './constants';
 
 export class Signatures {
 
@@ -78,8 +78,8 @@ export class Signatures {
 
 		//      Use the booklet class for each signature
 		this.signaturepagelists.forEach(pagerange => {
-			let newlist = new Booklet(pagerange, this.duplex, this.per_sheet, this.duplexrotate);
-			newsigs.push(newlist.pagelist);
+			let pagelist = this.booklet(pagerange, this.duplex, this.per_sheet, this.duplexrotate);
+			newsigs.push(pagelist);
 		});
 
 		this.pagelist = newsigs;
@@ -115,4 +115,50 @@ export class Signatures {
 
 		return result;
 	}
+
+	booklet(pages, duplex, per_sheet, duplexrotate) {
+        let pagelist = duplex ? [[]] : [[], []];
+        let sheets = 1;
+		const {front, rotate, back} = BOOKLET_LAYOUTS[per_sheet];
+
+        let center = pages.length / 2; // because of zero indexing, this is actually the first page after the center fold
+        const pageblock = per_sheet / 2; // number of pages before and after the center fold, per sheet
+        const front_config = front;
+        const back_config = duplexrotate ? rotate : back;
+
+        // The way the code works: we start with the innermost sheet of the signature (the only one with consecutive page numbers)
+        // We then grab the the sections of pages that come on either side and reorder according to predefined page layout
+
+        let front_start = center - pageblock;
+        let front_end = center;
+        let back_start = center;
+        let back_end = center + pageblock;
+
+        while (front_start >= 0 && back_end <= pages.length) {
+            let front_block = pages.slice(front_start, front_end);
+            let back_block = pages.slice(back_start, back_end);
+
+            let block = [...front_block, ...back_block];
+
+            front_config.forEach((pnum) => {
+                let page = block[pnum - 1]; //page layouts are 1-indexed, not 0-index
+                pagelist[0].push(page);
+            });
+
+            const backlist = this.duplex ? 0 : 1;
+
+            back_config.forEach((pnum) => {
+                let page = block[pnum - 1];
+                pagelist[backlist].push(page);
+            });
+
+            // Update all our counters
+            front_start -= pageblock;
+            front_end -= pageblock;
+            back_start += pageblock;
+            back_end += pageblock;
+        }
+
+		return pagelist;
+    }
 }
