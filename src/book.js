@@ -284,6 +284,7 @@ export class Book {
         if (this.format == 'perfect' || this.format == 'booklet' || this.format == 'standardsig' || this.format == 'customsig') {
             const generateAggregate = this.print_file != "signatures";
             const generateSignatures = this.print_file != "aggregated";
+            const filename = (this.format == 'standardsig' || this.format == 'customsig') ? 'signatures' : this.format;
             const side1PageNumbers = new Set(this.rearrangedpages.reduce((accumulator, currentValue) => { return accumulator.concat(currentValue[0]); },[]));
             const [pdf0PageNumbers, pdf1PageNumbers] = (!generateAggregate || this.duplex) ? [null, null]
             : [
@@ -299,7 +300,7 @@ export class Book {
                         embeddedPages: (generateAggregate) ? [embeddedPages0, embeddedPages1] : null,
                         aggregatePdfs: (generateAggregate) ? [aggregatePdf0, aggregatePdf1] : null,
                         pageIndexes: page, 
-                        id: (generateSignatures) ? `signature${i}` : null,
+                        id: (generateSignatures) ? `${filename}${i}` : null,
                         isDuplex: this.duplex,
                         fileList: this.filelist
                     });

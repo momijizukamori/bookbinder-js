@@ -17,7 +17,7 @@ export class PerfectBound {
 		this.duplexrotate = duplexrotate || false;
 
 		this.sheets = Math.ceil(pages.length/per_sheet);
-		this.sigconfig= new Array(this.sheets).fill('4');
+		this.sigconfig=['N/A'];
 
 		const {front, rotate, back} = PERFECTBOUND_LAYOUTS[per_sheet];
 		const front_config = front;
