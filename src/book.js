@@ -11,6 +11,8 @@ import { WackyImposition } from './wacky_imposition.js';
 import { PAGE_LAYOUTS, PAGE_SIZES, TARGET_BOOK_SIZE, LINE_LEN } from './constants.js';
 import { updatePageLayoutInfo} from './utils/renderUtils.js';
 import JSZip from 'jszip';
+import { loadConfiguration } from './utils/formUtils.js';
+
 export class Book {
     /** @param { import("./models/configuration.js").Configuration } configuration */
     constructor(configuration) {
@@ -808,9 +810,17 @@ export class Book {
         console.log("After creating signatures, our filelist looks like: ",this.filelist)
     }
 
+    bundleSettings() {
+        const currentConfig = loadConfiguration();
+        const settings = `Imposer settings: ${JSON.stringify(currentConfig, null, 2)}`
+            + '\n\n'
+            + `Link to the imposer with these settings: ${window.location.href}`
+        this.zip?.file("settings.txt", settings);
+    }
+
     saveZip() {
         console.log("Saving zip... ")
-        this.zip?.file("link-to-imposer-with-settings.url", `[InternetShortcut]\nURL=${window.location.href}`)
+        this.bundleSettings();
         return this.zip.generateAsync({ type: "blob" })
             .then(blob => {
                 console.log("  calling saveAs on ", this.filename)

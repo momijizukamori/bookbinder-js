@@ -53,7 +53,7 @@ const setConfigurationToUrl = (configuration) => {
  * Loads settings from the URL or local storage.
  * @returns { import("../models/configuration").Configuration } The configuration
  */
-const loadConfiguration = () => {
+export const loadConfiguration = () => {
     const urlParams = toUrlParams(window.location.href);
     const hasUrlParams = Object.keys(urlParams).length > 0;
 
