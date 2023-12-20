@@ -13,7 +13,7 @@ Snapshot of the size chart as of 2022-08-11
 ## Building
 ```
 npm install
-webpack build
+npm run dev
 ```
 And load `index.html` in any modern web browser.
 

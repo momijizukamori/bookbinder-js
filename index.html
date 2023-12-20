@@ -1,3 +1,7 @@
+<!-- This Source Code Form is subject to the terms of the Mozilla Public
+   - License, v. 2.0. If a copy of the MPL was not distributed with this
+   - file, You can obtain one at https://mozilla.org/MPL/2.0/. -->
+
 <!DOCTYPE html>
 <html>
 
@@ -6,7 +10,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="https://unpkg.com/balloon-css/balloon.min.css">
     <link rel="stylesheet" type="text/css" href="./styles.css">
-    <script type="text/javascript" src="./preload.js"></script>
+    <script type="module" src="/src/main.js"></script>
+  <link rel="icon" type="image/x-icon" href="/favicon.ico">
+    <meta charset="UTF-8">
 </head>
 
 <body>
@@ -35,16 +41,16 @@
 
                 <span class="row"><input type="radio" id="none" name="source_rotation" value="none" checked>
                     <label for="none">no modification</label>
-                    <details style="padding-left:40px;"><summary> Details</summary><IMG SRC="img/noRotationDiagram.png" width="100px"/></details>
+                    <details style="padding-left:40px;"><summary> Details</summary><IMG SRC="/img/noRotationDiagram.png" width="100px"/></details>
                 </span>
                 <span class="row"><input type="radio" id="90cw" name="source_rotation" value="90cw">
                     <label for="90cw">rotate all pages 90° clockwise</label>
-                    <details style="padding-left:40px;"><summary> Details</summary><IMG SRC="img/90cwDiagram.png" width="100px"/></details>
+                    <details style="padding-left:40px;"><summary> Details</summary><IMG SRC="/img/90cwDiagram.png" width="100px"/></details>
                 </span>
 
                 <span class="row"><input type="radio" id="90ccw" name="source_rotation" value="90ccw">
                     <label for="90ccw">rotate all pages 90° counter clockwise (anti clockwise)</label>
-                    <details style="padding-left:40px;"><summary> Details</summary><IMG SRC="img/90ccwDiagram.png" width="100px"/></details>
+                    <details style="padding-left:40px;"><summary> Details</summary><IMG SRC="/img/90ccwDiagram.png" width="100px"/></details>
                 </span>
                 <span class="row"><input type="radio" id="out_binding" name="source_rotation" value="out_binding">
                     <label for="out_binding">Out binding </label>
@@ -52,7 +58,7 @@
                      <summary> Details</summary> 
                      For books with the bound edge at the bottom of the page -- rotate all odd pages 90° clockwise, all even pages 90° anti-clockwise
                      <BR/>
-                     <IMG SRC="img/bottomBindingDiagram.png" width="100px"/>
+                     <IMG SRC="/img/bottomBindingDiagram.png" width="100px"/>
                     </details>
                 </span>
                 <span class="row"><input type="radio" id="in_binding" name="source_rotation" value="in_binding">
@@ -60,7 +66,7 @@
                         <details style="padding-left:40px;">
                      <summary> Details</summary> 
                      For books with the bound edge at the top of the page -- rotate all odd pages 90° anti-clockwise, all even pages 90° clockwise <BR>
-                     <IMG SRC="img/topBindingDiagram.png" width="100px">
+                     <IMG SRC="/img/topBindingDiagram.png" width="100px">
                      </details>
                  </span>
             </div>
@@ -106,7 +112,7 @@
                     <span data-balloon-length="medium" aria-label="This puts your paper in 'landscape' -- layout still happens the same, but the porportions of things will be different" data-balloon-pos="up">ℹ️</span>
                 </span>
 
-                <span class="row"> <label>Alternate Page Rotation (AKA Flip on Long Side)<input type="checkbox" name="rotate_page"></label> <span id="folio_warning"><b>NOTE:</b> Not currently working for folios, sorry! Use the <a href="old/">old version</a> for now.</a></span></span>
+                <span class="row"> <label>Alternate Page Rotation (AKA Flip on Long Side)<input type="checkbox" name="rotate_page"></label> <span id="folio_warning"><b>NOTE:</b> Not currently working for folios, sorry! Use the <a href="old/">old version</a> for now.</span></span>
                 
 
             </div>
@@ -168,10 +174,10 @@
                         White Space Manipulation. All values are in points, relative to original document.<BR><BR>1 point = 1/72 inch
                     </div>
                     <div class="layout_margin_user_input">
-                        Fore-Edge Margin: <input type="number" id="main_fore_edge_padding_pt" name="main_fore_edge_padding_pt" class="layout_margin_user_input_field"><sub>pt</sub></BR>
-                        Binding Margin: <input type="number" id="binding_edge_padding_pt" name="binding_edge_padding_pt" class="layout_margin_user_input_field"><sub>pt</sub></BR>
-                        Top Margin: <input type="number" id="top_edge_padding_pt" name="top_edge_padding_pt"  class="layout_margin_user_input_field"><sub>pt</sub></BR>
-                        Bottom Margin: <input type="number" id="bottom_edge_padding_pt" name="bottom_edge_padding_pt"  class="layout_margin_user_input_field"><sub>pt</sub></BR>
+                        Fore-Edge Margin: <input type="number" id="main_fore_edge_padding_pt" name="main_fore_edge_padding_pt" class="layout_margin_user_input_field"><sub>pt</sub><BR>
+                        Binding Margin: <input type="number" id="binding_edge_padding_pt" name="binding_edge_padding_pt" class="layout_margin_user_input_field"><sub>pt</sub><BR>
+                        Top Margin: <input type="number" id="top_edge_padding_pt" name="top_edge_padding_pt"  class="layout_margin_user_input_field"><sub>pt</sub><BR>
+                        Bottom Margin: <input type="number" id="bottom_edge_padding_pt" name="bottom_edge_padding_pt"  class="layout_margin_user_input_field"><sub>pt</sub><BR>
                     </div>
                 </span>
 
@@ -228,8 +234,8 @@
                 <span class="row"> <input type="radio" id="perfect" name="sig_format" value="perfect">
                     <label for="perfect">Perfectbound</label></span>
                 <span class="row"> <input type="radio" id="standardsig" name="sig_format" value="standardsig" checked>
-                    <label for="standardsig">Standard signatures</label> - length </label><input type="number" value="8"
-                        name="sig_length"></label> 
+                    <label for="standardsig">Standard signatures</label> - length<input type="number" value="8"
+                        name="sig_length">
                         <span data-balloon-length="medium" aria-label="Number of sheets per signature" data-balloon-pos="up">ℹ️</span></span>
                 <span class="row"> <input type="radio" id="customsig" name="sig_format" value="customsig">
                     <label for="customsig">Custom signatures</label> <input type="text" name="custom_sig">
@@ -273,7 +279,7 @@
                     <details>
                         <summary>Instructions</summary>
                         <p>
-                        <center><img src="img/2_sig_4x4_diagram.png" style='height: 100%; width: 100%; object-fit: contain'></center>
+                        <center><img src="/img/2_sig_4x4_diagram.png" style='height: 100%; width: 100%; object-fit: contain'></center>
                         Cut the vertical center line. You can also cut the horizontal lines if you like, or just fold it up as detailed above.
                         </p>
                     </details>
@@ -313,7 +319,7 @@
                     <details>
                         <summary>Instructions</summary>
                         <p>
-                        <center><img src="img/3_3_4_diagram.png" style='height: 100%; width: 100%; object-fit: contain'></center>
+                        <center><img src="/img/3_3_4_diagram.png" style='height: 100%; width: 100%; object-fit: contain'></center>
                         Cut along the cut lines. Fold up the 3 folio signatures, then the 4 folio.
                         </p>
                     </details></span>
@@ -344,7 +350,7 @@
                         <br>
                         Thankfully most small layouts fit on one page-- easy enough to do a test print and make sure you're duplexing correctly (if that's your route)
                         </p><p>
-                        <center><img src="img/6_10s_diagram.png" style='height: 100%; width: 100%; object-fit: contain'></center>
+                        <center><img src="/img/6_10s_diagram.png" style='height: 100%; width: 100%; object-fit: contain'></center>
                         Cut out the rows. Fold up the folios like a big zig-zag (two per face). Then fold the first 2 folios into a signature and the last 3 folios into a signature. I often cut them apart only when I'm stitching things together.
                         </p><p>
                         Note that when folding, it's important for the <b>center of the folios to line up</b>. That's what I measure against (less so fretting about folding exactly at the edge). Remember! Printer skew is a real thing!
