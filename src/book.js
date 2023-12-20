@@ -73,7 +73,7 @@ export class Book {
             'top' : configuration.topEdgePaddingPt,
             'bottom': configuration.bottomEdgePaddingPt,
             'binding': configuration.bindingEdgePaddingPt,
-            'fore_edge': configuration.foreEdgePaddingPt,
+            'fore_edge': configuration.mainForeEdgePaddingPt,
         };
     }
 
