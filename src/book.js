@@ -64,8 +64,10 @@ export class Book {
             this.signatureconfig = configuration.customSigLength;
         }
 
-        this.page_layout = PAGE_LAYOUTS[configuration.pageLayout];
-        this.per_sheet = this.page_layout.per_sheet;
+        const pageLayout = PAGE_LAYOUTS[configuration.pageLayout]
+
+        this.page_layout = pageLayout;
+        this.per_sheet = pageLayout.per_sheet;
         this.pack_pages = configuration.wackySpacing === 'wacky_pack';
         this.fore_edge_padding_pt = configuration.foreEdgePaddingPt
 

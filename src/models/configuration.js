@@ -36,11 +36,11 @@ const sourceRotation = urlSafe(z.enum(["none", "90cw", "90ccw", "out_binding", "
 /** @type { keyof typeof import("../constants").PAGE_SIZES } */
 const availablePaperSizes = Object.keys(PAGE_SIZES);
 
-const paperSize = urlSafe(z.enum(availablePaperSizes)).default("LETTER");
+const paperSize = urlSafe(z.enum(availablePaperSizes)).default("A4");
 
 const paperSizeUnit = urlSafe(z.enum(["pt", "in", "cm"])).default("pt");
 
-const printerType = urlSafe(z.enum(["single", "duplex"])).default("single");
+const printerType = urlSafe(z.enum(["single", "duplex"])).default("duplex");
 
 const pageLayout = urlSafe(z.enum(["folio", "quarto", "octavo", "sextodecimo"])).default("folio");
 
@@ -75,7 +75,7 @@ export const schema = z.object({
     topEdgePaddingPt: urlSafe(z.coerce.number()).default(0),
     bottomEdgePaddingPt: urlSafe(z.coerce.number()).default(0),
     sigFormat,
-    sigLength: urlSafe(z.coerce.number()).default(8), // Specific to standard
+    sigLength: urlSafe(z.coerce.number()).default(4), // Specific to standard
     customSigLength: urlSafe(commaSeparatedNumberList).default([]), // Specific to custom.
     foreEdgePaddingPt: urlSafe(z.coerce.number()).default(0), // specific to wacky small
     wackySpacing, // specific to wacky small
