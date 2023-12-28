@@ -19,7 +19,7 @@ export function renderInfoBox(book) {
         return
 
     const outputPages = book.book.pagelist.reduce((acc, list) => {
-        list.forEach((sublist) => (acc += sublist.length));
+        list.forEach((sublist) => (acc += (sublist.length ? sublist.length : 1)));
         return acc;
     }, 0);
 
