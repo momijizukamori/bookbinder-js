@@ -36,7 +36,7 @@ const sourceRotation = urlSafe(z.enum(["none", "90cw", "90ccw", "out_binding", "
 /** @type { keyof typeof import("../constants").PAGE_SIZES } */
 const availablePaperSizes = Object.keys(PAGE_SIZES);
 
-const paperSize = urlSafe(z.enum(availablePaperSizes)).default("A4");
+const paperSize = urlSafe(z.enum([...availablePaperSizes, "CUSTOM"])).default("A4");
 
 const paperSizeUnit = urlSafe(z.enum(["pt", "in", "cm"])).default("pt");
 
@@ -52,12 +52,9 @@ const sigFormat = urlSafe(z.enum(["perfect", "standardsig", "customsig", "1_3rd"
 
 const wackySpacing = urlSafe(z.enum(["wacky_pack", "wacky_gap"])).default("wacky_pack");
 
-const fileDownload = urlSafe(z.enum(["aggregated", "both", "signatures"]).default("both"));
-
 const printFile = urlSafe(z.enum(["aggregated", "signatures", "both"])).default("both");
 
 export const schema = z.object({
-    fileDownload,
     printFile,
     sourceRotation,
     rotatePage: urlSafe(coercedBoolean).default(false),

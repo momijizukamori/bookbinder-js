@@ -197,12 +197,12 @@ export function renderFormFromSettings(configuration) {
     document.querySelector('select[name="printer_type"]').value = configuration.printerType;
 
     // Set options which are not always present
-    if (configuration.paperSizeCustomHeight !== undefined) {
+    if (configuration.paperSize === "CUSTOM" && configuration.paperSizeCustomHeight !== undefined && configuration.paperSizeCustomWidth !== undefined) {
         document.querySelector('input[name="paper_size_custom_height"]').value = configuration.paperSizeCustomHeight;
-    }
-
-    if (configuration.paperSizeCustomWidth !== undefined) {
         document.querySelector('input[name="paper_size_custom_width"]').value = configuration.paperSizeCustomWidth;
+        updateAddOrRemoveCustomPaperOption();
+        updatePaperSelectOptionsUnits();
+        document.querySelector('select[name="paper_size"]').value = "CUSTOM";   
     }
 
     if (configuration.sigFormat == "customsig") {
