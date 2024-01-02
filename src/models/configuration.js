@@ -48,7 +48,7 @@ const pageScaling = urlSafe(z.enum(["centered", "lockratio", "stretch"])).defaul
 
 const pagePositioning = urlSafe(z.enum(["centered", "binding_aligned"])).default("centered");
 
-const sigFormat = urlSafe(z.enum(["perfect", "standardsig", "customsig", "1_3rd", "A7_2_16s", "8_zine", "a_3_6s", "a9_3_3_4", "a_4_8s", "a10_6_10s"])).default("standardsig");
+const sigFormat = urlSafe(z.enum(["booklet", "perfect", "standardsig", "customsig", "1_3rd", "A7_2_16s", "8_zine", "a_3_6s", "a9_3_3_4", "a_4_8s", "a10_6_10s"])).default("standardsig");
 
 const wackySpacing = urlSafe(z.enum(["wacky_pack", "wacky_gap"])).default("wacky_pack");
 

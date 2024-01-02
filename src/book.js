@@ -7,7 +7,7 @@ import { saveAs } from 'file-saver';
 import { Signatures } from './signatures.js';
 import { PerfectBound } from './perfectbound.js';
 import { WackyImposition } from './wacky_imposition.js';
-import { PAGE_LAYOUTS, PAGE_SIZES, TARGET_BOOK_SIZE, LINE_LEN } from './constants.js';
+import { PAGE_LAYOUTS, PAGE_SIZES, LINE_LEN } from './constants.js';
 import { updatePageLayoutInfo} from './utils/renderUtils.js';
 import JSZip from 'jszip';
 import { loadConfiguration } from './utils/formUtils.js';
