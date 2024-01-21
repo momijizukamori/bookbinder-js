@@ -21,9 +21,9 @@
             <h1>Bookbinder JS</h1>
             A Javascript-based app for formatting PDFs for bookbinding. For more information, feature requests, or to
             contribute, view the project's <a href="https://github.com/momijizukamori/bookbinder-js">Github repository</a>.
-            If you have issues with this version, you can try the <a href="old/">old version</a> instead, which only supports folio layouts.
+            If you have issues with this version, you can try the <a href="%BASE_URL%old/index.html">old version</a> instead, which only supports folio layouts.
             <center style="font-family:monospace;
-    padding-top: 0.75em;font-variant-caps: small-caps;">current version: 1.1.0</center>
+    padding-top: 0.75em;font-variant-caps: small-caps;">current version: %PACKAGE_VERSION%</center>
         </div>
         <form id="bookbinder" name="bookbinder">
             <div class="section" id="input">
@@ -112,7 +112,7 @@
                     <span data-balloon-length="medium" aria-label="This puts your paper in 'landscape' -- layout still happens the same, but the porportions of things will be different" data-balloon-pos="up">ℹ️</span>
                 </span>
 
-                <span class="row"> <label>Alternate Page Rotation (AKA Flip on Long Side)<input type="checkbox" name="rotate_page"></label> <span id="folio_warning"><b>NOTE:</b> Not currently working for folios, sorry! Use the <a href="old/">old version</a> for now.</span></span>
+                <span class="row"> <label>Alternate Page Rotation (AKA Flip on Long Side)<input type="checkbox" name="rotate_page"></label> <span id="folio_warning"><b>NOTE:</b> Not currently working for folios, sorry! Use the <a href="%BASE_URL%old/index.html">old version</a> for now.</span></span>
                 
 
             </div>
@@ -228,9 +228,8 @@
             <div class="section" id="sig_format">
                 <h2>Signature Format</h2>
 
-                <!-- <span class="row"><label>Default signature length: </label><input type="text" placeholder="8" name="sig_length"></label></span> -->
-                <!-- <span class="row"> <input type="radio" id="booklet" name="sig_format" value="booklet">
-                    <label for="booklet">Booklet</label></span> -->
+                <span class="row"> <input type="radio" id="booklet" name="sig_format" value="booklet">
+                    <label for="booklet">Booklet</label></span>
                 <span class="row"> <input type="radio" id="perfect" name="sig_format" value="perfect">
                     <label for="perfect">Perfectbound</label></span>
                 <span class="row"> <input type="radio" id="standardsig" name="sig_format" value="standardsig" checked>
