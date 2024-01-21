@@ -154,3 +154,7 @@ body, .wrapper, #bookbinder {
     display: inline-block;
     vertical-align: top;
 }
+
+#reset_settings {
+    margin-top: 1em;
+}

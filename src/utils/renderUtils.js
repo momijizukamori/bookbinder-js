@@ -148,59 +148,66 @@ export function renderWacky() {
     document.getElementById('book_size').style.opacity = isWacky ? 0.3 : 1.0;
 }
 
-export function renderFormFromSettings(bookSettings) {
-    if (bookSettings.duplex) {
-        document
-            .querySelector('#printer_type > option[value="duplex"]')
-            .setAttribute('selected', '');
-        document
-            .querySelector('#printer_type > option[value="single"]')
-            .removeAttribute('selected');
-    } else {
-        document
-            .querySelector('#printer_type > option[value="single"]')
-            .setAttribute('selected', '');
-        document
-            .querySelector('#printer_type > option[value="duplex"]')
-            .removeAttribute('selected');
+/** @param { import("../models/configuration").Configuration } configuration */
+export function renderFormFromSettings(configuration) {
+    // Clear all checked attributes
+    document.querySelectorAll("[type=radio]").forEach((e) => { e.checked = false });
+    document.querySelectorAll("[type=checkbox]").forEach((e) => { e.checked = false });
+
+    // Set checkboxes
+    if (configuration.paperRotation90) {
+        document.querySelector("input[name='paper_rotation_90']").checked = true;
     }
 
-    // if (bookSettings.lockratio) {
-    //     document
-    //         .querySelector('option[value="lockratio"]')
-    //         .setAttribute('selected', '');
-    //     document
-    //         .querySelector('option[value="stretch"]')
-    //         .removeAttribute('selected');
-    // } else {
-    //     document
-    //         .querySelector('option[value="stretch"]')
-    //         .setAttribute('selected', '');
-    //     document
-    //         .querySelector('option[value="lockratio"]')
-    //         .removeAttribute('selected');
-    // }
-
-    if (bookSettings.duplexrotate) {
-        document
-            .querySelector('input[name="rotate_page"')
-            .setAttribute('checked', '');
-    } else {
-        document
-            .querySelector('input[name="rotate_page"')
-            .removeAttribute('checked');
+    if (configuration.rotatePage) {
+        document.querySelector("input[name='rotate_page']").checked = true;
     }
 
-    document.querySelector('option[value="A4"]').removeAttribute('selected');
-    document
-        .querySelector('option[value="' + bookSettings.papersize + '"]')
-        .setAttribute('selected', '');
+    if (configuration.flyleaf) {
+        document.querySelector("input[name='flyleaf']").checked = true;
+    }
 
-    document.getElementById(bookSettings.format).setAttribute('checked', '');
-    document
-        .getElementById(bookSettings.pagelayout)
-        .setAttribute('checked', '');
-    document
-        .querySelector('input[name="sig_length')
-        .setAttribute('value', bookSettings.sigsize);
+    if (configuration.cropMarks) {
+        document.querySelector("input[name='cropmarks']").checked = true;
+    }
+
+    if (configuration.cutMarks) {
+        document.querySelector("input[name='cutmarks']").checked = true;
+    }
+
+    // Set radio options
+    document.querySelector(`input[name="pagelayout"][value="${configuration.pageLayout}"]`).checked = true;
+    document.querySelector(`input[name="sig_format"][value="${configuration.sigFormat}"]`).checked = true;
+    document.querySelector(`input[name="wacky_spacing"][value="${configuration.wackySpacing}"]`).checked = true;
+    document.querySelector(`input[name="source_rotation"][value="${configuration.sourceRotation}"]`).checked = true;
+
+    // Set freeform inputs
+    document.querySelector('input[name="main_fore_edge_padding_pt"]').value = configuration.mainForeEdgePaddingPt;
+    document.querySelector('input[name="binding_edge_padding_pt"]').value = configuration.bindingEdgePaddingPt;
+    document.querySelector('input[name="top_edge_padding_pt"]').value = configuration.topEdgePaddingPt;
+    document.querySelector('input[name="bottom_edge_padding_pt"]').value = configuration.bottomEdgePaddingPt;
+    document.querySelector('input[name="fore_edge_padding_pt"]').value = configuration.foreEdgePaddingPt;
+
+    // Set select options
+    document.querySelector('select[name="page_scaling"]').value = configuration.pageScaling;
+    document.querySelector('select[name="page_positioning"]').value = configuration.pagePositioning;
+    document.querySelector('select[name="print_file"]').value = configuration.printFile;
+    document.querySelector('select[name="paper_size"]').value = configuration.paperSize;
+    document.querySelector('select[name="paper_size_unit"]').value = configuration.paperSizeUnit;
+    document.querySelector('select[name="printer_type"]').value = configuration.printerType;
+
+    // Set options which are not always present
+    if (configuration.paperSize === "CUSTOM" && configuration.paperSizeCustomHeight !== undefined && configuration.paperSizeCustomWidth !== undefined) {
+        document.querySelector('input[name="paper_size_custom_height"]').value = configuration.paperSizeCustomHeight;
+        document.querySelector('input[name="paper_size_custom_width"]').value = configuration.paperSizeCustomWidth;
+        updateAddOrRemoveCustomPaperOption();
+        updatePaperSelectOptionsUnits();
+        document.querySelector('select[name="paper_size"]').value = "CUSTOM";   
+    }
+
+    if (configuration.sigFormat == "customsig") {
+        document.querySelector("input[name='custom_sig']").value = configuration.customSigLength;
+    } else {
+        document.querySelector("input[name='sig_length']").value = configuration.sigLength;
+    }
 }

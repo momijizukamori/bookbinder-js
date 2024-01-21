@@ -2,22 +2,22 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/. 
 import { expect, describe, it } from 'vitest';
-import { Book } from './book';
+import { Book } from "./book";
+import { schema } from "./models/configuration";
 
-describe('Book model', () => {
+describe("Book model", () => {
     // TODO confirm that this is what a newly created book (that is, without any settings changed) should look like; I've copied the result from how it currently works assuming it's working as-intended
     const defaultBook = {
         inputpdf: null,
         password: null,
-        duplex: false,
-        duplexrotate: true,
+        duplex: true,
+        duplexrotate: false,
         papersize: [595, 842],
         flyleaf: false,
         spineoffset: false,
-        format: 'standardsig',
+        format: "standardsig",
         sigsize: 4,
-        customsig: null,
-        signatureconfig: [],
+        customsig: false,
         input: null,
         currentdoc: null,
         pagecount: null,
@@ -33,28 +33,30 @@ describe('Book model', () => {
             cols: 1,
             per_sheet: 4,
         },
-        per_sheet: 8,
+        per_sheet: 4,
         cropmarks: false,
         cutmarks: false,
         fore_edge_padding_pt: 0,
-        managedDoc: null,
         pack_pages: true,
         padding_pt: {
             binding: 0,
             bottom: 0,
             fore_edge: 0,
-            top: 0
+            top: 0,
         },
-        page_positioning: 'centered',
-        page_scaling: 'lockratio',
+        managedDoc: null,
+        page_positioning: "centered",
+        page_scaling: "lockratio",
         paper_rotation_90: false,
+        source_rotation: "none",
         print_file: "both",
-        source_rotation: "none"
-       
+        signatureconfig: [],
     };
-    it('returns a new Book', () => {
+
+    it("returns a new Book", () => {
+        const defaultConfiguration = schema.parse({});
         const expected = defaultBook;
-        const actual = new Book();
+        const actual = new Book(defaultConfiguration);
         expect(actual).toEqual(expected);
     });
     // TODO test update
