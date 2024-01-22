@@ -155,6 +155,9 @@ body, .wrapper, #bookbinder {
     vertical-align: top;
 }
 
+
 #reset_settings {
-    margin-top: 1em;
+    margin: 1em;
+    margin-right:  1em;
+    float:  right;
 }
