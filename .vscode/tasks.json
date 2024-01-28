@@ -1,0 +1,45 @@
+{
+	"version": "2.0.0",
+	"inputs": [
+		{
+			"id": "terminate",
+			"type": "command",
+			"command": "workbench.action.tasks.terminate",
+			"args": "terminateAll"
+		}
+	],
+	"tasks": [
+		{
+			"label": "Terminate All Tasks",
+			"command": "echo ${input:terminate}",
+			"type": "shell",
+			"problemMatcher": []
+		},
+		{
+			"type": "npm",
+			"isBackground": true,
+			"script": "dev",
+			"label": "npm: dev",
+			"detail": "vite --port 5173",
+			// All this is needed so that VSCode doesn't wait for the prelaunch
+			// task to complete and just lets it run in the background
+			"problemMatcher": [
+				{
+					"pattern": [
+						{
+							"regexp": ".",
+							"file": 1,
+							"location": 2,
+							"message": 3
+						}
+					],
+					"background": {
+						"activeOnStart": true,
+						"beginsPattern": ".",
+						"endsPattern": ".",
+					}
+				}
+			]
+		}
+	]
+}
