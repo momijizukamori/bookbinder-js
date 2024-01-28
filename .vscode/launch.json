@@ -1,0 +1,30 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "preLaunchTask": "npm: dev",
+            "postDebugTask": "Terminate All Tasks",
+            "type": "chrome",
+            "request": "launch",
+            "name": "Debug Chrome",
+            "url": "http://localhost:5173/bookbinder-js/",
+            "webRoot": "${workspaceFolder}",
+        },
+        {
+            "preLaunchTask": "npm: dev",
+            "postDebugTask": "Terminate All Tasks",
+            "type": "firefox",
+            "request": "launch",
+            "name": "Debug Firefox",
+            "url": "http://localhost:5173/bookbinder-js/",
+            "webRoot": "${workspaceFolder}",
+            "tmpDir": "${workspaceFolder}/tmp",
+            "pathMappings": [
+                {
+                    "url": "http://localhost:5173/bookbinder-js/src",
+                    "path": "${workspaceFolder}/src"
+                }
+            ]
+        }
+    ]
+}
