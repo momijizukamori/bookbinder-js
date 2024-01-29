@@ -116,7 +116,7 @@ export class Book {
      * Populates [this.orderedpages] (array [0, 1, ... this.page_sheets * # of sheets]) 
      */
     createpagelist() {
-        this.pagecount = (this.managedDoc == null) ? this.currentdoc.getPageCount() : this.managedDoc.getPageCount();
+        this.pagecount = this.currentdoc.getPageCount();
         this.orderedpages = Array.from({ length: this.pagecount }, (x, i) => i);
 
         if (this.flyleaf) {
