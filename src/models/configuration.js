@@ -76,7 +76,7 @@ export const schema = z.object({
     customSigLength: urlSafe(commaSeparatedNumberList).default([]), // Specific to custom.
     foreEdgePaddingPt: urlSafe(z.coerce.number()).default(0), // specific to wacky small
     wackySpacing, // specific to wacky small
-    flyleaf: urlSafe(coercedBoolean).default(false),
+    flyleafs: urlSafe(z.coerce.number()).default(1),
     paperSizeCustomWidth: urlSafe(z.coerce.number()),
     paperSizeCustomHeight: urlSafe(z.coerce.number()),
 });

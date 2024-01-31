@@ -51,7 +51,7 @@ export class Book {
         this.print_file = configuration.printFile;
         this.page_scaling = configuration.pageScaling;
         this.page_positioning = configuration.pagePositioning;
-        this.flyleaf = configuration.flyleaf;
+        this.flyleafs = configuration.flyleafs;
         this.cropmarks = configuration.cropMarks;
         this.cutmarks = configuration.cutMarks;
         this.format = configuration.sigFormat;
@@ -119,7 +119,7 @@ export class Book {
         this.pagecount = this.currentdoc.getPageCount();
         this.orderedpages = Array.from({ length: this.pagecount }, (x, i) => i);
 
-        if (this.flyleaf) {
+        for (let i = 0; i < this.flyleafs; i++) {
             this.orderedpages.unshift('b');
             this.orderedpages.unshift('b');
 
