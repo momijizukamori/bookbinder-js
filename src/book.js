@@ -379,7 +379,7 @@ export class Book {
      *
      * @param config - object /w the following parameters:
      *      - outname : name of pdf added to ongoing zip file. Ex: 'signature1duplex.pdf' (or null if no signature file needed)
-     *      - pageList : REBECCA TODO
+     *      - pageList : objects that contain 3 values: { isSigStart: boolean, isSigEnd: boolean, info: either the page number or 'b'}
      *      - back : is 'back' of page  (boolean)
      *      - alt : alternate pages (boolean)
      *      - destPdf : PDF to write to, in addition to PDF created w/ `outname` (or null)
@@ -492,7 +492,6 @@ export class Book {
         });
         block.forEach((page, i) => {
             if (sigDetails[i].isSigStart || sigDetails[i].isSigEnd) {
-                console.log("Rebecca pdfEdgeMarks "+pdfEdgeMarks)
                 if (pdfEdgeMarks) {
                     this.draw_spine_marks(currPage, sigDetails[i], positions[i])
                 }
@@ -516,9 +515,6 @@ export class Book {
      * @param position - object w/ {rotation (degrees), sx, sy, x, y}
      */
     draw_spine_marks(curPage, sigDetails, position) {
-        console.log("Rebecca ==========[isSigStart: "+sigDetails.isSigStart)
-        console.log("Rebecca I see sigDetails ", sigDetails)
-        console.log("Rebecca I see position ", position)
         let w = 5;
         if (position.rotation == 0) {
             console.log(" --> draw this: ",{
@@ -857,7 +853,6 @@ export class Book {
         const printAggregate = config.aggregatePdfs != null;
         const printSignatures = config.id != null;
         const pages = config.pageIndexDetails;
-        console.log("Rebecca : createsignatures : "+pages)
         //      duplex printers print both sides of the sheet, 
         if (config.isDuplex) {
             let outduplex = (printSignatures) ? config.id + 'duplex' + '.pdf' : null;
