@@ -36,7 +36,7 @@ const fromFormToConfiguration = (form) =>
         wackySpacing: form.get("wacky_spacing"),
         fileDownload: form.get("file_download"),
         printFile: form.get("print_file"),
-        flyleaf: form.has("flyleaf"),
+        flyleafs: form.get("flyleafs"),
         paperSizeCustomWidth: form.get("paper_size_custom_width"),
         paperSizeCustomHeight: form.get("paper_size_custom_height"),
     });

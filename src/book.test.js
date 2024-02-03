@@ -13,7 +13,7 @@ describe("Book model", () => {
         duplex: true,
         duplexrotate: false,
         papersize: [595, 842],
-        flyleaf: false,
+        flyleafs: 1,
         spineoffset: false,
         format: "standardsig",
         sigsize: 4,

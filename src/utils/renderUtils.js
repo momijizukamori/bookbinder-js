@@ -163,10 +163,6 @@ export function renderFormFromSettings(configuration) {
         document.querySelector("input[name='rotate_page']").checked = true;
     }
 
-    if (configuration.flyleaf) {
-        document.querySelector("input[name='flyleaf']").checked = true;
-    }
-
     if (configuration.cropMarks) {
         document.querySelector("input[name='cropmarks']").checked = true;
     }
@@ -187,6 +183,7 @@ export function renderFormFromSettings(configuration) {
     document.querySelector('input[name="top_edge_padding_pt"]').value = configuration.topEdgePaddingPt;
     document.querySelector('input[name="bottom_edge_padding_pt"]').value = configuration.bottomEdgePaddingPt;
     document.querySelector('input[name="fore_edge_padding_pt"]').value = configuration.foreEdgePaddingPt;
+    document.querySelector('input[name="flyleafs"]').value = configuration.flyleafs;
 
     // Set select options
     document.querySelector('select[name="page_scaling"]').value = configuration.pageScaling;
