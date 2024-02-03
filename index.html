@@ -126,15 +126,13 @@
 
             <div class="section" id="book_size">
                 <h2>Page Layout</h2>
-                <span class="row"><input type="radio" id="folio" name="pagelayout" value="folio" checked>
-                    <label for="folio">Folio (two pages per side of sheet)</label></span>
-                <span class="row"><input type="radio" id="quarto" name="pagelayout" value="quarto">
-                    <label for="quarto">Quarto (four pages per side of sheet)</label></span>
-                <span class="row"><input type="radio" id="octavo" name="pagelayout" value="octavo">
-                    <label for="octavo">Octavo (eight pages per side of sheet)</label></span>
-                <span class="row"><input type="radio" id="sextodecimo" name="pagelayout" value="sextodecimo">
-                    <label for="sextodecimo">Sextodecimo (sixteen pages per side of sheet)</label></span>
-                
+                <label for="pagelayout">Style</label>
+                <select name="pagelayout" id="pagelayout">
+                    <option id="folio" value="folio">Folio - two pages per side of sheet</option>
+                    <option id="quarto" value="quarto" selected>Quarto - four pages per side of sheet</option>
+                    <option id="octavo" value="octavo">Octavo - eight pages per side of sheet</option>
+                    <option id="sextodecimo" value="sextodecimo">Sextodecimo - sixteen pages per side of sheet</option>
+                </select>
                 <span class="row"> <label>Add Foldlines <input type="checkbox" name="cropmarks"></label>
                     <span data-balloon-length="medium" aria-label="Adds folding guidelines (ordered from thickest to thinnest)" data-balloon-pos="up">ℹ️</span>
                 </span> 

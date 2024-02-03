@@ -176,7 +176,6 @@ export function renderFormFromSettings(configuration) {
     }
 
     // Set radio options
-    document.querySelector(`input[name="pagelayout"][value="${configuration.pageLayout}"]`).checked = true;
     document.querySelector(`input[name="sig_format"][value="${configuration.sigFormat}"]`).checked = true;
     document.querySelector(`input[name="wacky_spacing"][value="${configuration.wackySpacing}"]`).checked = true;
     document.querySelector(`input[name="source_rotation"][value="${configuration.sourceRotation}"]`).checked = true;
@@ -190,6 +189,7 @@ export function renderFormFromSettings(configuration) {
     document.querySelector('input[name="flyleafs"]').value = configuration.flyleafs;
 
     // Set select options
+    document.querySelector('select[name="pagelayout"]').value = configuration.pageLayout;
     document.querySelector('select[name="page_scaling"]').value = configuration.pageScaling;
     document.querySelector('select[name="page_positioning"]').value = configuration.pagePositioning;
     document.querySelector('select[name="print_file"]').value = configuration.printFile;
