@@ -25,20 +25,11 @@ concurrency:
 
 jobs:
   # Single deploy job since we're just deploying
-  deploy:
+  deploy-preview:
     runs-on: ubuntu-latest
     steps:
-      - name: update PR
-        if: ${{ github.event_name == 'pull_request' }}
-        uses: thollander/actions-comment-pull-request@v2
-        with:
-          message: |
-            Started attempt to build a new deploy preview for PR ${{ github.event.pull_request.number }}.
-          comment_tag: pr_published
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.ref }}
       - name: Set up Node
         uses: actions/setup-node@v3
         with:
@@ -48,19 +39,9 @@ jobs:
         run: npm install
       - name: Build
         run: npm run build
-      - name: Deploy to Server
-        uses: easingthemes/ssh-deploy@main
+        if: github.event.action != 'closed'
+      - uses: rossjrw/pr-preview-action@v1
         with:
-          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
-          ARGS: "-rlgoDzvc -i --delete"
-          SOURCE: "dist/"
-          REMOTE_HOST: ${{ secrets.REMOTE_HOST }}
-          REMOTE_USER: ${{ secrets.REMOTE_USER }}
-          TARGET: ${{ secrets.REMOTE_TARGET }}${{ github.event_name == 'pull_request' && github.event.pull_request.number ||  github.event_name == 'push' && 'main' || github.event.inputs.destination}}
-      - name: update PR
-        if: ${{ github.event_name == 'pull_request' }}
-        uses: thollander/actions-comment-pull-request@v2
-        with:
-          message: |
-            Created a new deploy preview for PR ${{ github.event.pull_request.number }}. [See preview](https://seam.rip/bookbinder-js/${{ github.event.pull_request.number }}/).
-          comment_tag: pr_published
+          source-dir: dist
+          umbrella-dir: pr-preview
+          action: auto
