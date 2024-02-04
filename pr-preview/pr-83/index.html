@@ -12,7 +12,7 @@
     <link rel="stylesheet" type="text/css" href="./styles.css">
   <link rel="icon" type="image/x-icon" href="https://momijizukamori.github.io/bookbinder-js/pr-preview/pr-83/favicon.ico">
     <meta charset="UTF-8">
-  <script type="module" crossorigin src="https://momijizukamori.github.io/bookbinder-js/pr-preview/pr-83/assets/index-Ev1o8Aco.js"></script>
+  <script type="module" crossorigin src="https://momijizukamori.github.io/bookbinder-js/pr-preview/pr-83/assets/index-JQy5RRkd.js"></script>
 </head>
 
 <body>
@@ -24,13 +24,6 @@
             If you have issues with this version, you can try the <a href="https://momijizukamori.github.io/bookbinder-js/pr-preview/pr-83old/index.html">old version</a> instead, which only supports folio layouts.
             <center style="font-family:monospace;
     padding-top: 0.75em;font-variant-caps: small-caps;">current version: 1.3.3</center>
-        </div>
-        <div class="section" id="settings">
-            <h2>Settings</h2>
-            <span class="row">
-                <button type="button" name="reset_settings" id="reset_settings">Reset</button>
-                The page is able to save and load your current settings via the site URL. Clicking this button will reset those to the default settings. 
-            </span>
         </div>
         <form id="bookbinder" name="bookbinder">
             <div class="section" id="input">
@@ -381,8 +374,6 @@
             <div class="section" id="sig_info">
                 <h2>Signature Info</h2>
 
-                <button type="button" name="preview" id="preview" disabled>Preview Output</button>
-                <span data-balloon-length="medium" aria-label="Will not show previews if 'Signature Files Only' is selected. Only shows one side for 'Single Sided' printing. Not tested on all browsers (or any browsers other than Chrome really...)" data-balloon-pos="up">ℹ️</span>
                 <center>
                     <iframe id="pdf" style="width: 100%; height: 10px;display:none;"></iframe>
                 </center>
@@ -391,9 +382,12 @@
                 <span class="row">Number of Signatures: <span id="sig_count"></span></span>
                 <span class="row">Signature Arrangement: <span id="sig_arrange"></span></span>
             </div>
-            
-            <button type="button" name="generate" id="generate" disabled>Generate Output</button>
-        </form>
+            <div class="space_out">
+                <button type="button" class="medium_btn" name="preview" id="preview" disabled data-balloon-length="medium" aria-label="Will not show previews if 'Signature Files Only' is selected. Only shows one side for 'Single Sided' printing. Not tested on all browsers (or any browsers other than Chrome really...)" data-balloon-pos="up">Preview PDF</button>
+                <button type="button" class="large_btn" name="generate" id="generate" disabled>Generate PDF Output</button>
+                <button type="button" class="medium_btn" name="reset_settings" id="reset_settings" data-balloon-length="medium" aria-label="The page is able to save and load your current settings via the site URL. Clicking this button will reset those to the default settings" data-balloon-pos="up">Reset Settings</button>
+            </div>
+    </form>
     </div>
 </body>
 
