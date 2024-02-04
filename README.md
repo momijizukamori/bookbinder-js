@@ -27,5 +27,3 @@ In the [`/docs`](/docs) directory:
 
 Snapshot of layout proof summary as of 2022-08-14
 ![Snapshot of layout proof summary 2022-08-14](/docs/examples_summary_snapshot_2022_08_14.png)
-
-blahblah
