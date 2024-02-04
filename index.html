@@ -45,37 +45,55 @@
 
             <div class="section" id="input">
                 <h2>Source Manipulation</h2>
-
-                <span class="row"><input type="radio" id="none" name="source_rotation" value="none" checked>
-                    <label for="none">no modification</label>
-                    <details style="padding-left:40px;"><summary> Details</summary><IMG SRC="/img/noRotationDiagram.png" width="100px"/></details>
-                </span>
-                <span class="row"><input type="radio" id="90cw" name="source_rotation" value="90cw">
-                    <label for="90cw">rotate all pages 90° clockwise</label>
-                    <details style="padding-left:40px;"><summary> Details</summary><IMG SRC="/img/90cwDiagram.png" width="100px"/></details>
-                </span>
-
-                <span class="row"><input type="radio" id="90ccw" name="source_rotation" value="90ccw">
-                    <label for="90ccw">rotate all pages 90° counter clockwise (anti clockwise)</label>
-                    <details style="padding-left:40px;"><summary> Details</summary><IMG SRC="/img/90ccwDiagram.png" width="100px"/></details>
-                </span>
-                <span class="row"><input type="radio" id="out_binding" name="source_rotation" value="out_binding">
-                    <label for="out_binding">Out binding </label>
-                       <details style="padding-left:40px;">
-                     <summary> Details</summary> 
-                     For books with the bound edge at the bottom of the page -- rotate all odd pages 90° clockwise, all even pages 90° anti-clockwise
-                     <BR/>
-                     <IMG SRC="/img/bottomBindingDiagram.png" width="100px"/>
-                    </details>
-                </span>
-                <span class="row"><input type="radio" id="in_binding" name="source_rotation" value="in_binding">
-                    <label for="in_binding">In Binding</label>
-                        <details style="padding-left:40px;">
-                     <summary> Details</summary> 
-                     For books with the bound edge at the top of the page -- rotate all odd pages 90° anti-clockwise, all even pages 90° clockwise <BR>
-                     <IMG SRC="/img/topBindingDiagram.png" width="100px">
-                     </details>
-                 </span>
+                <select name="source_rotation" id="source_rotation">
+                    <option id="none" value="none" selected="selected">no modification</option>
+                    <option id="90cw" value="90cw">rotate pages 90° clockwise</option>
+                    <option id="90ccw" value="90ccw">rotate pages 90° counter clockwise</option>
+                    <option id="out_binding" value="out_binding">odd pages 90° clockwise, even pages 90° anti-clockwise</option>
+                    <option id="in_binding" value="in_binding">odd pages 90° anti-clockwise, even pages 90° clockwise</option>
+                </select>
+                <div>
+                    <div id="none_example" class="row source_rotation_example">
+                        <IMG SRC="/img/noRotationDiagram.png" width="100px" class="float_left" />
+                        <p>
+                            </br>
+                            For books that read like a standard novel<br />
+                            no rotation of pages applied
+                        </p>
+                    </div>
+                    <div id="90cw_example" class="hidden source_rotation_example">
+                        <IMG SRC="/img/90cwDiagram.png" width="100px" class="float_left" />
+                        <p>
+                            </br>
+                            For books that turn pages like a calender<br />
+                            back to front, rotate all pages 90° clockwise
+                        </p>
+                    </div>
+                    <div id="90ccw_example" class="hidden source_rotation_example">
+                        <IMG SRC="/img/90ccwDiagram.png" width="100px" class="float_left" />
+                        <p>
+                            </br>
+                            For books that turn pages like a calender<br />
+                            front to back, rotate all pages 90° counter clockwise
+                        </p>
+                    </div>
+                    <div id="out_binding_example" class="hidden source_rotation_example row">
+                        <IMG SRC="/img/bottomBindingDiagram.png" width="100px" class="float_left" />
+                        <p>
+                            </br>
+                            For books with bound edge at bottom of the page<br />
+                            rotate all odd pages 90° clockwise, all even pages 90° anti-clockwise
+                        </p>
+                    </div>
+                    <div id="in_binding_example" class="hidden source_rotation_example">
+                        <IMG SRC="/img/topBindingDiagram.png" width="100px" class="float_left">
+                        <p>
+                            </br>
+                            For books with bound edge at top of the page<br />
+                            rotate all odd pages 90° anti-clockwise, all even pages 90° clockwise
+                        </p>
+                    </div>
+                </div>
             </div>
 
             <!-- <div class="section" id="units">
