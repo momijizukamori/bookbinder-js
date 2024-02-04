@@ -38,7 +38,7 @@ jobs:
       - name: Install dependencies
         run: npm install
       - name: Build
-        run: npm run build -- --base=https://momijizukamori.github.io/bookbinder-js/pr-preview/${{ github.event.pull_request.number }}
+        run: npm run build -- --base=https://momijizukamori.github.io/bookbinder-js/pr-preview/pr-${{ github.event.pull_request.number }}
         if: github.event.action != 'closed'
       - uses: rossjrw/pr-preview-action@v1
         with:
