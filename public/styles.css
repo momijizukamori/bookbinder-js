@@ -61,6 +61,10 @@ body, .wrapper, #bookbinder {
     display: block;
 }
 
+.hidden {
+    display: none;
+}
+
 #generate {
     font-size: 1.5em;
 }
@@ -155,6 +159,9 @@ body, .wrapper, #bookbinder {
     vertical-align: top;
 }
 
+.float_left {
+    float: left;
+}
 
 #reset_settings {
     margin: 1em;
