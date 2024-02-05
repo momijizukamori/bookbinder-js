@@ -15,7 +15,7 @@ export class Signatures {
 		this.per_sheet = per_sheet || 4; // pages per sheet - default is 4.
 		this.duplexrotate = duplexrotate || false;
 
-		this.pagelist = [];
+		this.pagelistdetails = [];
 
 		this.sheets = Math.ceil(pages.length / this.per_sheet);
 
@@ -41,7 +41,7 @@ export class Signatures {
 			let blanks = new Array(diff).fill('b');
 			this.inputpagelist.push(...blanks);
 		}
-		this.pagelist = [];
+		this.pagelistdetails = [];
 		this.signaturepagelists = [];
 
 		this.splitpagelist();
@@ -49,7 +49,7 @@ export class Signatures {
 	createsigconfig() {
 
 		this.sigconfig = this.generatesignatureindex();
-		this.pagelist = [];
+		this.pagelistdetails = [];
 		this.signaturepagelists = [];
 
 		this.splitpagelist();
@@ -78,11 +78,11 @@ export class Signatures {
 
 		//      Use the booklet class for each signature
 		this.signaturepagelists.forEach(pagerange => {
-			let pagelist = this.booklet(pagerange, this.duplex, this.per_sheet, this.duplexrotate);
-			newsigs.push(pagelist);
+			let pagelistdetails = this.booklet(pagerange, this.duplex, this.per_sheet, this.duplexrotate);
+			newsigs.push(pagelistdetails);
 		});
 
-		this.pagelist = newsigs;
+		this.pagelistdetails = newsigs;
 	}
 	generatesignatureindex() {
 
@@ -117,7 +117,7 @@ export class Signatures {
 	}
 
 	booklet(pages, duplex, per_sheet, duplexrotate) {
-        let pagelist = duplex ? [[]] : [[], []];
+        let pagelistdetails = duplex ? [[]] : [[], []];
         let sheets = 1;
 		const {front, rotate, back} = BOOKLET_LAYOUTS[per_sheet];
 
@@ -142,14 +142,22 @@ export class Signatures {
 
             front_config.forEach((pnum) => {
                 let page = block[pnum - 1]; //page layouts are 1-indexed, not 0-index
-                pagelist[0].push(page);
+                pagelistdetails[0].push({
+                    info: page,
+                    isSigStart:front_start == 0 && pnum == 1, 
+                    isSigEnd: front_start == 0 && pnum == block.length
+                });
             });
 
             const backlist = this.duplex ? 0 : 1;
 
             back_config.forEach((pnum) => {
                 let page = block[pnum - 1];
-                pagelist[backlist].push(page);
+                pagelistdetails[backlist].push({
+                    info: page,
+                    isSigStart:front_start == 0 && pnum == 1, 
+                    isSigEnd: front_start == 0 && pnum == block.length
+                });
             });
 
             // Update all our counters
@@ -159,6 +167,6 @@ export class Signatures {
             back_end += pageblock;
         }
 
-		return pagelist;
+		return pagelistdetails;
     }
 }

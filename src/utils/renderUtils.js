@@ -18,7 +18,7 @@ export function renderInfoBox(book) {
     if (book.book == null || book.book == undefined)
         return
 
-    const outputPages = book.book.pagelist.reduce((acc, list) => {
+    const outputPages = book.book.pagelistdetails.reduce((acc, list) => {
         list.forEach((sublist) => (acc += (sublist.length ? sublist.length : 1)));
         return acc;
     }, 0);
@@ -165,6 +165,10 @@ export function renderFormFromSettings(configuration) {
 
     if (configuration.cropMarks) {
         document.querySelector("input[name='cropmarks']").checked = true;
+    }
+
+    if (configuration.pdfEdgeMarks) {
+        document.querySelector("input[name='pdf_edge_marks']").checked = true;
     }
 
     if (configuration.cutMarks) {
