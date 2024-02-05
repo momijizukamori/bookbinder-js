@@ -369,31 +369,35 @@
 
             <div class="section" id="sig_info">
                 <h2>Signature Info</h2>
-
+            
                 <center>
                     <iframe id="pdf" style="width: 100%; height: 10px;display:none;"></iframe>
                 </center>
-                    <div class="space_out">
-                    <span class="row">Total Pages: <span id="total_pages"></span></span>
-                    <span class="row">Original PDF Pages: <span id="page_count"></span></span>
-
-                    </div>
-                    <div class="space_out">
-                        <span class="row">Total Sheets: <span id="total_sheets"></span></span>
-                        <span class="row">Number of Signatures: <span id="sig_count"></span></span>
-                    </div>
-                    <div>
-                        <div style="text-align: center;">
-                        Signature Arrangement:
-                        </div>
-                        <span class="row"><span id="sig_arrange"></span></span>
-                    </div>
-
+                <div class="space_out">
+                    <span>Total Pages: <span id="total_pages"></span></span>
+                    <span>Original PDF Pages: <span id="page_count"></span></span>
+            
                 </div>
+                <div class="space_out">
+                    <span>Total Sheets: <span id="total_sheets"></span></span>
+                    <span>Number of Signatures: <span id="sig_count"></span></span>
+                </div>
+                <div>
+                    <div style="text-align: center;">
+                        Signature Arrangement:
+                    </div>
+                    <div id="sig_arrange" style="text-align: center;"></div>
+                </div>
+            
+            </div>
             <div class="space_out">
-                <button type="button" class="medium_btn" name="preview" id="preview" disabled data-balloon-length="medium" aria-label="Will not show previews if 'Signature Files Only' is selected. Only shows one side for 'Single Sided' printing. Not tested on all browsers (or any browsers other than Chrome really...)" data-balloon-pos="up">Preview PDF</button>
+                <button type="button" class="medium_btn" name="preview" id="preview" disabled data-balloon-length="medium"
+                    aria-label="Will not show previews if 'Signature Files Only' is selected. Only shows one side for 'Single Sided' printing. Not tested on all browsers (or any browsers other than Chrome really...)"
+                    data-balloon-pos="up">Preview PDF</button>
                 <button type="button" class="large_btn" name="generate" id="generate" disabled>Generate PDF Output</button>
-                <button type="button" class="medium_btn" name="reset_settings" id="reset_settings" data-balloon-length="medium" aria-label="The page is able to save and load your current settings via the site URL. Clicking this button will reset those to the default settings" data-balloon-pos="up">Reset Settings</button>
+                <button type="button" class="medium_btn" name="reset_settings" id="reset_settings" data-balloon-length="medium"
+                    aria-label="The page is able to save and load your current settings via the site URL. Clicking this button will reset those to the default settings"
+                    data-balloon-pos="up">Reset Settings</button>
             </div>
     </form>
     </div>
