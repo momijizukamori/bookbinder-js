@@ -23,7 +23,7 @@ export class PerfectBound {
 		const front_config = front;
         const back_config = duplexrotate ? rotate : back;
 
-        this.pagelist = duplex ? [[]] : [[], []];
+        this.pagelistdetails = duplex ? [[]] : [[], []];
 
 		// Pad the page list with blanks if necessary
 		const totalpages = this.sheets * per_sheet;
@@ -38,14 +38,22 @@ export class PerfectBound {
 
             front_config.forEach((pnum) => {
                 let page = block[pnum - 1]; //page layouts are 1-indexed, not 0-index
-                this.pagelist[0].push(page);
+                this.pagelistdetails[0].push({
+                    info: page,
+                    isSigStart: true, 
+                    isSigEnd: true
+                });
             });
 
             const backlist = this.duplex ? 0 : 1;
 
             back_config.forEach((pnum) => {
                 let page = block[pnum - 1];
-                this.pagelist[backlist].push(page);
+                this.pagelistdetails[backlist].push({
+                    info: page,
+                    isSigStart: true, 
+                    isSigEnd: true
+                });
             });
 
         }

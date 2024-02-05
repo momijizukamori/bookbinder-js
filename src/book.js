@@ -194,7 +194,7 @@ export class Book {
         switch(this.format) {
             case 'perfect':
                 this.book = new PerfectBound(this.orderedpages, this.duplex, this.per_sheet, this.duplexrotate);
-                this.rearrangedpages = [this.book.pagelist];
+                this.rearrangedpages = [this.book.pagelistdetails];
                 break;
             case 'booklet':
                 // Booklets are a special case where sig size is the total book size
