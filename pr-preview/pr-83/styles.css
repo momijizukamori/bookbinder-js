@@ -57,7 +57,7 @@ button {
 
 .large_btn {
     height: 48px;
-    font-size: 16px;
+    font-size: 24px;
 
 }
 
@@ -85,10 +85,6 @@ button {
 
 .hidden {
     display: none;
-}
-
-#generate {
-    font-size: 1.5em;
 }
 
 .instruction-indent {
