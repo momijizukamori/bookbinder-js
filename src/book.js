@@ -394,7 +394,7 @@ export class Book {
         let filteredList = [];
         let blankIndices = [];
         pagelist.forEach((pageInfo, i) => {
-            if (pageInfo != 'b') {
+            if (pageInfo.info != 'b') {
                 filteredList.push(pageInfo.info);
             } else {
                 blankIndices.push(i);
@@ -420,7 +420,6 @@ export class Book {
         let positions = this.calculatelayout(alt_folio);
 
         let side2flag = back;
-        console.log("Rebecca : wripages : pdfEdgeMarks " + this.pdfEdgeMarks)
 
         while (block_end <= pagelist.length) {
             let sigDetails = config.pageList.slice(block_start, block_end)
@@ -842,7 +841,7 @@ export class Book {
      * PDF builder base function for Classic (non-Wacky) layouts. Called by [createoutputfiles]
      *
      * @param config - object w/ the following parameters:
-     *    - pageIndexDetails : a nested list of original source document page numbers ordered for layout. ( [0] for duplex & front, [1] for backs -- value is null if no aggregate printing enabled). Ex: [[4, 3, 2, 5, 6, 1, 0, 7]]
+     *    - pageIndexDetails : a nested list of objects. Each object: {info: page # or 'b', isSigStart: boolean, isSigEnd: boolean} ( [0] for duplex & front, [1] for backs -- value is null if no aggregate printing enabled). Ex: [[{info: 3, isSigStart: true, isSigend: false},{info: 4, isSigStart: false, isSigend: true}]]
      *    - aggregatePdfs : list of destination PDF(s_ for aggregated content ( [0] for duplex & front, [1] for backs -- value is null if no aggregate printing enabled)
      *    - embeddedPages : list of lists of embedded pages from source document ( [0] for duplex & front, [1] for backs -- value is null if no aggregate printing enabled)
      *    - id : string dentifier for signature file name (null if no signature files to be generated)
