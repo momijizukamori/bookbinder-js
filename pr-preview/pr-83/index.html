@@ -236,7 +236,7 @@
                 <span class="row"> <input type="radio" id="perfect" name="sig_format" value="perfect">
                     <label for="perfect">Perfectbound</label></span>
                 <span class="row"> <input type="radio" id="standardsig" name="sig_format" value="standardsig" checked>
-                    <label for="standardsig">Standard signatures</label> - length<input type="number" value="8"
+                    <label for="standardsig">Standard signatures </label><input type="number" value="8"
                         name="sig_length">
                         <span data-balloon-length="medium" aria-label="Number of sheets per signature" data-balloon-pos="up">ℹ️</span></span>
                 <span class="row"> <input type="radio" id="customsig" name="sig_format" value="customsig">
@@ -251,6 +251,9 @@
                     </details></span>
 
                 <h3>Wacky Small Layouts</h3>
+                <details>
+                <summary>Show Wacky Small Layouts</summary>
+
                 <span class="row" style="margin-bottom:15px;"><i>These layouts contain one or more signature per printed page. They use only the "File Info" and "Printer" settings. The names are arbitrary and hold no standardized meaning.</i></span>
                 <span class="row" style="text-align: left; float:left;">Fore-Edge Padding: <br><input type="number" id="fore_edge_padding_pt" name="fore_edge_padding_pt" style="width: 5em;margin-left: 15px;"> pt</span>
                 <span class="row" style="text-align: right; float:right;" id="wacky_spacing">
@@ -358,6 +361,7 @@
                         Note that when folding, it's important for the <b>center of the folios to line up</b>. That's what I measure against (less so fretting about folding exactly at the edge). Remember! Printer skew is a real thing!
                         </p>
                     </details></span>
+                </details>
             </div>
             <div class="section" id="flyleaf_info">
                 <h2>Flyleafs</h2>
