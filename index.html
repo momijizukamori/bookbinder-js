@@ -151,17 +151,19 @@
                     <option id="octavo" value="octavo">Octavo - eight pages per side of sheet</option>
                     <option id="sextodecimo" value="sextodecimo">Sextodecimo - sixteen pages per side of sheet</option>
                 </select>
-                <span class="row"> <label>Add Foldlines <input type="checkbox" name="cropmarks"></label>
-                    <span data-balloon-length="medium" aria-label="Adds folding guidelines (ordered from thickest to thinnest)" data-balloon-pos="up">ℹ️</span>
-                </span> 
-                <span class="row"> <label>Add Cutlines <input type="checkbox" name="cutmarks"></label>
-                    <span data-balloon-length="medium" aria-label="Adds cutting guidelines" data-balloon-pos="up">ℹ️</span>
-                
-                </span>
-                <span class="row"> <label>Add PDF bounds indicators (spine) <input type="checkbox" name="pdf_edge_marks"></label>
-                    <span data-balloon-length="medium" aria-label="Puts small marks on the outermost folio of the signatures indicating the top and bottom of the PDF" data-balloon-pos="up">ℹ️</span>
-                </span> 
-
+                <div>
+                    <label>Add Foldlines <span data-balloon-length="medium"
+                            aria-label="Adds folding guidelines (ordered thickest to thinnest)" data-balloon-pos="up"> <input
+                                type="checkbox" name="cropmarks"></span></label>
+                    <span style="display:inline-block; width: 10px;"></span>
+                    <label>Add Cutlines <span data-balloon-length="medium" aria-label="Adds cutting guidelines"
+                            data-balloon-pos="up"><input type="checkbox" name="cutmarks"></span></label>
+                    <div>
+                        <label>Add PDF bounds indicators (spine) <span data-balloon-length="medium"
+                                aria-label="Puts small marks on the outermost folio of the signatures indicating the top and bottom of the PDF"
+                                data-balloon-pos="up"> <input type="checkbox" name="pdf_edge_marks"></span></label>
+                    </div>
+                </div>
                 <span class="row">
                     <details>
                         <summary>Folding instructions for quarto/octavo</summary>
