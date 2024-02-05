@@ -1,19 +1,22 @@
 # Simple workflow for deploying static content to GitHub Pages
-name: Deploy static content to Pages
+name: Deploy PR preview
 
 on:
-  # Runs on pushes targeting the default branch
-  push:
-    branches: ['main']
-
-  # Allows you to run this workflow manually from the Actions tab
+  pull_request:
+    types: [opened, synchronize, reopened, closed]
   workflow_dispatch:
+    inputs:
+      destination:
+        description: "Define destination base path"
+        required: true
+        default: "manual_run"
 
 # Sets the GITHUB_TOKEN permissions to allow deployment to GitHub Pages
 permissions:
   contents: write
   pages: write
   id-token: write
+  pull-requests: write
 
 # Allow one concurrent deployment
 concurrency:
@@ -22,10 +25,7 @@ concurrency:
 
 jobs:
   # Single deploy job since we're just deploying
-  deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+  deploy-preview:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -38,10 +38,10 @@ jobs:
       - name: Install dependencies
         run: npm install
       - name: Build
-        run: npm run build
-      - name: Deploy 🚀
-        uses: JamesIves/github-pages-deploy-action@v4
+        run: npm run build -- --base=https://momijizukamori.github.io/bookbinder-js/pr-preview/pr-${{ github.event.pull_request.number }}
+        if: github.event.action != 'closed'
+      - uses: rossjrw/pr-preview-action@v1
         with:
-          folder: dist # The folder the action should deploy.
-          clean-exclude: pr-preview/
-          force: false
+          source-dir: dist
+          umbrella-dir: pr-preview
+          action: auto
