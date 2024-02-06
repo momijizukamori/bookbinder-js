@@ -11,7 +11,7 @@ export class WackyImposition{
     constructor(pages, duplex,format, isPacked) {
       this.duplex=duplex;
       this.sigconfig=[]  // sig_count looks at the length of this array, sig_arrange joins them together with a ,;
-      this.pagelist = [[]];
+      this.pagelistdetails = [[]];
       this.isPacked = isPacked;
       console.log("Constructor sees ", pages)
       // for UI estimates
