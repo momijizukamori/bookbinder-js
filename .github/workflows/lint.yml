@@ -1,7 +1,7 @@
-name: Run tests
+name: Run Linting
 on: push
 jobs:
-  test:
+  lint:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
