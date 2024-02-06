@@ -1,0 +1,24 @@
+env:
+  browser: true
+  es2021: true
+extends: eslint:recommended
+parserOptions:
+  ecmaVersion: latest
+  sourceType: module
+rules:
+  linebreak-style:
+    - error
+    - unix
+  semi:
+    - error
+    - always
+  camelcase:
+    - warn
+  dot-notation:
+    - error
+  no-useless-concat:
+    - error
+  prefer-const:
+    - error
+  prefer-template:
+    - error
