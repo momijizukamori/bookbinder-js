@@ -1,6 +1,6 @@
 {
   "name": "bookbinder",
-  "version": "1.3.3 -- temp test build",
+  "version": "1.3.3 -- temp test build2",
   "description": "An app to rearrange PDF pages for printing for bookbinding",
   "type": "module",
   "scripts": {
