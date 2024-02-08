@@ -20,6 +20,8 @@ window.addEventListener('DOMContentLoaded', () => {
     const bookbinderForm = document.getElementById('bookbinder');
     const fileInput = document.getElementById('input_file');
     const inputs = document.querySelectorAll('input, select');
+    const sourceRotation = document.getElementById('source_rotation');
+    const sourceRotationExamples = Array.from(document.getElementsByClassName('source_rotation_example'));
 
     // spin up a book to pass to listeners
     const book = new Book(configuration);
@@ -44,5 +46,11 @@ window.addEventListener('DOMContentLoaded', () => {
     resetSettings.addEventListener('click', () => {
         console.log('Resetting settings...');
         handleResetSettingsClick(book);
+    });
+    sourceRotation.addEventListener('change', (e) => { 
+        const selectedValue = e.target.value + '_example';
+        sourceRotationExamples.forEach((example) => {
+            example.style.display = (example.id === selectedValue ? 'block' : 'none');
+        });
     });
 });

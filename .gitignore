@@ -113,3 +113,6 @@ docs/*.aux
 
 # Docker stuff
 compose.override.yaml
+
+# Firefox debug storage
+tmp

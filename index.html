@@ -25,57 +25,75 @@
             <center style="font-family:monospace;
     padding-top: 0.75em;font-variant-caps: small-caps;">current version: %PACKAGE_VERSION%</center>
         </div>
-        <div class="section" id="settings">
-            <h2>Settings</h2>
-            <span class="row">
-                <button type="button" name="reset_settings" id="reset_settings">Reset</button>
-                The page is able to save and load your current settings via the site URL. Clicking this button will reset those to the default settings. 
-            </span>
-        </div>
         <form id="bookbinder" name="bookbinder">
             <div class="section" id="input">
                 <h2>File Info</h2>
                 <span class="row"><label>Input File: <input type="file" name="input_file" accept=".pdf"
                             id="input_file"></label></span>
                 <!-- <span class="row"><label>Page Size: <span id="page_size"></span></span> -->
-                <span class="row">Number of Pages: <span id="page_count"></span></span>
                 <!-- <span class="row">Page Ratio: <span id="input_ratio"></span></span> -->
-                <span class="row" style="padding: 10px;font-style: italic;">While some PDF viewers may display the first two pages as a spread, be aware that the first page, which is odd, will be on the right when printed. The first printed spread are pages 2 & 3 of your PDF document. Evens always on the left, odds always on the right.</span>
+                <span class="row" style="padding: 10px;font-style: italic;">While some PDF viewers display the first two pages as a spread, be aware the first page, which is odd, will be on the right when printed. The first printed spread are pages 2 & 3 of your PDF document. Evens always on the left, odds always on the right.</span>
+                <span class="row"><label for="print_file">Generated Files</label>
+                    <select name="print_file" id="print_file">
+                        <option value="aggregated">Aggregated File Only</option>
+                        <option value="both" selected>Both aggregated & per signature files</option>
+                        <option value="signatures">Signature Files Only</option>
+                    </select>
+                </span>
             </div>
 
             <div class="section" id="input">
                 <h2>Source Manipulation</h2>
-
-                <span class="row"><input type="radio" id="none" name="source_rotation" value="none" checked>
-                    <label for="none">no modification</label>
-                    <details style="padding-left:40px;"><summary> Details</summary><IMG SRC="/img/noRotationDiagram.png" width="100px"/></details>
-                </span>
-                <span class="row"><input type="radio" id="90cw" name="source_rotation" value="90cw">
-                    <label for="90cw">rotate all pages 90° clockwise</label>
-                    <details style="padding-left:40px;"><summary> Details</summary><IMG SRC="/img/90cwDiagram.png" width="100px"/></details>
-                </span>
-
-                <span class="row"><input type="radio" id="90ccw" name="source_rotation" value="90ccw">
-                    <label for="90ccw">rotate all pages 90° counter clockwise (anti clockwise)</label>
-                    <details style="padding-left:40px;"><summary> Details</summary><IMG SRC="/img/90ccwDiagram.png" width="100px"/></details>
-                </span>
-                <span class="row"><input type="radio" id="out_binding" name="source_rotation" value="out_binding">
-                    <label for="out_binding">Out binding </label>
-                       <details style="padding-left:40px;">
-                     <summary> Details</summary> 
-                     For books with the bound edge at the bottom of the page -- rotate all odd pages 90° clockwise, all even pages 90° anti-clockwise
-                     <BR/>
-                     <IMG SRC="/img/bottomBindingDiagram.png" width="100px"/>
-                    </details>
-                </span>
-                <span class="row"><input type="radio" id="in_binding" name="source_rotation" value="in_binding">
-                    <label for="in_binding">In Binding</label>
-                        <details style="padding-left:40px;">
-                     <summary> Details</summary> 
-                     For books with the bound edge at the top of the page -- rotate all odd pages 90° anti-clockwise, all even pages 90° clockwise <BR>
-                     <IMG SRC="/img/topBindingDiagram.png" width="100px">
-                     </details>
-                 </span>
+                <label for="source_rotation">Style </label>
+                <select name="source_rotation" id="source_rotation">
+                    <option id="none" value="none" selected="selected">no modification</option>
+                    <option id="90cw" value="90cw">rotate pages 90° clockwise</option>
+                    <option id="90ccw" value="90ccw">rotate pages 90° counter clockwise</option>
+                    <option id="out_binding" value="out_binding">odd pages 90° clockwise, even pages 90° anti-clockwise</option>
+                    <option id="in_binding" value="in_binding">odd pages 90° anti-clockwise, even pages 90° clockwise</option>
+                </select>
+                <div>
+                    <div id="none_example" class="row source_rotation_example">
+                        <IMG SRC="/img/noRotationDiagram.png" width="100px" class="float_left" />
+                        <p>
+                            </br>
+                            For books that read like a standard novel<br />
+                            no rotation of pages applied
+                        </p>
+                    </div>
+                    <div id="90cw_example" class="hidden source_rotation_example">
+                        <IMG SRC="/img/90cwDiagram.png" width="100px" class="float_left" />
+                        <p>
+                            </br>
+                            For books that turn pages like a calender<br />
+                            back to front, rotate all pages 90° clockwise
+                        </p>
+                    </div>
+                    <div id="90ccw_example" class="hidden source_rotation_example">
+                        <IMG SRC="/img/90ccwDiagram.png" width="100px" class="float_left" />
+                        <p>
+                            </br>
+                            For books that turn pages like a calender<br />
+                            front to back, rotate all pages 90° counter clockwise
+                        </p>
+                    </div>
+                    <div id="out_binding_example" class="hidden source_rotation_example row">
+                        <IMG SRC="/img/bottomBindingDiagram.png" width="100px" class="float_left" />
+                        <p>
+                            </br>
+                            For books with bound edge at bottom of the page<br />
+                            rotate all odd pages 90° clockwise, all even pages 90° anti-clockwise
+                        </p>
+                    </div>
+                    <div id="in_binding_example" class="hidden source_rotation_example">
+                        <IMG SRC="/img/topBindingDiagram.png" width="100px" class="float_left">
+                        <p>
+                            </br>
+                            For books with bound edge at top of the page<br />
+                            rotate all odd pages 90° anti-clockwise, all even pages 90° clockwise
+                        </p>
+                    </div>
+                </div>
             </div>
 
             <!-- <div class="section" id="units">
@@ -126,22 +144,26 @@
 
             <div class="section" id="book_size">
                 <h2>Page Layout</h2>
-                <span class="row"><input type="radio" id="folio" name="pagelayout" value="folio" checked>
-                    <label for="folio">Folio (two pages per side of sheet)</label></span>
-                <span class="row"><input type="radio" id="quarto" name="pagelayout" value="quarto">
-                    <label for="quarto">Quarto (four pages per side of sheet)</label></span>
-                <span class="row"><input type="radio" id="octavo" name="pagelayout" value="octavo">
-                    <label for="octavo">Octavo (eight pages per side of sheet)</label></span>
-                <span class="row"><input type="radio" id="sextodecimo" name="pagelayout" value="sextodecimo">
-                    <label for="sextodecimo">Sextodecimo (sixteen pages per side of sheet)</label></span>
-                
-                <span class="row"> <label>Add Foldlines <input type="checkbox" name="cropmarks"></label>
-                    <span data-balloon-length="medium" aria-label="Adds folding guidelines (ordered from thickest to thinnest)" data-balloon-pos="up">ℹ️</span>
-                </span> 
-                <span class="row"> <label>Add Cutlines <input type="checkbox" name="cutmarks"></label>
-                    <span data-balloon-length="medium" aria-label="Adds cutting guidelines" data-balloon-pos="up">ℹ️</span>
-                </span> 
-
+                <label for="pagelayout">Style</label>
+                <select name="pagelayout" id="pagelayout">
+                    <option id="folio" value="folio">Folio - two pages per side of sheet</option>
+                    <option id="quarto" value="quarto" selected>Quarto - four pages per side of sheet</option>
+                    <option id="octavo" value="octavo">Octavo - eight pages per side of sheet</option>
+                    <option id="sextodecimo" value="sextodecimo">Sextodecimo - sixteen pages per side of sheet</option>
+                </select>
+                <div>
+                    <label>Add Foldlines <span data-balloon-length="medium"
+                            aria-label="Adds folding guidelines (ordered thickest to thinnest)" data-balloon-pos="up"> <input
+                                type="checkbox" name="cropmarks"></span></label>
+                    <span style="display:inline-block; width: 10px;"></span>
+                    <label>Add Cutlines <span data-balloon-length="medium" aria-label="Adds cutting guidelines"
+                            data-balloon-pos="up"><input type="checkbox" name="cutmarks"></span></label>
+                    <div>
+                        <label>Add PDF bounds indicators (spine) <span data-balloon-length="medium"
+                                aria-label="Puts small marks on the outermost folio of the signatures indicating the top and bottom of the PDF"
+                                data-balloon-pos="up"> <input type="checkbox" name="pdf_edge_marks"></span></label>
+                    </div>
+                </div>
                 <span class="row">
                     <details>
                         <summary>Folding instructions for quarto/octavo</summary>
@@ -209,24 +231,6 @@
                         <div class="pdf_layout_page stripes_pdf" id="pdf_on_page_layout_preview"></div>
                     </div>
                 </span>
-
-                <span class="row"><label for="print_file">Downloaded File(s)</label>
-                    <select name="print_file" id="print_file">
-                        <option value="aggregated">Aggregated File Only</option>
-                        <option value="both" selected>Both aggregated & per signature files</option>
-                        <option value="signatures">Signature Files Only</option>
-                    </select>
-                </span>
-
-
-            </div>
-
-            <div class="section" id="flyleaf_info">
-                <h2>Flyleafs</h2>
-                <span class="row"> <label>Add flyleafs <input type="number" name="flyleafs" value="1"></label>
-                    <span data-balloon-length="medium" aria-label="Extra blank pages at the start and end of the book" data-balloon-pos="up">ℹ️</span>
-                </span> 
-
             </div>
 
             <div class="section" id="sig_format">
@@ -360,23 +364,46 @@
                         </p>
                     </details></span>
             </div>
-
+            <div class="section" id="flyleaf_info">
+                <h2>Flyleafs</h2>
+                <span class="row"> <label>Add flyleafs <input type="number" name="flyleafs" value="1"></label>
+                    <span data-balloon-length="medium" aria-label="Extra blank pages at the start and end of the book"
+                        data-balloon-pos="up">ℹ️</span>
+                </span>
+            </div>
             <div class="section" id="sig_info">
                 <h2>Signature Info</h2>
-
-                <button type="button" name="preview" id="preview" disabled>Preview Output</button>
-                <span data-balloon-length="medium" aria-label="Will not show previews if 'Signature Files Only' is selected. Only shows one side for 'Single Sided' printing. Not tested on all browsers (or any browsers other than Chrome really...)" data-balloon-pos="up">ℹ️</span>
+            
                 <center>
                     <iframe id="pdf" style="width: 100%; height: 10px;display:none;"></iframe>
                 </center>
-                <span class="row">Total Pages: <span id="total_pages"></span></span>
-                <span class="row">Total Sheets: <span id="total_sheets"></span></span>
-                <span class="row">Number of Signatures: <span id="sig_count"></span></span>
-                <span class="row">Signature Arrangement: <span id="sig_arrange"></span></span>
-            </div>
+                <div class="space_out">
+                    <span>Total Pages: <span id="total_pages"></span></span>
+                    <span>Original PDF Pages: <span id="page_count"></span></span>
             
-            <button type="button" name="generate" id="generate" disabled>Generate Output</button>
-        </form>
+                </div>
+                <div class="space_out">
+                    <span>Total Sheets: <span id="total_sheets"></span></span>
+                    <span>Number of Signatures: <span id="sig_count"></span></span>
+                </div>
+                <div>
+                    <div style="text-align: center;">
+                        Signature Arrangement:
+                    </div>
+                    <div id="sig_arrange" style="text-align: center;"></div>
+                </div>
+            
+            </div>
+            <div class="space_out">
+                <button type="button" class="medium_btn" name="preview" id="preview" disabled data-balloon-length="medium"
+                    aria-label="Will not show previews if 'Signature Files Only' is selected. Only shows one side for 'Single Sided' printing. Not tested on all browsers (or any browsers other than Chrome really...)"
+                    data-balloon-pos="up">Preview PDF</button>
+                <button type="button" class="large_btn" name="generate" id="generate" disabled>Generate PDF Output</button>
+                <button type="button" class="medium_btn" name="reset_settings" id="reset_settings" data-balloon-length="medium"
+                    aria-label="The page is able to save and load your current settings via the site URL. Clicking this button will reset those to the default settings"
+                    data-balloon-pos="up">Reset Settings</button>
+            </div>
+    </form>
     </div>
 </body>
 

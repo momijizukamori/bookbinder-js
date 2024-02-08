@@ -46,6 +46,28 @@ body, .wrapper, #bookbinder {
     align-items: center;
 }
 
+button {
+    border: none;
+    border-radius: 2px;
+    padding: 4px;
+    text-align: center;
+    display: inline-block;
+    font-size: 16px;
+}
+
+.large_btn {
+    height: 48px;
+    font-size: 24px;
+
+}
+
+.medium_btn {
+    width: 90px;
+    height: 36px;
+    font-size: 12px;
+
+}
+
 .wrapper {
     max-width: 500px;
 }
@@ -61,8 +83,8 @@ body, .wrapper, #bookbinder {
     display: block;
 }
 
-#generate {
-    font-size: 1.5em;
+.hidden {
+    display: none;
 }
 
 .instruction-indent {
@@ -155,9 +177,12 @@ body, .wrapper, #bookbinder {
     vertical-align: top;
 }
 
+.float_left {
+    float: left;
+}
 
-#reset_settings {
-    margin: 1em;
-    margin-right:  1em;
-    float:  right;
+.space_out {
+    display: flex;
+    width: 100%;
+    justify-content: space-between;
 }

@@ -35,6 +35,7 @@ describe("Book model", () => {
         },
         per_sheet: 4,
         cropmarks: false,
+        pdfEdgeMarks: false,
         cutmarks: false,
         fore_edge_padding_pt: 0,
         pack_pages: true,
