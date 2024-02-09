@@ -1,11 +1,13 @@
-name: Run tests
+name: Run Linting
 on: push
 jobs:
-  test:
+  lint:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
       - name: Install modules
         run: npm install
-      - name: Run tests
-        run: npm run test
+      - name: Run Prettier
+        run: npm run prettier
+      - name: Run ESLint
+        run: npm run lint
