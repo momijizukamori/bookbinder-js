@@ -594,73 +594,60 @@ export class Book {
   }
 
   draw_cropmarks(currPage, side2flag) {
+    const lineSettings = {
+      opacity: 0.4,
+      dashArray: [1, 5],
+    };
+    let start, end;
+
     switch (this.per_sheet) {
       case 32:
         if (side2flag) {
+          lineSettings.dashArray = [1, 5];
           if (this.duplexrotate) {
-            currPage.drawLine({
-              start: { x: this.papersize[0] * 0.75, y: this.papersize[1] * 0.75 },
-              end: { x: this.papersize[0] * 0.75, y: this.papersize[1] * 0.5 },
-              opacity: 0.4,
-              dashArray: [1, 5],
-            });
+            start = { x: this.papersize[0] * 0.75, y: this.papersize[1] * 0.75 };
+            end = { x: this.papersize[0] * 0.75, y: this.papersize[1] * 0.5 };
           } else {
-            currPage.drawLine({
-              start: { x: this.papersize[0] * 0.25, y: this.papersize[1] * 0.5 },
-              end: { x: this.papersize[0] * 0.25, y: this.papersize[1] * 0.25 },
-              opacity: 0.4,
-              dashArray: [1, 5],
-            });
+            start = { x: this.papersize[0] * 0.25, y: this.papersize[1] * 0.5 };
+            end = { x: this.papersize[0] * 0.25, y: this.papersize[1] * 0.25 };
           }
+          currPage.drawLine({ start, end, ...lineSettings });
         }
       /* falls through */
       case 16:
         if (side2flag) {
+          lineSettings.dashArray = [3, 5];
           if (this.duplexrotate) {
-            currPage.drawLine({
-              start: { x: 0, y: this.papersize[1] * 0.75 },
-              end: { x: this.papersize[0] * 0.5, y: this.papersize[1] * 0.75 },
-              opacity: 0.4,
-              dashArray: [3, 5],
-            });
+            start = { x: 0, y: this.papersize[1] * 0.75 };
+            end = { x: this.papersize[0] * 0.5, y: this.papersize[1] * 0.75 };
           } else {
-            currPage.drawLine({
-              start: { x: this.papersize[0] * 0.5, y: this.papersize[1] * 0.25 },
-              end: { x: this.papersize[0], y: this.papersize[1] * 0.25 },
-              opacity: 0.4,
-              dashArray: [3, 5],
-            });
+            start = { x: this.papersize[0] * 0.5, y: this.papersize[1] * 0.25 };
+            end = { x: this.papersize[0], y: this.papersize[1] * 0.25 };
           }
+          currPage.drawLine({ start, end, ...lineSettings });
         }
       /* falls through */
       case 8:
         if (side2flag) {
+          lineSettings.dashArray = [5, 5];
           if (this.duplexrotate) {
-            currPage.drawLine({
-              start: { x: this.papersize[0] * 0.5, y: 0 },
-              end: { y: this.papersize[1] * 0.5, x: this.papersize[0] * 0.5 },
-              opacity: 0.4,
-              dashArray: [5, 5],
-            });
+            start = { x: this.papersize[0] * 0.5, y: 0 };
+            end = { y: this.papersize[1] * 0.5, x: this.papersize[0] * 0.5 };
           } else {
-            currPage.drawLine({
-              start: { x: this.papersize[0] * 0.5, y: this.papersize[1] },
-              end: { y: this.papersize[1] * 0.5, x: this.papersize[0] * 0.5 },
-              opacity: 0.4,
-              dashArray: [5, 5],
-            });
+            start = { x: this.papersize[0] * 0.5, y: this.papersize[1] };
+            end = { y: this.papersize[1] * 0.5, x: this.papersize[0] * 0.5 };
           }
+          currPage.drawLine({ start, end, ...lineSettings });
         }
       /* falls through */
       case 4:
         if (!side2flag) {
-          currPage.drawLine({
-            start: { x: 0, y: this.papersize[1] * 0.5 },
-            end: { x: this.papersize[0], y: this.papersize[1] * 0.5 },
-            opacity: 0.4,
-            dashArray: [10, 5],
-          });
+          lineSettings.dashArray = [10, 5];
+          start = { x: 0, y: this.papersize[1] * 0.5 };
+          end = { x: this.papersize[0], y: this.papersize[1] * 0.5 };
+          currPage.drawLine({ start, end, ...lineSettings });
         }
+        break;
     }
   }
 
