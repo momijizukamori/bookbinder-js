@@ -5,7 +5,6 @@
 import { PDFDocument, degrees, rgb } from 'pdf-lib';
 import { saveAs } from 'file-saver';
 import { Signatures } from './signatures.js';
-import { PerfectBound } from './perfectbound.js';
 import { WackyImposition } from './wacky_imposition.js';
 import { PAGE_LAYOUTS, PAGE_SIZES, LINE_LEN } from './constants.js';
 import { updatePageLayoutInfo } from './utils/renderUtils.js';
@@ -203,17 +202,16 @@ export class Book {
 
     switch (this.format) {
       case 'perfect':
-        this.book = new PerfectBound(
-          this.orderedpages,
-          this.duplex,
-          this.per_sheet,
-          this.duplexrotate
-        );
-        this.rearrangedpages = [this.book.pagelistdetails];
-        break;
       case 'booklet':
-        // Booklets are a special case where sig size is the total book size
-        this.sigsize = Math.ceil(this.orderedpages.length / this.per_sheet);
+        if (this.format == 'perfect') {
+          // Perfect bind is a special case where sig size is 1
+          this.sigsize = 1;
+        } else {
+          // Booklets are a special case where sig size is the total book size
+          this.sigsize = Math.ceil(this.orderedpages.length / this.per_sheet);
+        }
+        // Only generate aggragated file for perfectbound and booklets
+        this.print_file = 'aggregated';
       /* falls through */
       case 'standardsig':
       case 'customsig':
