@@ -10,12 +10,21 @@ export class PerfectBound {
   // 	and all the sheets collated into a block for gluing.
   // 	this.pagelist holds the rearranged index numbers that the
   // 	book class uses to create a finished document
+  /**
+   * Create a perfectbound book.
+   * @param {number[]} pages - List of pages in a book.
+   * @param {boolean} duplex - Whether both front and back sides go in the same file or not.
+   * @param {number} per_sheet - number of pages per sheet (front and back combined)
+   * @param {boolean} duplexrotate - whether to rotate alternating sheets or not.
+   */
   constructor(pages, duplex, per_sheet, duplexrotate) {
     this.duplex = duplex;
     this.per_sheet = per_sheet || 4; // pages per sheet - default is 4.
     this.duplexrotate = duplexrotate || false;
 
+    /** @type {number} */
     this.sheets = Math.ceil(pages.length / per_sheet);
+    /** @type {string[]} */
     this.sigconfig = ['N/A'];
 
     const { front, rotate, back } = PERFECTBOUND_LAYOUTS[per_sheet];
@@ -25,6 +34,7 @@ export class PerfectBound {
     this.pagelistdetails = duplex ? [[]] : [[], []];
 
     // Pad the page list with blanks if necessary
+    /** @type {number} */
     const totalpages = this.sheets * per_sheet;
     if (totalpages > pages.length) {
       const diff = totalpages - pages.length;

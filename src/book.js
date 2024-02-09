@@ -12,16 +12,37 @@ import { updatePageLayoutInfo } from './utils/renderUtils.js';
 import JSZip from 'jszip';
 import { loadConfiguration } from './utils/formUtils.js';
 
+// Some JSDoc typedefs we use multiple places
+/**
+ * @typedef PageInfo
+ * @type {object}
+ * @property {string|number} info - page # or 'b'
+ * @property {boolean} isSigStart
+ * @property {boolean} isSigEnd
+ */
+
+/**
+ * @typedef Position
+ * @type {object}
+ * {rotation (degrees), sx, sy, x, y}
+ * @property {number} rotation - Rotation in degrees
+ * @property {number} sx - x scale factor (where 1.0 is 100%)
+ * @property {number} sy - y scale factor (where 1.0 is 100%)
+ * @property {number} x - x position
+ * @property {number} y - y position
+ */
+
 export class Book {
   /** @param { import("./models/configuration.js").Configuration } configuration */
   constructor(configuration) {
+    /** @type {string | null} */
     this.inputpdf = null; //  string with pdf filepath
-    this.password = null; //  if necessary
 
     this.managedDoc = null; // original PDF with the pages rotated per source_rotation - use THIS for laying out pages
 
     this.signatureconfig = [];
 
+    /** @type {boolean} */
     this.spineoffset = false;
 
     this.input = null; //  opened pdf file
@@ -39,9 +60,11 @@ export class Book {
 
   /** @param { import("./models/configuration.js").Configuration } configuration */
   update(configuration) {
+    /** @type {boolean} */
     this.duplex = configuration.printerType === 'duplex';
     this.duplexrotate = configuration.rotatePage;
     this.paper_rotation_90 = configuration.paperRotation90;
+    /** @type {number[]} */
     this.papersize = PAGE_SIZES[configuration.paperSize];
     if (configuration.paperRotation90) {
       this.papersize = [this.papersize[1], this.papersize[0]];
@@ -81,12 +104,14 @@ export class Book {
 
   /**
    * Populates [this.currentdoc] from user's file system
+   * @param {File} file input file
    */
   async openpdf(file) {
     this.inputpdf = file.name;
     this.input = await file.arrayBuffer(); //fs.readFileSync(filepath);
     this.currentdoc = await PDFDocument.load(this.input);
     //TODO: handle pw-protected PDFs
+    /** @type {number} */
     const pages = this.currentdoc.getPages();
     this.cropbox = null;
 
@@ -265,7 +290,7 @@ export class Book {
   /**
    * Calls the appropriate builder based on [this.format]
    *  to generate PDF & populate Previewer
-   * @param isPreview - if it's true we only generate preview content, if it's not true... we still
+   * @param {boolean} isPreview - if it's true we only generate preview content, if it's not true... we still
    *      generate preview content AND a downloadable zip
    */
   async createoutputfiles(isPreview) {
@@ -381,8 +406,8 @@ export class Book {
 
   /**
    * Generates a new PDF & embeds the prescribed pages of the source PDF into it
-   *
-   * @param pageNumbers - an array of page numbers. Ex: [1,5,6,7,8,'b',10] or null to embed all pages from source
+   * @param sourcePdf
+   * @param {number[]} pageNumbers - an array of page numbers. Ex: [1,5,6,7,8,'b',10] or null to embed all pages from source
    *          NOTE: re-construction behavior kicks in if there's 'b's in the list
    *
    * @return [newPdf with pages embedded, embedded page array]
@@ -415,13 +440,13 @@ export class Book {
    * Part of the Classic (non-Wacky) flow. Called by [createsignatures].
    *   (conditionally) populates the destPdf and (conditionally) generates the outname PDF
    *
-   * @param config - object /w the following parameters:
-   *      - outname : name of pdf added to ongoing zip file. Ex: 'signature1duplex.pdf' (or null if no signature file needed)
-   *      - pageList : objects that contain 3 values: { isSigStart: boolean, isSigEnd: boolean, info: either the page number or 'b'}
-   *      - back : is 'back' of page  (boolean)
-   *      - alt : alternate pages (boolean)
-   *      - destPdf : PDF to write to, in addition to PDF created w/ `outname` (or null)
-   *      - providedPages : pages already embedded in the `destPdf` to assemble in addition (or null)
+   * @param {Object} config - object /w the following parameters:
+   * @param {string|null} config.outname : name of pdf added to ongoing zip file. Ex: 'signature1duplex.pdf' (or null if no signature file needed)
+   * @param {PageInfo[]} config.pageList : objects that contain 3 values: { isSigStart: boolean, isSigEnd: boolean, info: either the page number or 'b'}
+   * @param {boolean} config.back : is 'back' of page  (boolean)
+   * @param {boolean} config.alt : alternate pages (boolean)
+   * @param config.destPdf : PDF to write to, in addition to PDF created w/ `outname` (or null)
+   * @param config.providedPages : pages already embedded in the `destPdf` to assemble in addition (or null)
    * @return reference to the new PDF created
    */
   async writepages(config) {
@@ -505,6 +530,23 @@ export class Book {
       });
     }
   }
+  /**
+   *
+   * @param {Object} config - object /w the following parameters:
+   * @param {string|null} config.outname : name of pdf added to ongoing zip file. Ex: 'signature1duplex.pdf' (or null if no signature file needed)
+   * @param {PageInfo[]} config.sigDetails : objects that contain 3 values: { isSigStart: boolean, isSigEnd: boolean, info: either the page number or 'b'}
+   * @param {boolean} config.side2flag : is 'back' of page  (boolean)
+   * @param {number[]} config.papersize : paper size (as [number, number])
+   * @param {number} config.block_start: Starting page index
+   * @param {number} config.block_end: Ending page index
+   * @param {boolean} config.alt : alternate pages (boolean)
+   * @param {boolean} config.cutmarks: whether to print cutmarks
+   * @param {boolean} config.cropmarks: whether to print cropmarks
+   * @param {boolean} config.pdfEdgeMarks: whether to print PDF edge marks
+   * @param {Position[]} config.positions: list of page positions
+   * @param config.outPDF : PDF to write to, in addition to PDF created w/ `outname` (or null)
+   * @param config.embeddedPages : pages already embedded in the `destPdf` to assemble in addition (or null)
+   */
 
   draw_block_onto_page(config) {
     const sigDetails = config.sigDetails;
@@ -556,10 +598,10 @@ export class Book {
     return side2flag;
   }
 
-  /*
+  /**
    * @param curPage - PDFPage
-   * @param sigDetails - object w/ {info (page # or 'b'), isSigStart (boolean), isSigEnd (boolean)}
-   * @param position - object w/ {rotation (degrees), sx, sy, x, y}
+   * @param {PageInfo} sigDetails - page info object
+   * @param {Position} position - position info object
    */
   draw_spine_marks(curPage, sigDetails, position) {
     const w = 5;
@@ -611,6 +653,10 @@ export class Book {
     }
   }
 
+  /**
+   * @param curPage - PDFPage
+   * @param {boolean} side2flag - whether we're on the back side or not
+   */
   draw_cropmarks(currPage, side2flag) {
     switch (this.per_sheet) {
       case 32:
@@ -850,7 +896,7 @@ export class Book {
    * When considering page size, don't forget to take into account
    *  this.padding_pt's ['top','bottom','binding','fore_edge'] values
    *
-   * @return an array of objects in the form {rotation: col, sx: sx, sy: sy, x: x, y: y}
+   * @return {Position[]}
    */
   calculatelayout() {
     // vampire
@@ -917,13 +963,13 @@ export class Book {
   /**
    * PDF builder base function for Classic (non-Wacky) layouts. Called by [createoutputfiles]
    *
-   * @param config - object w/ the following parameters:
-   *    - pageIndexDetails : a nested list of objects. Each object: {info: page # or 'b', isSigStart: boolean, isSigEnd: boolean} ( [0] for duplex & front, [1] for backs -- value is null if no aggregate printing enabled). Ex: [[{info: 3, isSigStart: true, isSigend: false},{info: 4, isSigStart: false, isSigend: true}]]
-   *    - aggregatePdfs : list of destination PDF(s_ for aggregated content ( [0] for duplex & front, [1] for backs -- value is null if no aggregate printing enabled)
-   *    - embeddedPages : list of lists of embedded pages from source document ( [0] for duplex & front, [1] for backs -- value is null if no aggregate printing enabled)
-   *    - id : string dentifier for signature file name (null if no signature files to be generated)
-   *    - isDuplex : boolean
-   *    - fileList : list of filenames for sig filename to be added to (modifies list)
+   * @param {Object} config
+   * @param {PageInfo[][]|PageInfo[]} config.pageIndexDetails : a nested list of objects.
+   * @param config.aggregatePdfs : list of destination PDF(s_ for aggregated content ( [0] for duplex & front, [1] for backs -- value is null if no aggregate printing enabled)
+   * @param config.embeddedPages : list of lists of embedded pages from source document ( [0] for duplex & front, [1] for backs -- value is null if no aggregate printing enabled)
+   * @param {id} config.id : string dentifier for signature file name (null if no signature files to be generated)
+   * @param {boolean} config.isDuplex : boolean
+   * @param {string[]} config.fileList : list of filenames for sig filename to be added to (modifies list)
    */
   async createsignatures(config) {
     const printAggregate = config.aggregatePdfs != null;
@@ -992,18 +1038,32 @@ export class Book {
   }
 
   /**
-   * @param id - base for the final PDF name
-   * @param builder - object to help construct this configuration. Object definition: {
-   *      sheetMaker: function that takes the page count as a param and returns an array of sheets. A sheet is {
-   *            num: page number from original doc,
-   *            isBlank: true renders it blank-- will override any `num` included,
-   *            vFlip: true if rendered upside down (180 rotation)
-   *       },
-   *      lineMaker: function that makes a function that generates trim lines for the PDF,
-   *      isLandscape: true if we need to have largest dimension be width,
-   *      fileNameMod: string to affix to exported file name (contains no buffer begin/end characters)
-   *      isPacked: boolean - true if white spaces goes on the outside, false if white space goes everywhere (non-binding edge)
-   * }
+   * @typedef Sheet
+   * @type {object}
+   * @property {string} num - page number from original doc
+   * @property {boolean} isBlank - true renders it blank-- will override any `num` included,
+   * @property {boolean} vFlip - true if rendered upside down (180 rotation)
+   */
+
+  /**
+   * @callback LineMaker
+   * @param {number} x - ...
+   */
+
+  /**
+   * @callback SheetMaker
+   * @param {number} pageCount
+   * @returns {Sheet[]}
+   */
+
+  /**
+   * @param {string} id - base for the final PDF name
+   * @param {Object} builder
+   * @param {SheetMaker} builder.sheetMaker: function that takes the page count as a param and returns an array of sheets
+   * @param {LineMaker} builder.lineMaker: function that makes a function that generates trim lines for the PDF
+   * @param {boolean} builder.isLandscape: true if we need to have largest dimension be width
+   * @param {string} builder.fileNameMod: string to affix to exported file name (contains no buffer begin/end characters)
+   * @param {boolean} builder.isPacked: boolean - true if white spaces goes on the outside, false if white space goes everywhere (non-binding edge)
    */
   async buildSheets(id, builder) {
     const sheets = builder.sheetMaker(this.pagecount);
@@ -1055,15 +1115,11 @@ export class Book {
    * The width of each rendered page is `papersize[0] / pagelist[x].length`.
    *
    * @param outPDF - the PDFDocument document we're appending a page to
-   * @param isLandscape - true if we need to have largest dimension be width
-   * @param isFront - true if front of page
-   * @param isFirst - true if this is the first (front/back) pair of sheets
-   * @param pagelist - a 2 dimensional array. Outer array is rows, nested array page objects. Object definition: {
-   *      num: page number from original doc,
-   *      isBlank: true renders it blank-- will override any `num` included,
-   *      vFlip: true if rendered upside down (180 rotation)
-   * }
-   * @param lineMaker - a function called to generate list of lines as described by PDF-lib.js's `PDFPageDrawLineOptions` object.
+   * @param {boolean} isLandscape - true if we need to have largest dimension be width
+   * @param {boolean} isFront - true if front of page
+   * @param {boolean} isFirst - true if this is the first (front/back) pair of sheets
+   * @param {Sheet[][]} pagelist - a 2 dimensional array. Outer array is rows, nested array page objects.
+   * @param {LineMaker} lineMaker - a function called to generate list of lines as described by PDF-lib.js's `PDFPageDrawLineOptions` object.
    *      Function takes as parameters:
    * @return
    */
