@@ -561,52 +561,36 @@ export class Book {
    */
   draw_spine_marks(curPage, sigDetails, position) {
     const w = 5;
-    if (position.rotation == 0) {
-      const start = {
-        x: sigDetails.isSigStart
-          ? position.spineMarkTop[0] - w / 2
-          : position.spineMarkBottom[0] - w / 2,
-        y: sigDetails.isSigStart ? position.spineMarkTop[1] : position.spineMarkBottom[1],
-      };
-
-      const end = {
-        x: sigDetails.isSigStart
-          ? position.spineMarkTop[0] + w / 2
-          : position.spineMarkBottom[0] + w / 2,
-        y: sigDetails.isSigStart ? position.spineMarkTop[1] : position.spineMarkBottom[1],
-      };
-      const drawOpts = {
-        start,
-        end,
-        thickness: 0.5,
-        color: rgb(0, 0, 0),
-        opacity: 1,
-      };
-      console.log(' --> draw this: ', drawOpts);
-      curPage.drawLine(drawOpts);
+    let startX, startY, endX, endY;
+    if (sigDetails.isSigStart) {
+      [startX, startY] = position.spineMarkTop;
+      [endX, endY] = position.spineMarkTop;
     } else {
-      curPage.drawLine({
-        start: {
-          x: sigDetails.isSigStart ? position.spineMarkTop[0] : position.spineMarkBottom[0],
-          y:
-            (sigDetails.isSigStart
-              ? position.spineMarkTop[1] - w / 2
-              : position.spineMarkBottom[1]) -
-            w / 2,
-        },
-        end: {
-          x: sigDetails.isSigStart ? position.spineMarkTop[0] : position.spineMarkBottom[0],
-          y:
-            (sigDetails.isSigStart
-              ? position.spineMarkTop[1] + w / 2
-              : position.spineMarkBottom[1]) +
-            w / 2,
-        },
-        thickness: 0.25,
-        color: rgb(0, 0, 0),
-        opacity: 1,
-      });
+      [startX, startY] = position.spineMarkBottom;
+      [endX, endY] = position.spineMarkBottom;
     }
+
+    if (position.rotation == 0) {
+      startX -= w / 2;
+      endX += w / 2;
+    } else if (sigDetails.isSigStart) {
+      startY -= w;
+      endY += w;
+    } else {
+      startY -= w / 2;
+      endY += w / 2;
+    }
+
+    const drawLineArgs = {
+      start: { x: startX, y: startY },
+      end: { x: endX, y: endY },
+      thickness: position.rotation == 0 ? 0.5 : 0.25,
+      color: rgb(0, 0, 0),
+      opacity: 1,
+    };
+
+    console.log(' --> draw this: ', drawLineArgs);
+    curPage.drawLine(drawLineArgs);
   }
 
   draw_cropmarks(currPage, side2flag) {
