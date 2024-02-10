@@ -22,7 +22,6 @@ const fromFormToConfiguration = (form) =>
         paperRotation90: form.has("paper_rotation_90"),
         pageLayout: form.get("pagelayout"),
         cropMarks: form.has("cropmarks"),
-        pdfEdgeMarks: form.has("pdf_edge_marks"),
         cutMarks: form.has("cutmarks"),
         pageScaling: form.get("page_scaling"),
         pagePositioning: form.get("page_positioning"),

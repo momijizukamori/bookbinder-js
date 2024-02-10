@@ -20,7 +20,7 @@ permissions:
 
 # Allow one concurrent deployment
 concurrency:
-  group: preview-${{ github.ref }}
+  group: 'pages'
   cancel-in-progress: true
 
 jobs:

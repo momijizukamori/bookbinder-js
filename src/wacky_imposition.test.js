@@ -14,7 +14,7 @@ describe('WackyImposition model', () => {
         const expected = {
             duplex: true,
             sigconfig: [],
-            pagelistdetails: [[]],
+            pagelist: [[]],
             sheets: 0,
         };
         const actual = new WackyImposition(testPages, testDuplex, testFormat);

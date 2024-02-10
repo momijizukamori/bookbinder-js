@@ -19,7 +19,7 @@ describe('Signatures model', () => {
             inputpagelist: [],
             per_sheet: 8,
             duplexrotate: true,
-            pagelistdetails: [],
+            pagelist: [],
             sheets: 0,
             sigconfig: [],
             signaturepagelists: [],
