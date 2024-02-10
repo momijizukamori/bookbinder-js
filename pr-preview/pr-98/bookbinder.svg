@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   viewBox="0 0 36 36"
+   version="1.1"
+   id="svg14"
+   sodipodi:docname="bookbinder.svg"
+   inkscape:version="1.1.2 (b8e25be833, 2022-02-05)"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <defs
+     id="defs18" />
+  <sodipodi:namedview
+     id="namedview16"
+     pagecolor="#ffffff"
+     bordercolor="#666666"
+     borderopacity="1.0"
+     inkscape:pageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     showgrid="false"
+     inkscape:zoom="4.9930556"
+     inkscape:cx="-43.961057"
+     inkscape:cy="12.317107"
+     inkscape:window-width="1920"
+     inkscape:window-height="1121"
+     inkscape:window-x="-9"
+     inkscape:window-y="-9"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="svg14" />
+  <path
+     fill="#269"
+     d="M32 7H4c-2.209 0-4 1.791-4 4v15c0 2.209 1.791 4 4 4h11.416c.52.596 1.477 1 2.584 1s2.065-.404 2.584-1H32c2.209 0 4-1.791 4-4V11c0-2.209-1.791-4-4-4z"
+     id="path2"
+     style="fill:#482299;fill-opacity:1" />
+  <path
+     fill="#292F33"
+     d="M20 27c0 1.104-.896 2-2 2s-2-.896-2-2V9c0-1.104.896-2 2-2s2 .896 2 2v18z"
+     id="path4" />
+  <path
+     fill="#99AAB5"
+     d="M18 26c0 1.104-.896 2-2 2H4c-1.104 0-2-.896-2-2V8c0-1.104.896-2 2-2h12c1.104 0 2 .896 2 2v18z"
+     id="path6"
+     style="fill:#b5b59e;fill-opacity:1" />
+  <path
+     fill="#E1E8ED"
+     d="M18 26c-.999-1.998-3.657-2-4-2-2 0-5 2-8 2-1 0-2-.896-2-2V8c0-1.104 1-2 2-2 3.255 0 6-2 8-2 3 0 4 1.896 4 3v19z"
+     id="path8"
+     style="fill:#edede1;fill-opacity:1" />
+  <path
+     fill="#99AAB5"
+     d="M34 26c0 1.104-.896 2-2 2H20c-1.104 0-2-.896-2-2V8c0-1.104.896-2 2-2h12c1.104 0 2 .896 2 2v18z"
+     id="path10"
+     style="fill:#b4b5a1;fill-opacity:1" />
+  <path
+     fill="#CCD6DD"
+     d="M18 26c.999-1.998 3.657-2 4-2 2 0 5 2 8 2 1 0 2-.896 2-2V8c0-1.104-1-2-2-2-3.256 0-6-2-8-2-3 0-4 1.896-4 3v19z"
+     id="path12"
+     style="fill:#ddddcc;fill-opacity:1" />
+</svg>
