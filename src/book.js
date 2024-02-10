@@ -2,6 +2,7 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/. 
 
+
 import { PDFDocument, degrees, grayscale, rgb } from 'pdf-lib';
 import { saveAs } from 'file-saver';
 import { Signatures } from './signatures.js';
@@ -11,6 +12,8 @@ import { PAGE_LAYOUTS, PAGE_SIZES, LINE_LEN } from './constants.js';
 import { updatePageLayoutInfo} from './utils/renderUtils.js';
 import JSZip from 'jszip';
 import { loadConfiguration } from './utils/formUtils.js';
+
+// Ignore me!
 
 export class Book {
     /** @param { import("./models/configuration.js").Configuration } configuration */
