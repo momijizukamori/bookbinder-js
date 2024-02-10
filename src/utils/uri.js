@@ -1,6 +1,6 @@
 // This Source Code Form is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
-// file, You can obtain one at https://mozilla.org/MPL/2.0/. 
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 /**
  * Gets parameters from a URL.
@@ -8,8 +8,8 @@
  * @returns { Record<string, unknown> } The URL parameters
  */
 export const toUrlParams = (url) => {
-    const params = new URL(url).searchParams.entries();
-    return Object.fromEntries(params);
+  const params = new URL(url).searchParams.entries();
+  return Object.fromEntries(params);
 };
 
 /**
@@ -19,17 +19,17 @@ export const toUrlParams = (url) => {
  * @returns { string } A new URL string with the params set
  */
 export const setUrlParams = (url, params) => {
-    const urlRepresentation = new URL(url);
+  const urlRepresentation = new URL(url);
 
-    for (const [key, value] of Object.entries(params)) {
-        if (value === null || value === undefined) {
-            continue;
-        }
-
-        urlRepresentation.searchParams.set(key, String(value));
+  for (const [key, value] of Object.entries(params)) {
+    if (value === null || value === undefined) {
+      continue;
     }
 
-    return urlRepresentation.toString();
+    urlRepresentation.searchParams.set(key, String(value));
+  }
+
+  return urlRepresentation.toString();
 };
 
 /**
@@ -38,9 +38,9 @@ export const setUrlParams = (url, params) => {
  * @returns { string } A new URL object with no params
  */
 export const clearUrlParams = (url) => {
-    const urlRepresentation = new URL(url);
-    urlRepresentation.search = "";
-    return urlRepresentation.toString();
+  const urlRepresentation = new URL(url);
+  urlRepresentation.search = '';
+  return urlRepresentation.toString();
 };
 
 /**
@@ -48,5 +48,5 @@ export const clearUrlParams = (url) => {
  * @param { string } url The URL to update the location to
  */
 export const updateWindowLocation = (url) => {
-    window.history.pushState({}, "", url.toString());
+  window.history.pushState({}, '', url.toString());
 };

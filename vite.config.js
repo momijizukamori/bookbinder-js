@@ -6,5 +6,5 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
   },
-  plugins: [version()]
+  plugins: [version()],
 });
