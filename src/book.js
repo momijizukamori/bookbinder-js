@@ -2,14 +2,15 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-import { PDFDocument, degrees, rgb } from 'pdf-lib';
+import { PDFDocument, degrees } from 'pdf-lib';
 import { saveAs } from 'file-saver';
 import { Signatures } from './signatures.js';
 import { WackyImposition } from './wacky_imposition.js';
-import { PAGE_LAYOUTS, PAGE_SIZES, LINE_LEN } from './constants.js';
+import { PAGE_LAYOUTS, PAGE_SIZES } from './constants.js';
 import { updatePageLayoutInfo } from './utils/renderUtils.js';
 import JSZip from 'jszip';
 import { loadConfiguration } from './utils/formUtils.js';
+import { drawFoldlines, drawCropmarks, drawSpineMarks } from './utils/drawing.js';
 
 // Some JSDoc typedefs we use multiple places
 /**
@@ -23,7 +24,6 @@ import { loadConfiguration } from './utils/formUtils.js';
 /**
  * @typedef Position
  * @type {object}
- * {rotation (degrees), sx, sy, x, y}
  * @property {number} rotation - Rotation in degrees
  * @property {number} sx - x scale factor (where 1.0 is 100%)
  * @property {number} sy - y scale factor (where 1.0 is 100%)
@@ -553,199 +553,47 @@ export class Book {
     const papersize = config.papersize;
     const outPDF = config.outPDF;
     const positions = config.positions;
-    const cropmarks = config.cropmarks;
+    const foldmarks = config.cropmarks;
     const pdfEdgeMarks = config.pdfEdgeMarks;
     const cutmarks = config.cutmarks;
     const alt = config.alt;
     let side2flag = config.side2flag;
 
     const block = config.embeddedPages.slice(block_start, block_end);
-    const currPage = outPDF.addPage([papersize[0], papersize[1]]);
+    const currPage = outPDF.addPage(papersize);
+    const cropLines = cutmarks ? drawCropmarks(papersize, this.per_sheet) : [];
+    const foldLines = foldmarks
+      ? drawFoldlines(side2flag, this.duplexrotate, papersize, this.per_sheet)
+      : [];
+    const drawLines = [...cropLines, ...foldLines];
 
     block.forEach((page, i) => {
       if (page == 'b' || page === undefined) {
         // blank page, move on.
       } else {
-        const pos = positions[i];
-        const rot = pos.rotation;
+        const { y, x, sx, sy, rotation } = positions[i];
         currPage.drawPage(page, {
-          y: pos.y,
-          x: pos.x,
-          xScale: pos.sx,
-          yScale: pos.sy,
-          rotate: degrees(rot),
+          y,
+          x,
+          xScale: sx,
+          yScale: sy,
+          rotate: degrees(rotation),
         });
       }
-    });
-    block.forEach((page, i) => {
-      if (sigDetails[i].isSigStart || sigDetails[i].isSigEnd) {
-        if (pdfEdgeMarks) {
-          this.draw_spine_marks(currPage, sigDetails[i], positions[i]);
-        }
+
+      if (pdfEdgeMarks && (sigDetails[i].isSigStart || sigDetails[i].isSigEnd)) {
+        drawLines.push(drawSpineMarks(sigDetails[i], positions[i]));
       }
     });
-    if (cropmarks) {
-      this.draw_cropmarks(currPage, side2flag);
-    }
-    if (cutmarks) {
-      this.draw_cutmarks(currPage);
-    }
+
+    drawLines.forEach((line) => {
+      currPage.drawLine(line);
+    });
+
     if (alt) {
       side2flag = !side2flag;
     }
     return side2flag;
-  }
-
-  /**
-   * @param curPage - PDFPage
-   * @param {PageInfo} sigDetails - page info object
-   * @param {Position} position - position info object
-   */
-  draw_spine_marks(curPage, sigDetails, position) {
-    const w = 5;
-    let startX, startY, endX, endY;
-    if (sigDetails.isSigStart) {
-      [startX, startY] = position.spineMarkTop;
-      [endX, endY] = position.spineMarkTop;
-    } else {
-      [startX, startY] = position.spineMarkBottom;
-      [endX, endY] = position.spineMarkBottom;
-    }
-
-    if (position.rotation == 0) {
-      startX -= w / 2;
-      endX += w / 2;
-    } else if (sigDetails.isSigStart) {
-      startY -= w;
-      endY += w;
-    } else {
-      startY -= w / 2;
-      endY += w / 2;
-    }
-
-    const drawLineArgs = {
-      start: { x: startX, y: startY },
-      end: { x: endX, y: endY },
-      thickness: position.rotation == 0 ? 0.5 : 0.25,
-      color: rgb(0, 0, 0),
-      opacity: 1,
-    };
-
-    console.log(' --> draw this: ', drawLineArgs);
-    curPage.drawLine(drawLineArgs);
-  }
-
-  /**
-   * @param curPage - PDFPage
-   * @param {boolean} side2flag - whether we're on the back side or not
-   */
-  draw_cropmarks(currPage, side2flag) {
-    const lineSettings = {
-      opacity: 0.4,
-      dashArray: [1, 5],
-    };
-    let start, end;
-
-    switch (this.per_sheet) {
-      case 32:
-        if (side2flag) {
-          lineSettings.dashArray = [1, 5];
-          if (this.duplexrotate) {
-            start = { x: this.papersize[0] * 0.75, y: this.papersize[1] * 0.75 };
-            end = { x: this.papersize[0] * 0.75, y: this.papersize[1] * 0.5 };
-          } else {
-            start = { x: this.papersize[0] * 0.25, y: this.papersize[1] * 0.5 };
-            end = { x: this.papersize[0] * 0.25, y: this.papersize[1] * 0.25 };
-          }
-          currPage.drawLine({ start, end, ...lineSettings });
-        }
-      /* falls through */
-      case 16:
-        if (side2flag) {
-          lineSettings.dashArray = [3, 5];
-          if (this.duplexrotate) {
-            start = { x: 0, y: this.papersize[1] * 0.75 };
-            end = { x: this.papersize[0] * 0.5, y: this.papersize[1] * 0.75 };
-          } else {
-            start = { x: this.papersize[0] * 0.5, y: this.papersize[1] * 0.25 };
-            end = { x: this.papersize[0], y: this.papersize[1] * 0.25 };
-          }
-          currPage.drawLine({ start, end, ...lineSettings });
-        }
-      /* falls through */
-      case 8:
-        if (side2flag) {
-          lineSettings.dashArray = [5, 5];
-          if (this.duplexrotate) {
-            start = { x: this.papersize[0] * 0.5, y: 0 };
-            end = { y: this.papersize[1] * 0.5, x: this.papersize[0] * 0.5 };
-          } else {
-            start = { x: this.papersize[0] * 0.5, y: this.papersize[1] };
-            end = { y: this.papersize[1] * 0.5, x: this.papersize[0] * 0.5 };
-          }
-          currPage.drawLine({ start, end, ...lineSettings });
-        }
-      /* falls through */
-      case 4:
-        if (!side2flag) {
-          lineSettings.dashArray = [10, 5];
-          start = { x: 0, y: this.papersize[1] * 0.5 };
-          end = { x: this.papersize[0], y: this.papersize[1] * 0.5 };
-          currPage.drawLine({ start, end, ...lineSettings });
-        }
-        break;
-    }
-  }
-
-  draw_cutmarks(currPage) {
-    let lines = [];
-    switch (this.per_sheet) {
-      case 32:
-        lines = [
-          ...lines,
-          ...this.draw_hline(this.papersize[1] * 0.75, 0, this.papersize[0]),
-          ...this.draw_hline(this.papersize[1] * 0.25, 0, this.papersize[0]),
-          ...this.draw_cross(this.papersize[0] * 0.5, this.papersize[1] * 0.75),
-          ...this.draw_cross(this.papersize[0] * 0.5, this.papersize[1] * 0.25),
-        ];
-      /* falls through */
-      case 16:
-        lines = [
-          ...lines,
-          ...this.draw_vline(this.papersize[0] * 0.5, 0, this.papersize[1]),
-          ...this.draw_cross(this.papersize[0] * 0.5, this.papersize[1] * 0.5),
-        ];
-      /* falls through */
-      case 8:
-        lines = [...lines, ...this.draw_hline(this.papersize[1] * 0.5, 0, this.papersize[0])];
-      /* falls through */
-      case 4:
-    }
-
-    lines.forEach((line) => {
-      currPage.drawLine({ ...line, opacity: 0.4 });
-    });
-  }
-
-  draw_vline(x, ystart, yend) {
-    return [
-      { start: { x: x, y: ystart }, end: { x: x, y: ystart + LINE_LEN } },
-      { start: { x: x, y: yend - LINE_LEN }, end: { x: x, y: yend } },
-    ];
-  }
-
-  draw_hline(y, xstart, xend) {
-    return [
-      { start: { x: xstart, y: y }, end: { x: xstart + LINE_LEN, y: y } },
-      { start: { x: xend - LINE_LEN, y: y }, end: { x: xend, y: y } },
-    ];
-  }
-
-  draw_cross(x, y) {
-    return [
-      { start: { x: x - LINE_LEN, y: y }, end: { x: x + LINE_LEN, y: y } },
-      { start: { x: x, y: y - LINE_LEN }, end: { x: x, y: y + LINE_LEN } },
-    ];
   }
 
   /**
