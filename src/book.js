@@ -308,39 +308,14 @@ export class Book {
       this.format == 'standardsig' ||
       this.format == 'customsig'
     ) {
-      const generateAggregate = this.print_file != 'signatures';
-      const generateSignatures = this.print_file != 'aggregated';
-      const side1PageNumbers = new Set(
-        this.rearrangedpages.reduce((accumulator, currentValue) => {
-          return accumulator.concat(currentValue[0]);
-        }, [])
-      );
-      const [pdf0PageNumbers, pdf1PageNumbers] =
-        !generateAggregate || this.duplex
-          ? [null, null]
-          : [
-              Array.from(Array(this.managedDoc.getPageCount()).keys()).map((p) => {
-                return side1PageNumbers.has(p) ? p : 'b';
-              }),
-              Array.from(Array(this.managedDoc.getPageCount()).keys()).map((p) => {
-                return !side1PageNumbers.has(p) ? p : 'b';
-              }),
-            ];
-      const [aggregatePdf0, embeddedPages0] = generateAggregate
-        ? await this.embedPagesInNewPdf(this.managedDoc, pdf0PageNumbers)
-        : [null, null];
-      const [aggregatePdf1, embeddedPages1] =
-        generateAggregate && !this.duplex
-          ? await this.embedPagesInNewPdf(this.managedDoc, pdf1PageNumbers)
-          : [null, null];
+      // const generateAggregate = this.print_file != 'signatures';
+      // const generateSignatures = this.print_file != 'aggregated';
       const forLoop = async () => {
         for (let i = 0; i < this.rearrangedpages.length; i++) {
           const signature = this.rearrangedpages[i];
           await this.createsignatures({
-            embeddedPages: generateAggregate ? [embeddedPages0, embeddedPages1] : null,
-            aggregatePdfs: generateAggregate ? [aggregatePdf0, aggregatePdf1] : null,
             pageIndexDetails: signature,
-            id: generateSignatures ? `signature${i}` : null,
+            index: i,
             isDuplex: this.duplex,
             fileList: this.filelist,
           });
@@ -348,22 +323,10 @@ export class Book {
       };
       await forLoop();
 
-      if (aggregatePdf1 != null) {
-        await aggregatePdf1.save().then((pdfBytes) => {
-          if (!isPreview) this.zip.file('aggregate_side2.pdf', pdfBytes);
-        });
-      }
-      if (aggregatePdf0 != null) {
-        await aggregatePdf0.save().then((pdfBytes) => {
-          if (!isPreview)
-            this.zip.file(this.duplex ? 'aggregate_book.pdf' : 'aggregate_side1.pdf', pdfBytes);
-        });
-      }
       var rotationMetaInfo =
         (this.paper_rotation_90 ? '_paperRotated' : '') +
         (this.source_rotation == 'none' ? '' : `_${this.source_rotation}`);
       this.filename = `${origFileName}${rotationMetaInfo}`;
-      resultPDF = aggregatePdf0;
     } else if (this.format == 'a9_3_3_4') {
       resultPDF = await this.buildSheets(this.filename, this.book.a9_3_3_4_builder());
     } else if (this.format == 'a10_6_10s') {
@@ -448,8 +411,6 @@ export class Book {
    * @return reference to the new PDF created
    */
   async writepages(config) {
-    const printSignatures = config.outname != null;
-    const printAggregate = config.providedPages != null && config.destPdf != null;
     const pagelist = config.pageList;
     const back = config.back;
     const filteredList = [];
@@ -461,18 +422,9 @@ export class Book {
         blankIndices.push(i);
       }
     });
-    const [outPDF, embeddedPages] = printSignatures
-      ? await this.embedPagesInNewPdf(this.managedDoc, filteredList)
-      : [null, null];
+    const [outPDF, embeddedPages] = await this.embedPagesInNewPdf(this.managedDoc, filteredList);
 
-    const destPdfPages = printAggregate
-      ? filteredList.map((pI) => {
-          return config.providedPages[pI];
-        })
-      : null;
-
-    if (printSignatures) blankIndices.forEach((i) => embeddedPages.splice(i, 0, 'b'));
-    if (printAggregate) blankIndices.forEach((i) => destPdfPages.splice(i, 0, 'b'));
+    blankIndices.forEach((i) => embeddedPages.splice(i, 0, 'b'));
 
     let block_start = 0;
     const offset = this.per_sheet / 2;
@@ -486,47 +438,26 @@ export class Book {
 
     while (block_end <= pagelist.length) {
       const sigDetails = config.pageList.slice(block_start, block_end);
-      if (printAggregate) {
-        this.draw_block_onto_page({
-          outPDF: config.destPdf,
-          embeddedPages: destPdfPages,
-          block_start: block_start,
-          block_end: block_end,
-          papersize: this.papersize,
-          sigDetails: sigDetails,
-          positions: positions,
-          cropmarks: this.cropmarks,
-          pdfEdgeMarks: this.pdfEdgeMarks,
-          cutmarks: this.cutmarks,
-          alt: config.alt,
-          side2flag: side2flag,
-        });
-      }
-      if (printSignatures) {
-        side2flag = this.draw_block_onto_page({
-          outPDF: outPDF,
-          embeddedPages: embeddedPages,
-          block_start: block_start,
-          block_end: block_end,
-          sigDetails: sigDetails,
-          papersize: this.papersize,
-          positions: positions,
-          cropmarks: this.cropmarks,
-          pdfEdgeMarks: this.pdfEdgeMarks,
-          cutmarks: this.cutmarks,
-          alt: config.alt,
-          side2flag: side2flag,
-        });
-      }
+      side2flag = this.draw_block_onto_page({
+        outPDF: outPDF,
+        embeddedPages: embeddedPages,
+        block_start: block_start,
+        block_end: block_end,
+        sigDetails: sigDetails,
+        papersize: this.papersize,
+        positions: positions,
+        cropmarks: this.cropmarks,
+        pdfEdgeMarks: this.pdfEdgeMarks,
+        cutmarks: this.cutmarks,
+        alt: config.alt,
+        side2flag: side2flag,
+      });
       block_start += offset;
       block_end += offset;
     }
-
-    if (printSignatures) {
-      await outPDF.save().then((pdfBytes) => {
-        this.zip.file(config.outname, pdfBytes);
-      });
-    }
+    await outPDF.save().then((pdfBytes) => {
+      this.zip.file(config.outname, pdfBytes);
+    });
   }
   /**
    *
@@ -789,49 +720,37 @@ export class Book {
    * @param {string[]} config.fileList : list of filenames for sig filename to be added to (modifies list)
    */
   async createsignatures(config) {
-    const printAggregate = config.aggregatePdfs != null;
-    const printSignatures = config.id != null;
     const pages = config.pageIndexDetails;
     //      duplex printers print both sides of the sheet,
     if (config.isDuplex) {
-      const outduplex = printSignatures ? `${config.id}duplex.pdf` : null;
+      const outduplex = `signature${config.index}duplex.pdf`;
       await this.writepages({
         outname: outduplex,
         pageList: pages[0],
         back: false,
         alt: true,
-        destPdf: printAggregate ? config.aggregatePdfs[0] : null,
-        providedPages: printAggregate ? config.embeddedPages[0] : null,
       });
-      if (printSignatures) {
-        config.fileList.push(outduplex);
-      }
+      config.fileList[config.index] = outduplex;
     } else {
       //      for non-duplex printers we have two files, print the first, flip
       //      the sheets over, then print the second
-      const outname1 = printSignatures ? `${config.id}side1.pdf` : null;
-      const outname2 = printSignatures ? `${config.id}side2.pdf` : null;
+      const outname1 = `signature${config.index}side1.pdf`;
+      const outname2 = `signature${config.index}side2.pdf`;
 
       await this.writepages({
         outname: outname1,
         pageList: pages[0],
         back: false,
         alt: false,
-        destPdf: printAggregate ? config.aggregatePdfs[0] : null,
-        providedPages: printAggregate ? config.embeddedPages[0] : null,
       });
       await this.writepages({
         outname: outname2,
         pageList: pages[1],
         back: true,
         alt: false,
-        destPdf: printAggregate ? config.aggregatePdfs[1] : null,
-        providedPages: printAggregate ? config.embeddedPages[1] : null,
       });
-      if (printSignatures) {
-        config.fileList.push(outname1);
-        config.fileList.push(outname2);
-      }
+      config.fileList[config.index * 2] = outname1;
+      config.fileList[config.index * 2 + 1] = outname2;
     }
     console.log('After creating signatures, our filelist looks like: ', this.filelist);
   }
