@@ -603,52 +603,36 @@ export class Book {
    */
   draw_spine_marks(curPage, sigDetails, position) {
     const w = 5;
-    if (position.rotation == 0) {
-      const start = {
-        x: sigDetails.isSigStart
-          ? position.spineMarkTop[0] - w / 2
-          : position.spineMarkBottom[0] - w / 2,
-        y: sigDetails.isSigStart ? position.spineMarkTop[1] : position.spineMarkBottom[1],
-      };
-
-      const end = {
-        x: sigDetails.isSigStart
-          ? position.spineMarkTop[0] + w / 2
-          : position.spineMarkBottom[0] + w / 2,
-        y: sigDetails.isSigStart ? position.spineMarkTop[1] : position.spineMarkBottom[1],
-      };
-      const drawOpts = {
-        start,
-        end,
-        thickness: 0.5,
-        color: rgb(0, 0, 0),
-        opacity: 1,
-      };
-      console.log(' --> draw this: ', drawOpts);
-      curPage.drawLine(drawOpts);
+    let startX, startY, endX, endY;
+    if (sigDetails.isSigStart) {
+      [startX, startY] = position.spineMarkTop;
+      [endX, endY] = position.spineMarkTop;
     } else {
-      curPage.drawLine({
-        start: {
-          x: sigDetails.isSigStart ? position.spineMarkTop[0] : position.spineMarkBottom[0],
-          y:
-            (sigDetails.isSigStart
-              ? position.spineMarkTop[1] - w / 2
-              : position.spineMarkBottom[1]) -
-            w / 2,
-        },
-        end: {
-          x: sigDetails.isSigStart ? position.spineMarkTop[0] : position.spineMarkBottom[0],
-          y:
-            (sigDetails.isSigStart
-              ? position.spineMarkTop[1] + w / 2
-              : position.spineMarkBottom[1]) +
-            w / 2,
-        },
-        thickness: 0.25,
-        color: rgb(0, 0, 0),
-        opacity: 1,
-      });
+      [startX, startY] = position.spineMarkBottom;
+      [endX, endY] = position.spineMarkBottom;
     }
+
+    if (position.rotation == 0) {
+      startX -= w / 2;
+      endX += w / 2;
+    } else if (sigDetails.isSigStart) {
+      startY -= w;
+      endY += w;
+    } else {
+      startY -= w / 2;
+      endY += w / 2;
+    }
+
+    const drawLineArgs = {
+      start: { x: startX, y: startY },
+      end: { x: endX, y: endY },
+      thickness: position.rotation == 0 ? 0.5 : 0.25,
+      color: rgb(0, 0, 0),
+      opacity: 1,
+    };
+
+    console.log(' --> draw this: ', drawLineArgs);
+    curPage.drawLine(drawLineArgs);
   }
 
   /**
@@ -656,73 +640,60 @@ export class Book {
    * @param {boolean} side2flag - whether we're on the back side or not
    */
   draw_cropmarks(currPage, side2flag) {
+    const lineSettings = {
+      opacity: 0.4,
+      dashArray: [1, 5],
+    };
+    let start, end;
+
     switch (this.per_sheet) {
       case 32:
         if (side2flag) {
+          lineSettings.dashArray = [1, 5];
           if (this.duplexrotate) {
-            currPage.drawLine({
-              start: { x: this.papersize[0] * 0.75, y: this.papersize[1] * 0.75 },
-              end: { x: this.papersize[0] * 0.75, y: this.papersize[1] * 0.5 },
-              opacity: 0.4,
-              dashArray: [1, 5],
-            });
+            start = { x: this.papersize[0] * 0.75, y: this.papersize[1] * 0.75 };
+            end = { x: this.papersize[0] * 0.75, y: this.papersize[1] * 0.5 };
           } else {
-            currPage.drawLine({
-              start: { x: this.papersize[0] * 0.25, y: this.papersize[1] * 0.5 },
-              end: { x: this.papersize[0] * 0.25, y: this.papersize[1] * 0.25 },
-              opacity: 0.4,
-              dashArray: [1, 5],
-            });
+            start = { x: this.papersize[0] * 0.25, y: this.papersize[1] * 0.5 };
+            end = { x: this.papersize[0] * 0.25, y: this.papersize[1] * 0.25 };
           }
+          currPage.drawLine({ start, end, ...lineSettings });
         }
       /* falls through */
       case 16:
         if (side2flag) {
+          lineSettings.dashArray = [3, 5];
           if (this.duplexrotate) {
-            currPage.drawLine({
-              start: { x: 0, y: this.papersize[1] * 0.75 },
-              end: { x: this.papersize[0] * 0.5, y: this.papersize[1] * 0.75 },
-              opacity: 0.4,
-              dashArray: [3, 5],
-            });
+            start = { x: 0, y: this.papersize[1] * 0.75 };
+            end = { x: this.papersize[0] * 0.5, y: this.papersize[1] * 0.75 };
           } else {
-            currPage.drawLine({
-              start: { x: this.papersize[0] * 0.5, y: this.papersize[1] * 0.25 },
-              end: { x: this.papersize[0], y: this.papersize[1] * 0.25 },
-              opacity: 0.4,
-              dashArray: [3, 5],
-            });
+            start = { x: this.papersize[0] * 0.5, y: this.papersize[1] * 0.25 };
+            end = { x: this.papersize[0], y: this.papersize[1] * 0.25 };
           }
+          currPage.drawLine({ start, end, ...lineSettings });
         }
       /* falls through */
       case 8:
         if (side2flag) {
+          lineSettings.dashArray = [5, 5];
           if (this.duplexrotate) {
-            currPage.drawLine({
-              start: { x: this.papersize[0] * 0.5, y: 0 },
-              end: { y: this.papersize[1] * 0.5, x: this.papersize[0] * 0.5 },
-              opacity: 0.4,
-              dashArray: [5, 5],
-            });
+            start = { x: this.papersize[0] * 0.5, y: 0 };
+            end = { y: this.papersize[1] * 0.5, x: this.papersize[0] * 0.5 };
           } else {
-            currPage.drawLine({
-              start: { x: this.papersize[0] * 0.5, y: this.papersize[1] },
-              end: { y: this.papersize[1] * 0.5, x: this.papersize[0] * 0.5 },
-              opacity: 0.4,
-              dashArray: [5, 5],
-            });
+            start = { x: this.papersize[0] * 0.5, y: this.papersize[1] };
+            end = { y: this.papersize[1] * 0.5, x: this.papersize[0] * 0.5 };
           }
+          currPage.drawLine({ start, end, ...lineSettings });
         }
       /* falls through */
       case 4:
         if (!side2flag) {
-          currPage.drawLine({
-            start: { x: 0, y: this.papersize[1] * 0.5 },
-            end: { x: this.papersize[0], y: this.papersize[1] * 0.5 },
-            opacity: 0.4,
-            dashArray: [10, 5],
-          });
+          lineSettings.dashArray = [10, 5];
+          start = { x: 0, y: this.papersize[1] * 0.5 };
+          end = { x: this.papersize[0], y: this.papersize[1] * 0.5 };
+          currPage.drawLine({ start, end, ...lineSettings });
         }
+        break;
     }
   }
 
