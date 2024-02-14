@@ -4,10 +4,12 @@
 
 import { expect, describe, it } from 'vitest';
 
-import { drawFoldlines } from './drawing.js';
+import { drawFoldlines, drawCropmarks } from './drawing.js';
+import { LINE_LEN } from '../constants.js';
+
+const mockPaper = [50, 100];
 
 describe('tests foldline drawing', () => {
-  const mockPaper = [50, 100];
   const folioFoldsRotate = [
     { start: { x: 0, y: 50 }, end: { x: 50, y: 50 }, dashArray: [10, 5], opacity: 0.4 },
   ];
@@ -83,6 +85,46 @@ describe('tests foldline drawing', () => {
     it(`produces the correct foldlines for ${key}-per-sheet backs with duplex rotation`, () => {
       const actual = drawFoldlines(true, true, mockPaper, intKey);
       expect(actual).toEqual(backRotate);
+    });
+  });
+});
+
+describe('tests cropmark drawing', () => {
+  const quartoMarks = [
+    { start: { x: 0, y: 50 }, end: { x: LINE_LEN, y: 50 }, opacity: 0.4 },
+    { start: { x: 50 - LINE_LEN, y: 50 }, end: { x: 50, y: 50 }, opacity: 0.4 },
+  ];
+  const octavoMarks = [
+    { start: { x: 25, y: 0 }, end: { x: 25, y: LINE_LEN }, opacity: 0.4 },
+    { start: { x: 25, y: 100 - LINE_LEN }, end: { x: 25, y: 100 }, opacity: 0.4 },
+    { start: { x: 25 - LINE_LEN, y: 50 }, end: { x: 25 + LINE_LEN, y: 50 }, opacity: 0.4 },
+    { start: { x: 25, y: 50 - LINE_LEN }, end: { x: 25, y: 50 + LINE_LEN }, opacity: 0.4 },
+    ...quartoMarks,
+  ];
+  const sextidecimoMarks = [
+    { start: { x: 0, y: 75 }, end: { x: LINE_LEN, y: 75 }, opacity: 0.4 },
+    { start: { x: 50 - LINE_LEN, y: 75 }, end: { x: 50, y: 75 }, opacity: 0.4 },
+    { start: { x: 0, y: 25 }, end: { x: LINE_LEN, y: 25 }, opacity: 0.4 },
+    { start: { x: 50 - LINE_LEN, y: 25 }, end: { x: 50, y: 25 }, opacity: 0.4 },
+    { start: { x: 25 - LINE_LEN, y: 75 }, end: { x: 25 + LINE_LEN, y: 75 }, opacity: 0.4 },
+    { start: { x: 25, y: 75 - LINE_LEN }, end: { x: 25, y: 75 + LINE_LEN }, opacity: 0.4 },
+    { start: { x: 25 - LINE_LEN, y: 25 }, end: { x: 25 + LINE_LEN, y: 25 }, opacity: 0.4 },
+    { start: { x: 25, y: 25 - LINE_LEN }, end: { x: 25, y: 25 + LINE_LEN }, opacity: 0.4 },
+    ...octavoMarks,
+  ];
+
+  const results = {
+    4: [],
+    8: quartoMarks,
+    16: octavoMarks,
+    32: sextidecimoMarks,
+  };
+  Object.keys(results).forEach((key) => {
+    const expected = results[key];
+    const intKey = parseInt(key, 10);
+    it(`produces the correct cropmarks for ${key}-per-sheet layouts`, () => {
+      const actual = drawCropmarks(mockPaper, intKey);
+      expect(actual).toEqual(expected);
     });
   });
 });
