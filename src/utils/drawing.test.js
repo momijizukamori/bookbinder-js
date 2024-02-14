@@ -66,17 +66,17 @@ describe('tests foldline drawing', () => {
     const { frontRotate, backRotate, front, back } = results[key];
     const intKey = parseInt(key, 10);
     it(`produces the correct foldlines for ${key}-per-sheet fronts`, () => {
-      let actual = drawFoldlines(false, false, mockPaper, intKey);
+      const actual = drawFoldlines(false, false, mockPaper, intKey);
       expect(actual).toEqual(front);
     });
 
     it(`produces the correct foldlines for ${key}-per-sheet backs`, () => {
-      let actual = drawFoldlines(true, false, mockPaper, intKey);
+      const actual = drawFoldlines(true, false, mockPaper, intKey);
       expect(actual).toEqual(back);
     });
 
     it(`produces the correct foldlines for ${key}-per-sheet fronts with duplex rotation`, () => {
-      let actual = drawFoldlines(false, true, mockPaper, intKey);
+      const actual = drawFoldlines(false, true, mockPaper, intKey);
       expect(actual).toEqual(frontRotate);
     });
 
