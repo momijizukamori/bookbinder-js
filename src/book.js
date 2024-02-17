@@ -312,7 +312,8 @@ export class Book {
       const generateSignatures = this.print_file != 'aggregated';
       const side1PageNumbers = new Set(
         this.rearrangedpages.reduce((accumulator, currentValue) => {
-          return accumulator.concat(currentValue[0]);
+          const pageNums = currentValue[0].map((pageInfo) => pageInfo.info);
+          return accumulator.concat(pageNums);
         }, [])
       );
       const [pdf0PageNumbers, pdf1PageNumbers] =
