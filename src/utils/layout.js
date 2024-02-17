@@ -2,7 +2,7 @@
  * When considering page size, don't forget to take into account
  *  this.padding_pt's ['top','bottom','binding','fore_edge'] values
  *
- * @return {Position[]}
+ * @return {import("../book.js").Position[]}
  */
 export function calculateLayout(book) {
   // vampire

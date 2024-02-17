@@ -2,7 +2,7 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-import { PDFDocument, degrees } from 'pdf-lib';
+import { PDFDocument, PDFEmbeddedPage, degrees } from 'pdf-lib';
 import { saveAs } from 'file-saver';
 import { Signatures } from './signatures.js';
 import { WackyImposition } from './wacky_imposition.js';
@@ -30,6 +30,9 @@ import { calculateDimensions, calculateLayout } from './utils/layout.js';
  * @property {number} sy - y scale factor (where 1.0 is 100%)
  * @property {number} x - x position
  * @property {number} y - y position
+ * @property {number[]} [spineMarkTop]: spineMarkTop,
+ * @property {number[]} [spineMarkBottom]: spineMarkBottom,
+ * @property {boolean} [isLeftPage]: isLeftPage,
  */
 
 export class Book {
@@ -111,7 +114,6 @@ export class Book {
     this.input = await file.arrayBuffer(); //fs.readFileSync(filepath);
     this.currentdoc = await PDFDocument.load(this.input);
     //TODO: handle pw-protected PDFs
-    /** @type {number} */
     const pages = this.currentdoc.getPages();
     this.cropbox = null;
 
@@ -407,10 +409,10 @@ export class Book {
   /**
    * Generates a new PDF & embeds the prescribed pages of the source PDF into it
    * @param sourcePdf
-   * @param {number[]} pageNumbers - an array of page numbers. Ex: [1,5,6,7,8,'b',10] or null to embed all pages from source
+   * @param {(string|number)[]} [pageNumbers] - an array of page numbers. Ex: [1,5,6,7,8,'b',10] or null to embed all pages from source
    *          NOTE: re-construction behavior kicks in if there's 'b's in the list
    *
-   * @return [newPdf with pages embedded, embedded page array]
+   * @return {Promise<[PDFDocument, PDFEmbeddedPage[]]>} PDF with pages embedded, embedded page array
    */
   async embedPagesInNewPdf(sourcePdf, pageNumbers) {
     const newPdf = await PDFDocument.create();
@@ -536,7 +538,7 @@ export class Book {
    * @param {string|null} config.outname : name of pdf added to ongoing zip file. Ex: 'signature1duplex.pdf' (or null if no signature file needed)
    * @param {PageInfo[]} config.sigDetails : objects that contain 3 values: { isSigStart: boolean, isSigEnd: boolean, info: either the page number or 'b'}
    * @param {boolean} config.side2flag : is 'back' of page  (boolean)
-   * @param {number[]} config.papersize : paper size (as [number, number])
+   * @param {[number, number]} config.papersize : paper size (as [number, number])
    * @param {number} config.block_start: Starting page index
    * @param {number} config.block_end: Ending page index
    * @param {boolean} config.alt : alternate pages (boolean)
@@ -544,8 +546,8 @@ export class Book {
    * @param {boolean} config.cropmarks: whether to print cropmarks
    * @param {boolean} config.pdfEdgeMarks: whether to print PDF edge marks
    * @param {Position[]} config.positions: list of page positions
-   * @param config.outPDF : PDF to write to, in addition to PDF created w/ `outname` (or null)
-   * @param config.embeddedPages : pages already embedded in the `destPdf` to assemble in addition (or null)
+   * @param {PDFDocument} [config.outPDF]: PDF to write to, in addition to PDF created w/ `outname` (or null)
+   * @param {(PDFEmbeddedPage|string)[]} [config.embeddedPages] : pages already embedded in the `destPdf` to assemble in addition (or null)
    */
 
   draw_block_onto_page(config) {
@@ -572,7 +574,7 @@ export class Book {
     block.forEach((page, i) => {
       if (page == 'b' || page === undefined) {
         // blank page, move on.
-      } else {
+      } else if (page instanceof PDFEmbeddedPage) {
         const { y, x, sx, sy, rotation } = positions[i];
         currPage.drawPage(page, {
           y,
@@ -605,7 +607,7 @@ export class Book {
    * @param {PageInfo[][]|PageInfo[]} config.pageIndexDetails : a nested list of objects.
    * @param config.aggregatePdfs : list of destination PDF(s_ for aggregated content ( [0] for duplex & front, [1] for backs -- value is null if no aggregate printing enabled)
    * @param config.embeddedPages : list of lists of embedded pages from source document ( [0] for duplex & front, [1] for backs -- value is null if no aggregate printing enabled)
-   * @param {id} config.id : string dentifier for signature file name (null if no signature files to be generated)
+   * @param {string} config.id : string dentifier for signature file name (null if no signature files to be generated)
    * @param {boolean} config.isDuplex : boolean
    * @param {string[]} config.fileList : list of filenames for sig filename to be added to (modifies list)
    */
@@ -685,7 +687,6 @@ export class Book {
 
   /**
    * @callback LineMaker
-   * @param {number} x - ...
    */
 
   /**
