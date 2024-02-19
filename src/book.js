@@ -299,7 +299,11 @@ export class Book {
     //  create a directory named after the input pdf and fill it with
     //  the signatures
     this.zip = new JSZip();
-    var origFileName = this.inputpdf.replace(/\s|,|\.pdf/, '');
+    var origFileName = this.inputpdf;
+    origFileName = origFileName
+      .replace(/[-\s,_]+/g, '_')
+      .replace(/_*\.pdf/g, '')
+      .toLowerCase();
     this.filename = origFileName;
 
     if (
@@ -341,7 +345,7 @@ export class Book {
             embeddedPages: generateAggregate ? [embeddedPages0, embeddedPages1] : null,
             aggregatePdfs: generateAggregate ? [aggregatePdf0, aggregatePdf1] : null,
             pageIndexDetails: signature,
-            id: generateSignatures ? `signature${i}` : null,
+            id: generateSignatures ? `${this.filename}_signature${i}` : null,
             isDuplex: this.duplex,
             fileList: this.filelist,
           });
@@ -351,17 +355,20 @@ export class Book {
 
       if (aggregatePdf1 != null) {
         await aggregatePdf1.save().then((pdfBytes) => {
-          if (!isPreview) this.zip.file('aggregate_side2.pdf', pdfBytes);
+          if (!isPreview) this.zip.file(`${this.filename}_typeset_side2.pdf`, pdfBytes);
         });
       }
       if (aggregatePdf0 != null) {
         await aggregatePdf0.save().then((pdfBytes) => {
           if (!isPreview)
-            this.zip.file(this.duplex ? 'aggregate_book.pdf' : 'aggregate_side1.pdf', pdfBytes);
+            this.zip.file(
+              this.duplex ? `${this.filename}_typeset.pdf` : `${this.filename}_typeset_side1.pdf`,
+              pdfBytes
+            );
         });
       }
       var rotationMetaInfo =
-        (this.paper_rotation_90 ? '_paperRotated' : '') +
+        (this.paper_rotation_90 ? 'paper_rotated' : '') +
         (this.source_rotation == 'none' ? '' : `_${this.source_rotation}`);
       this.filename = `${origFileName}${rotationMetaInfo}`;
       resultPDF = aggregatePdf0;
@@ -525,7 +532,7 @@ export class Book {
 
     if (printSignatures) {
       await outPDF.save().then((pdfBytes) => {
-        this.zip.file(config.outname, pdfBytes);
+        this.zip.file(`signatures/${config.outname}`, pdfBytes);
       });
     }
   }
@@ -795,7 +802,7 @@ export class Book {
     const pages = config.pageIndexDetails;
     //      duplex printers print both sides of the sheet,
     if (config.isDuplex) {
-      const outduplex = printSignatures ? `${config.id}duplex.pdf` : null;
+      const outduplex = printSignatures ? `${config.id}_duplex.pdf` : null;
       await this.writepages({
         outname: outduplex,
         pageList: pages[0],
@@ -810,8 +817,8 @@ export class Book {
     } else {
       //      for non-duplex printers we have two files, print the first, flip
       //      the sheets over, then print the second
-      const outname1 = printSignatures ? `${config.id}side1.pdf` : null;
-      const outname2 = printSignatures ? `${config.id}side2.pdf` : null;
+      const outname1 = printSignatures ? `${config.id}_side1.pdf` : null;
+      const outname2 = printSignatures ? `${config.id}_side2.pdf` : null;
 
       await this.writepages({
         outname: outname1,
@@ -851,7 +858,7 @@ export class Book {
     this.bundleSettings();
     return this.zip.generateAsync({ type: 'blob' }).then((blob) => {
       console.log('  calling saveAs on ', this.filename);
-      saveAs(blob, `${this.filename}.zip`);
+      saveAs(blob, `${this.filename}_bookbinder.zip`);
     });
   }
 
