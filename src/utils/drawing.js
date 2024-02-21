@@ -113,9 +113,9 @@ export function drawCropmarks(papersize, per_sheet) {
 }
 
 /**
- * @param {PageInfo} sigDetails - page info object
- * @param {Position} position - position info object
- * @returns {Line[]}
+ * @param {import("../book.js").PageInfo} sigDetails - page info object
+ * @param {import("../book.js").Position} position - position info object
+ * @returns {Line}
  */
 export function drawSpineMarks(sigDetails, position) {
   const w = 5;
