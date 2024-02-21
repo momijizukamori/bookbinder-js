@@ -342,7 +342,6 @@ export class Book {
           ? await this.embedPagesInNewPdf(this.managedDoc, pdf1PageNumbers)
           : [null, null];
       const forLoop = async () => {
-        
         for (let i = 0; i < this.rearrangedpages.length; i++) {
           const signature = this.rearrangedpages[i];
           console.log(signature);
@@ -356,7 +355,7 @@ export class Book {
 
           if (this.duplex) {
             // collate
-            const sig = this.collatePages(sigFront, sigBack)
+            const sig = await this.collatePages(sigFront, sigBack);
 
             if (generateSignatures) {
               await sig.save().then((pdfBytes) => {
@@ -365,10 +364,9 @@ export class Book {
             }
 
             if (generateAggregate) {
-              const copiedPages = await aggregatePdf0.embedPages(sig, sig.getPageIndices());
+              const copiedPages = await aggregatePdf0.copyPages(sig, sig.getPageIndices());
               copiedPages.forEach((page) => aggregatePdf0.addPage(page));
             }
-
           } else {
             if (generateSignatures) {
               await sigFront.save().then((pdfBytes) => {
@@ -380,15 +378,19 @@ export class Book {
             }
 
             if (generateAggregate) {
-              const copiedPagesFront = await aggregatePdf0.embedPages(sigFront, sigFront.getPageIndices());
+              const copiedPagesFront = await aggregatePdf0.copyPages(
+                sigFront,
+                sigFront.getPageIndices()
+              );
               copiedPagesFront.forEach((page) => aggregatePdf0.addPage(page));
 
-              const copiedPagesBack = await aggregatePdf1.embedPages(sigBack, sigBack.getPageIndices());
+              const copiedPagesBack = await aggregatePdf1.copyPages(
+                sigBack,
+                sigBack.getPageIndices()
+              );
               copiedPagesBack.forEach((page) => aggregatePdf1.addPage(page));
             }
-
           }
-
         }
       };
       await forLoop();
@@ -481,22 +483,27 @@ export class Book {
     return [newPdf, embeddedPages];
   }
 
-  async addPdf(destPdf, sourcePdf) {
-    await mergedPdf.copyPages(pdfA, pdfA.getPageIndices());
-      copiedPagesA.forEach((page) => mergedPdf.addPage(page))
-  }
+  async collatePages(pdfA, pdfB) {
+    const mergedPdf = await PDFDocument.create();
+    const pageCount = Math.max(pdfA.getPageCount(), pdfB.getPageCount());
+    for (let i = 0; i < pageCount; i++) {
+      const pageA = pdfA.getPage(i);
+      if (pageA) mergedPdf.addPage((await mergedPdf.copyPages(pdfA, [i]))[0]);
 
+      const pageB = pdfB.getPage(i);
+      if (pageB) mergedPdf.addPage((await mergedPdf.copyPages(pdfB, [i]))[0]);
+    }
+
+    return mergedPdf;
+  }
   /**
    * Part of the Classic (non-Wacky) flow. Called by [createsignatures].
    *   (conditionally) populates the destPdf and (conditionally) generates the outname PDF
    *
    * @param {Object} config - object /w the following parameters:
-   * @param {string|null} config.outname : name of pdf added to ongoing zip file. Ex: 'signature1duplex.pdf' (or null if no signature file needed)
    * @param {PageInfo[]} config.pageList : objects that contain 3 values: { isSigStart: boolean, isSigEnd: boolean, info: either the page number or 'b'}
    * @param {boolean} config.back : is 'back' of page  (boolean)
    * @param {boolean} config.alt : alternate pages (boolean)
-   * @param config.destPdf : PDF to write to, in addition to PDF created w/ `outname` (or null)
-   * @param config.providedPages : pages already embedded in the `destPdf` to assemble in addition (or null)
    * @return reference to the new PDF created
    */
   async writepages(config) {
@@ -669,7 +676,7 @@ export class Book {
       `Imposer settings: ${JSON.stringify(currentConfig, null, 2)}` +
       '\n\n' +
       `Link to the imposer with these settings: ${window.location.href}`;
-    this.zip?.file('settings.txt', settings);
+    this.zip.file('settings.txt', settings);
   }
 
   saveZip() {
