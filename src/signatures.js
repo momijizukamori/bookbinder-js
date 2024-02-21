@@ -9,14 +9,13 @@ export class Signatures {
   /**
    * Create a signature.
    * @param {number[]} pages - List of pages in a book.
-   * @param {boolean} duplex - Whether both front and back sides go in the same file or not.
    * @param {number} per_sheet - number of pages per sheet (front and back combined)
    * @param {boolean} duplexrotate - whether to rotate alternating sheets or not.
    */
 
-  constructor(pages, duplex, sigsize, per_sheet, duplexrotate) {
+  constructor(pages, sigsize, per_sheet, duplexrotate) {
     this.sigsize = sigsize;
-    this.duplex = duplex;
+    this.duplex = false;
     this.inputpagelist = pages;
     this.per_sheet = per_sheet || 4; // pages per sheet - default is 4.
     this.duplexrotate = duplexrotate || false;

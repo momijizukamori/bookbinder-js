@@ -245,7 +245,6 @@ export class Book {
       case 'customsig':
         this.book = new Signatures(
           this.orderedpages,
-          this.duplex,
           this.sigsize,
           this.per_sheet,
           this.duplexrotate
@@ -343,14 +342,53 @@ export class Book {
           ? await this.embedPagesInNewPdf(this.managedDoc, pdf1PageNumbers)
           : [null, null];
       const forLoop = async () => {
+        
         for (let i = 0; i < this.rearrangedpages.length; i++) {
           const signature = this.rearrangedpages[i];
-          await this.createsignatures({
+          console.log(signature);
+          const sigName = `${this.filename}_signature${i}`;
+          const [sigFront, sigBack] = await this.createSignatures({
             pageIndexDetails: signature,
             id: generateSignatures ? `${this.filename}_signature${i}` : null,
             isDuplex: this.duplex,
             fileList: this.filelist,
           });
+
+          if (this.duplex) {
+            // collate
+            const sig = this.collatePages(sigFront, sigBack)
+
+            if (generateSignatures) {
+              await sig.save().then((pdfBytes) => {
+                this.zip.file(`signatures/${sigName}_duplex`, pdfBytes);
+              });
+            }
+
+            if (generateAggregate) {
+              const copiedPages = await aggregatePdf0.embedPages(sig, sig.getPageIndices());
+              copiedPages.forEach((page) => aggregatePdf0.addPage(page));
+            }
+
+          } else {
+            if (generateSignatures) {
+              await sigFront.save().then((pdfBytes) => {
+                this.zip.file(`signatures/${sigName}_side1`, pdfBytes);
+              });
+              await sigBack.save().then((pdfBytes) => {
+                this.zip.file(`signatures/${sigName}_side2`, pdfBytes);
+              });
+            }
+
+            if (generateAggregate) {
+              const copiedPagesFront = await aggregatePdf0.embedPages(sigFront, sigFront.getPageIndices());
+              copiedPagesFront.forEach((page) => aggregatePdf0.addPage(page));
+
+              const copiedPagesBack = await aggregatePdf1.embedPages(sigBack, sigBack.getPageIndices());
+              copiedPagesBack.forEach((page) => aggregatePdf1.addPage(page));
+            }
+
+          }
+
         }
       };
       await forLoop();
@@ -441,6 +479,11 @@ export class Book {
       }, []);
     }
     return [newPdf, embeddedPages];
+  }
+
+  async addPdf(destPdf, sourcePdf) {
+    await mergedPdf.copyPages(pdfA, pdfA.getPageIndices());
+      copiedPagesA.forEach((page) => mergedPdf.addPage(page))
   }
 
   /**
@@ -583,13 +626,12 @@ export class Book {
    *
    * @param {Object} config
    * @param {PageInfo[][]|PageInfo[]} config.pageIndexDetails : a nested list of objects.
-   * @param config.aggregatePdfs : list of destination PDF(s_ for aggregated content ( [0] for duplex & front, [1] for backs -- value is null if no aggregate printing enabled)
    * @param config.embeddedPages : list of lists of embedded pages from source document ( [0] for duplex & front, [1] for backs -- value is null if no aggregate printing enabled)
    * @param {string} config.id : string dentifier for signature file name (null if no signature files to be generated)
    * @param {boolean} config.isDuplex : boolean
    * @param {string[]} config.fileList : list of filenames for sig filename to be added to (modifies list)
    */
-  async createsignatures(config) {
+  async createSignatures(config) {
     const pages = config.pageIndexDetails;
     //      duplex printers print both sides of the sheet,
     if (config.isDuplex) {
@@ -613,16 +655,12 @@ export class Book {
         back: false,
         alt: false,
       });
-      await this.writepages({
-        outname: outname2,
+      const pdfBack = await this.writepages({
         pageList: pages[1],
         back: true,
         alt: false,
       });
-      config.fileList[config.index * 2] = outname1;
-      config.fileList[config.index * 2 + 1] = outname2;
-    }
-    console.log('After creating signatures, our filelist looks like: ', this.filelist);
+      return [pdfFront, pdfBack];
   }
 
   bundleSettings() {
