@@ -5,7 +5,6 @@
  * @return {import("../book.js").Position[]}
  */
 export function calculateLayout(book) {
-  // vampire
   const l = calculateDimensions(book);
   const {
     layoutCell,

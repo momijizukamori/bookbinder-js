@@ -583,6 +583,8 @@ export class Book {
           yScale: sy,
           rotate: degrees(rotation),
         });
+      } else {
+        console.error("Unexpected type for page: ", page);
       }
 
       if (pdfEdgeMarks && (sigDetails[i].isSigStart || sigDetails[i].isSigEnd)) {
