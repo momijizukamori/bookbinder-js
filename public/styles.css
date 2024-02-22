@@ -182,3 +182,13 @@ button {
   width: 100%;
   justify-content: space-between;
 }
+
+.warning {
+  margin-bottom: 1em;
+  border: #ffc107 5px solid;
+  padding: 0.5em;
+}
+
+.warning h3 {
+  margin: 0.5em 0;
+}

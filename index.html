@@ -44,6 +44,26 @@
             pages 2 & 3 of your PDF document. Evens always on the left, odds always on the
             right.</span
           >
+          <span class="row warning" id="memwarning" style="display: none">
+            <h3>Warning: Large file uploaded</h3>
+            Because of the way Javascript works, large files may cause the browser to kill the
+            process because it took up too much memory. This usually won't produce any visible
+            errors, and instead will cause the generation process to simply fail with no output. If
+            this happens, there's a few things you can try that may result in successful generation:
+            <ul>
+              <li>
+                If you've selected both aggregate and signature files for output, switch to just
+                generating signatures
+              </li>
+              <li>
+                Close all other open browser tabs and windows, so no other pages are using memory
+              </li>
+              <li>Try on a different computer with more RAM</li>
+            </ul>
+
+            If none of these steps work, you may unfortunately have to pre-split your file into
+            smaller sections to use this tool.
+          </span>
           <span class="row"
             ><label for="print_file">Generated Files</label>
             <select name="print_file" id="print_file">

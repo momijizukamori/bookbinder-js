@@ -177,3 +177,6 @@ export const PERFECTBOUND_LAYOUTS = {
     rotate: [12, 9, 6, 7, 23, 22, 25, 28, 20, 17, 30, 31, 15, 14, 1, 4],
   },
 };
+
+/** filesize at which we show memory warning, in bytes (100 megabytes) */
+export const MEM_WARN_LIMIT = 100 * 100000;

@@ -3,7 +3,11 @@
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 import { saveForm, updateRenderedForm } from './formUtils';
-import { updatePaperSelectOptionsUnits, updateAddOrRemoveCustomPaperOption } from './renderUtils';
+import {
+  updatePaperSelectOptionsUnits,
+  updateAddOrRemoveCustomPaperOption,
+  memoryWarning,
+} from './renderUtils';
 
 export function handleInputChange(book, bookbinderForm) {
   const formData = new FormData(bookbinderForm);
@@ -19,7 +23,11 @@ export function handleInputChange(book, bookbinderForm) {
 export function handleFileChange(e, book) {
   const fileList = e.target.files;
   if (fileList.length > 0) {
-    const updated = book.openpdf(fileList[0]);
+    const file = fileList[0];
+    const updated = book.openpdf(file);
     updated.then(() => updateRenderedForm(book));
+
+    // Determine if we need to show or hide the large file warning
+    memoryWarning(file.size);
   }
 }

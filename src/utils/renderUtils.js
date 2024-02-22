@@ -2,7 +2,7 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-import { PAGE_SIZES } from '../constants';
+import { MEM_WARN_LIMIT, PAGE_SIZES } from '../constants';
 
 export function renderPageCount(book) {
   const pageCount = document.getElementById('page_count');
@@ -250,4 +250,16 @@ export function renderFormFromSettings(configuration) {
   sourceRotationExamples.forEach((example) => {
     example.style.display = example.id === selectedValue ? 'block' : 'none';
   });
+}
+
+/**
+ * Shows or hides the large file warning info
+ */
+export function memoryWarning(filesize) {
+  const warningDiv = document.getElementById('memwarning');
+  if (filesize > MEM_WARN_LIMIT) {
+    warningDiv.style.display = 'block';
+  } else {
+    warningDiv.style.display = 'none';
+  }
 }
