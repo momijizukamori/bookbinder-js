@@ -2,25 +2,50 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-import { PDFDocument, degrees, rgb } from 'pdf-lib';
+import { PDFDocument, PDFEmbeddedPage, degrees } from 'pdf-lib';
 import { saveAs } from 'file-saver';
 import { Signatures } from './signatures.js';
 import { WackyImposition } from './wacky_imposition.js';
-import { PAGE_LAYOUTS, PAGE_SIZES, LINE_LEN } from './constants.js';
+import { PAGE_LAYOUTS, PAGE_SIZES } from './constants.js';
 import { updatePageLayoutInfo } from './utils/renderUtils.js';
 import JSZip from 'jszip';
 import { loadConfiguration } from './utils/formUtils.js';
+import { drawFoldlines, drawCropmarks, drawSpineMarks } from './utils/drawing.js';
+import { calculateDimensions, calculateLayout } from './utils/layout.js';
+
+// Some JSDoc typedefs we use multiple places
+/**
+ * @typedef PageInfo
+ * @type {object}
+ * @property {string|number} info - page # or 'b'
+ * @property {boolean} isSigStart
+ * @property {boolean} isSigEnd
+ */
+
+/**
+ * @typedef Position
+ * @type {object}
+ * @property {number} rotation - Rotation in degrees
+ * @property {number} sx - x scale factor (where 1.0 is 100%)
+ * @property {number} sy - y scale factor (where 1.0 is 100%)
+ * @property {number} x - x position
+ * @property {number} y - y position
+ * @property {number[]} [spineMarkTop]: spineMarkTop,
+ * @property {number[]} [spineMarkBottom]: spineMarkBottom,
+ * @property {boolean} [isLeftPage]: isLeftPage,
+ */
 
 export class Book {
   /** @param { import("./models/configuration.js").Configuration } configuration */
   constructor(configuration) {
+    /** @type {string | null} */
     this.inputpdf = null; //  string with pdf filepath
-    this.password = null; //  if necessary
 
     this.managedDoc = null; // original PDF with the pages rotated per source_rotation - use THIS for laying out pages
 
     this.signatureconfig = [];
 
+    /** @type {boolean} */
     this.spineoffset = false;
 
     this.input = null; //  opened pdf file
@@ -38,9 +63,11 @@ export class Book {
 
   /** @param { import("./models/configuration.js").Configuration } configuration */
   update(configuration) {
+    /** @type {boolean} */
     this.duplex = configuration.printerType === 'duplex';
     this.duplexrotate = configuration.rotatePage;
     this.paper_rotation_90 = configuration.paperRotation90;
+    /** @type {number[]} */
     this.papersize = PAGE_SIZES[configuration.paperSize];
     if (configuration.paperRotation90) {
       this.papersize = [this.papersize[1], this.papersize[0]];
@@ -80,6 +107,7 @@ export class Book {
 
   /**
    * Populates [this.currentdoc] from user's file system
+   * @param {File} file input file
    */
   async openpdf(file) {
     this.inputpdf = file.name;
@@ -247,23 +275,24 @@ export class Book {
     }
 
     console.log('Created pages for : ', this.book);
-    const dim = this.calculate_dimensions();
+    const dimensions = calculateDimensions(this);
+    const positions = calculateLayout(this);
 
     updatePageLayoutInfo({
-      dimensions: dim,
+      dimensions,
       book: this.book,
       perSheet: this.per_sheet,
       papersize: this.papersize,
       cropbox: this.cropbox,
       managedDoc: this.managedDoc,
-      positions: this.calculatelayout(),
+      positions,
     });
   }
 
   /**
    * Calls the appropriate builder based on [this.format]
    *  to generate PDF & populate Previewer
-   * @param isPreview - if it's true we only generate preview content, if it's not true... we still
+   * @param {boolean} isPreview - if it's true we only generate preview content, if it's not true... we still
    *      generate preview content AND a downloadable zip
    */
   async createoutputfiles(isPreview) {
@@ -274,7 +303,11 @@ export class Book {
     //  create a directory named after the input pdf and fill it with
     //  the signatures
     this.zip = new JSZip();
-    var origFileName = this.inputpdf.replace(/\s|,|\.pdf/, '');
+    var origFileName = this.inputpdf;
+    origFileName = origFileName
+      .replace(/[-\s,_]+/g, '_')
+      .replace(/_*\.pdf/g, '')
+      .toLowerCase();
     this.filename = origFileName;
 
     if (
@@ -287,7 +320,8 @@ export class Book {
       const generateSignatures = this.print_file != 'aggregated';
       const side1PageNumbers = new Set(
         this.rearrangedpages.reduce((accumulator, currentValue) => {
-          return accumulator.concat(currentValue[0]);
+          const pageNums = currentValue[0].map((pageInfo) => pageInfo.info);
+          return accumulator.concat(pageNums);
         }, [])
       );
       const [pdf0PageNumbers, pdf1PageNumbers] =
@@ -315,7 +349,7 @@ export class Book {
             embeddedPages: generateAggregate ? [embeddedPages0, embeddedPages1] : null,
             aggregatePdfs: generateAggregate ? [aggregatePdf0, aggregatePdf1] : null,
             pageIndexDetails: signature,
-            id: generateSignatures ? `signature${i}` : null,
+            id: generateSignatures ? `${this.filename}_signature${i}` : null,
             isDuplex: this.duplex,
             fileList: this.filelist,
           });
@@ -325,17 +359,20 @@ export class Book {
 
       if (aggregatePdf1 != null) {
         await aggregatePdf1.save().then((pdfBytes) => {
-          if (!isPreview) this.zip.file('aggregate_side2.pdf', pdfBytes);
+          if (!isPreview) this.zip.file(`${this.filename}_typeset_side2.pdf`, pdfBytes);
         });
       }
       if (aggregatePdf0 != null) {
         await aggregatePdf0.save().then((pdfBytes) => {
           if (!isPreview)
-            this.zip.file(this.duplex ? 'aggregate_book.pdf' : 'aggregate_side1.pdf', pdfBytes);
+            this.zip.file(
+              this.duplex ? `${this.filename}_typeset.pdf` : `${this.filename}_typeset_side1.pdf`,
+              pdfBytes
+            );
         });
       }
       var rotationMetaInfo =
-        (this.paper_rotation_90 ? '_paperRotated' : '') +
+        (this.paper_rotation_90 ? 'paper_rotated' : '') +
         (this.source_rotation == 'none' ? '' : `_${this.source_rotation}`);
       this.filename = `${origFileName}${rotationMetaInfo}`;
       resultPDF = aggregatePdf0;
@@ -379,11 +416,11 @@ export class Book {
 
   /**
    * Generates a new PDF & embeds the prescribed pages of the source PDF into it
-   *
-   * @param pageNumbers - an array of page numbers. Ex: [1,5,6,7,8,'b',10] or null to embed all pages from source
+   * @param sourcePdf
+   * @param {(string|number)[]} [pageNumbers] - an array of page numbers. Ex: [1,5,6,7,8,'b',10] or null to embed all pages from source
    *          NOTE: re-construction behavior kicks in if there's 'b's in the list
    *
-   * @return [newPdf with pages embedded, embedded page array]
+   * @return {Promise<[PDFDocument, PDFEmbeddedPage[]]>} PDF with pages embedded, embedded page array
    */
   async embedPagesInNewPdf(sourcePdf, pageNumbers) {
     const newPdf = await PDFDocument.create();
@@ -413,13 +450,13 @@ export class Book {
    * Part of the Classic (non-Wacky) flow. Called by [createsignatures].
    *   (conditionally) populates the destPdf and (conditionally) generates the outname PDF
    *
-   * @param config - object /w the following parameters:
-   *      - outname : name of pdf added to ongoing zip file. Ex: 'signature1duplex.pdf' (or null if no signature file needed)
-   *      - pageList : objects that contain 3 values: { isSigStart: boolean, isSigEnd: boolean, info: either the page number or 'b'}
-   *      - back : is 'back' of page  (boolean)
-   *      - alt : alternate pages (boolean)
-   *      - destPdf : PDF to write to, in addition to PDF created w/ `outname` (or null)
-   *      - providedPages : pages already embedded in the `destPdf` to assemble in addition (or null)
+   * @param {Object} config - object /w the following parameters:
+   * @param {string|null} config.outname : name of pdf added to ongoing zip file. Ex: 'signature1duplex.pdf' (or null if no signature file needed)
+   * @param {PageInfo[]} config.pageList : objects that contain 3 values: { isSigStart: boolean, isSigEnd: boolean, info: either the page number or 'b'}
+   * @param {boolean} config.back : is 'back' of page  (boolean)
+   * @param {boolean} config.alt : alternate pages (boolean)
+   * @param config.destPdf : PDF to write to, in addition to PDF created w/ `outname` (or null)
+   * @param config.providedPages : pages already embedded in the `destPdf` to assemble in addition (or null)
    * @return reference to the new PDF created
    */
   async writepages(config) {
@@ -453,9 +490,9 @@ export class Book {
     const offset = this.per_sheet / 2;
     let block_end = offset;
 
-    const alt_folio = this.per_sheet == 4 && back;
+    // const alt_folio = this.per_sheet == 4 && back;
 
-    const positions = this.calculatelayout(alt_folio);
+    const positions = calculateLayout(this);
 
     let side2flag = back;
 
@@ -499,10 +536,27 @@ export class Book {
 
     if (printSignatures) {
       await outPDF.save().then((pdfBytes) => {
-        this.zip.file(config.outname, pdfBytes);
+        this.zip.file(`signatures/${config.outname}`, pdfBytes);
       });
     }
   }
+  /**
+   *
+   * @param {Object} config - object /w the following parameters:
+   * @param {string|null} config.outname : name of pdf added to ongoing zip file. Ex: 'signature1duplex.pdf' (or null if no signature file needed)
+   * @param {PageInfo[]} config.sigDetails : objects that contain 3 values: { isSigStart: boolean, isSigEnd: boolean, info: either the page number or 'b'}
+   * @param {boolean} config.side2flag : is 'back' of page  (boolean)
+   * @param {[number, number]} config.papersize : paper size (as [number, number])
+   * @param {number} config.block_start: Starting page index
+   * @param {number} config.block_end: Ending page index
+   * @param {boolean} config.alt : alternate pages (boolean)
+   * @param {boolean} config.cutmarks: whether to print cutmarks
+   * @param {boolean} config.cropmarks: whether to print cropmarks
+   * @param {boolean} config.pdfEdgeMarks: whether to print PDF edge marks
+   * @param {Position[]} config.positions: list of page positions
+   * @param {PDFDocument} [config.outPDF]: PDF to write to, in addition to PDF created w/ `outname` (or null)
+   * @param {(PDFEmbeddedPage|string)[]} [config.embeddedPages] : pages already embedded in the `destPdf` to assemble in addition (or null)
+   */
 
   draw_block_onto_page(config) {
     const sigDetails = config.sigDetails;
@@ -511,388 +565,61 @@ export class Book {
     const papersize = config.papersize;
     const outPDF = config.outPDF;
     const positions = config.positions;
-    const cropmarks = config.cropmarks;
+    const foldmarks = config.cropmarks;
     const pdfEdgeMarks = config.pdfEdgeMarks;
     const cutmarks = config.cutmarks;
     const alt = config.alt;
     let side2flag = config.side2flag;
 
     const block = config.embeddedPages.slice(block_start, block_end);
-    const currPage = outPDF.addPage([papersize[0], papersize[1]]);
+    const currPage = outPDF.addPage(papersize);
+    const cropLines = cutmarks ? drawCropmarks(papersize, this.per_sheet) : [];
+    const foldLines = foldmarks
+      ? drawFoldlines(side2flag, this.duplexrotate, papersize, this.per_sheet)
+      : [];
+    const drawLines = [...cropLines, ...foldLines];
 
     block.forEach((page, i) => {
       if (page == 'b' || page === undefined) {
         // blank page, move on.
-      } else {
-        const pos = positions[i];
-        const rot = pos.rotation;
+      } else if (page instanceof PDFEmbeddedPage) {
+        const { y, x, sx, sy, rotation } = positions[i];
         currPage.drawPage(page, {
-          y: pos.y,
-          x: pos.x,
-          xScale: pos.sx,
-          yScale: pos.sy,
-          rotate: degrees(rot),
+          y,
+          x,
+          xScale: sx,
+          yScale: sy,
+          rotate: degrees(rotation),
         });
+      } else {
+        console.error('Unexpected type for page: ', page);
+      }
+
+      if (pdfEdgeMarks && (sigDetails[i].isSigStart || sigDetails[i].isSigEnd)) {
+        drawLines.push(drawSpineMarks(sigDetails[i], positions[i]));
       }
     });
-    block.forEach((page, i) => {
-      if (sigDetails[i].isSigStart || sigDetails[i].isSigEnd) {
-        if (pdfEdgeMarks) {
-          this.draw_spine_marks(currPage, sigDetails[i], positions[i]);
-        }
-      }
+
+    drawLines.forEach((line) => {
+      currPage.drawLine(line);
     });
-    if (cropmarks) {
-      this.draw_cropmarks(currPage, side2flag);
-    }
-    if (cutmarks) {
-      this.draw_cutmarks(currPage);
-    }
+
     if (alt) {
       side2flag = !side2flag;
     }
     return side2flag;
   }
 
-  /*
-   * @param curPage - PDFPage
-   * @param sigDetails - object w/ {info (page # or 'b'), isSigStart (boolean), isSigEnd (boolean)}
-   * @param position - object w/ {rotation (degrees), sx, sy, x, y}
-   */
-  draw_spine_marks(curPage, sigDetails, position) {
-    const w = 5;
-    let startX, startY, endX, endY;
-    if (sigDetails.isSigStart) {
-      [startX, startY] = position.spineMarkTop;
-      [endX, endY] = position.spineMarkTop;
-    } else {
-      [startX, startY] = position.spineMarkBottom;
-      [endX, endY] = position.spineMarkBottom;
-    }
-
-    if (position.rotation == 0) {
-      startX -= w / 2;
-      endX += w / 2;
-    } else if (sigDetails.isSigStart) {
-      startY -= w;
-      endY += w;
-    } else {
-      startY -= w / 2;
-      endY += w / 2;
-    }
-
-    const drawLineArgs = {
-      start: { x: startX, y: startY },
-      end: { x: endX, y: endY },
-      thickness: position.rotation == 0 ? 0.5 : 0.25,
-      color: rgb(0, 0, 0),
-      opacity: 1,
-    };
-
-    console.log(' --> draw this: ', drawLineArgs);
-    curPage.drawLine(drawLineArgs);
-  }
-
-  draw_cropmarks(currPage, side2flag) {
-    const lineSettings = {
-      opacity: 0.4,
-      dashArray: [1, 5],
-    };
-    let start, end;
-
-    switch (this.per_sheet) {
-      case 32:
-        if (side2flag) {
-          lineSettings.dashArray = [1, 5];
-          if (this.duplexrotate) {
-            start = { x: this.papersize[0] * 0.75, y: this.papersize[1] * 0.75 };
-            end = { x: this.papersize[0] * 0.75, y: this.papersize[1] * 0.5 };
-          } else {
-            start = { x: this.papersize[0] * 0.25, y: this.papersize[1] * 0.5 };
-            end = { x: this.papersize[0] * 0.25, y: this.papersize[1] * 0.25 };
-          }
-          currPage.drawLine({ start, end, ...lineSettings });
-        }
-      /* falls through */
-      case 16:
-        if (side2flag) {
-          lineSettings.dashArray = [3, 5];
-          if (this.duplexrotate) {
-            start = { x: 0, y: this.papersize[1] * 0.75 };
-            end = { x: this.papersize[0] * 0.5, y: this.papersize[1] * 0.75 };
-          } else {
-            start = { x: this.papersize[0] * 0.5, y: this.papersize[1] * 0.25 };
-            end = { x: this.papersize[0], y: this.papersize[1] * 0.25 };
-          }
-          currPage.drawLine({ start, end, ...lineSettings });
-        }
-      /* falls through */
-      case 8:
-        if (side2flag) {
-          lineSettings.dashArray = [5, 5];
-          if (this.duplexrotate) {
-            start = { x: this.papersize[0] * 0.5, y: 0 };
-            end = { y: this.papersize[1] * 0.5, x: this.papersize[0] * 0.5 };
-          } else {
-            start = { x: this.papersize[0] * 0.5, y: this.papersize[1] };
-            end = { y: this.papersize[1] * 0.5, x: this.papersize[0] * 0.5 };
-          }
-          currPage.drawLine({ start, end, ...lineSettings });
-        }
-      /* falls through */
-      case 4:
-        if (!side2flag) {
-          lineSettings.dashArray = [10, 5];
-          start = { x: 0, y: this.papersize[1] * 0.5 };
-          end = { x: this.papersize[0], y: this.papersize[1] * 0.5 };
-          currPage.drawLine({ start, end, ...lineSettings });
-        }
-        break;
-    }
-  }
-
-  draw_cutmarks(currPage) {
-    let lines = [];
-    switch (this.per_sheet) {
-      case 32:
-        lines = [
-          ...lines,
-          ...this.draw_hline(this.papersize[1] * 0.75, 0, this.papersize[0]),
-          ...this.draw_hline(this.papersize[1] * 0.25, 0, this.papersize[0]),
-          ...this.draw_cross(this.papersize[0] * 0.5, this.papersize[1] * 0.75),
-          ...this.draw_cross(this.papersize[0] * 0.5, this.papersize[1] * 0.25),
-        ];
-      /* falls through */
-      case 16:
-        lines = [
-          ...lines,
-          ...this.draw_vline(this.papersize[0] * 0.5, 0, this.papersize[1]),
-          ...this.draw_cross(this.papersize[0] * 0.5, this.papersize[1] * 0.5),
-        ];
-      /* falls through */
-      case 8:
-        lines = [...lines, ...this.draw_hline(this.papersize[1] * 0.5, 0, this.papersize[0])];
-      /* falls through */
-      case 4:
-    }
-
-    lines.forEach((line) => {
-      currPage.drawLine({ ...line, opacity: 0.4 });
-    });
-  }
-
-  draw_vline(x, ystart, yend) {
-    return [
-      { start: { x: x, y: ystart }, end: { x: x, y: ystart + LINE_LEN } },
-      { start: { x: x, y: yend - LINE_LEN }, end: { x: x, y: yend } },
-    ];
-  }
-
-  draw_hline(y, xstart, xend) {
-    return [
-      { start: { x: xstart, y: y }, end: { x: xstart + LINE_LEN, y: y } },
-      { start: { x: xend - LINE_LEN, y: y }, end: { x: xend, y: y } },
-    ];
-  }
-
-  draw_cross(x, y) {
-    return [
-      { start: { x: x - LINE_LEN, y: y }, end: { x: x + LINE_LEN, y: y } },
-      { start: { x: x, y: y - LINE_LEN }, end: { x: x, y: y + LINE_LEN } },
-    ];
-  }
-
-  /**
-   * Looks at [this.cropbox] and [this.padding_pt] and [this.papersize] and [this.page_layout] and [this.page_scaling]
-   * in order to calculate the information needed to render a PDF page within a layout cell. It provides several functions
-   * in the return object that calculate the positioning and scaling needed when provided the rotation information.
-   *
-   * When calculating 'x' and 'y' values, those are relative to a laid out PDF page, not necessarily paper sheet x & y
-   *
-   * @return the object: {
-   *      layoutCell: 2 dimensional array of the largest possible space the PDF page could take within the layout (and not overflow)
-   *      rawPdfSize: 2 dimensional array of dimensions for the PDF (pre scaled)
-   *      pdfSize: 2 dimensional array of dimensions for the PDF page + margins (pre scaled)
-   *      pdfScale: 2 dimensional array of scaling factors for the raw PDF so it fits in layoutCell (w/ margins)
-   *      padding: object containing the already scaled padding. Keys are: fore_edge, binding, top, bottom
-   *      xForeEdgeShiftFunc: requires the page rotation, in degrees. In pts, already scaled.
-   *      xBindingShiftFunc: requires the page rotation, in degrees. In pts, already scaled.
-   *      xPdfWidthFunc:  requires the page rotation, in degrees. In pts, already scaled.
-   *      yPdfHeightFunc: requires the page rotation, in degrees. In pts, already scaled.
-   *      yTopShiftFunc:  requires the page rotation, in degrees. In pts, already scaled.
-   *      yBottomShiftFunc:  requires the page rotation, in degrees. In pts, already scaled.
-   * }
-   */
-  calculate_dimensions() {
-    const onlyPos = function (v) {
-      return v > 0 ? v : 0;
-    };
-    // const onlyNeg = function (v) {
-    //   return v < 0 ? v : 0;
-    // };
-    // PDF + margins (positive)
-    const pagex =
-      this.cropbox.width + onlyPos(this.padding_pt.binding) + onlyPos(this.padding_pt.fore_edge);
-    const pagey =
-      this.cropbox.height + onlyPos(this.padding_pt.top) + onlyPos(this.padding_pt.bottom);
-
-    const layout = this.page_layout;
-
-    // Calculate the size of each page box on the sheet
-    let finalx = this.papersize[0] / layout.cols;
-    let finaly = this.papersize[1] / layout.rows;
-
-    // if pages are rotated a quarter-turn in this layout, we need to swap the width and height measurements
-    if (layout.landscape) {
-      const temp = finalx;
-      finalx = finaly;
-      finaly = temp;
-    }
-
-    let sx = 1;
-    let sy = 1;
-
-    // The page_scaling options are: 'lockratio', 'stretch', 'centered'
-    if (this.page_scaling == 'lockratio') {
-      const scale = Math.min(finalx / pagex, finaly / pagey);
-      sx = scale;
-      sy = scale;
-    } else if (this.page_scaling == 'stretch') {
-      sx = finalx / pagex;
-      sy = finaly / pagey;
-    } // else = centered retains 1 x 1
-
-    const padding = {
-      fore_edge: this.padding_pt.fore_edge * sx,
-      binding: this.padding_pt.binding * sx,
-      bottom: this.padding_pt.bottom * sy,
-      top: this.padding_pt.top * sy,
-    };
-
-    // page_positioning has 2 options: centered, binding_alinged
-    const positioning = this.page_positioning;
-
-    const xForeEdgeShiftFunc = function () {
-      // amount to inset by, relative to fore edge, on left side of book
-      const xgap = finalx - pagex * sx;
-      return padding.fore_edge + (positioning == 'centered' ? xgap / 2 : xgap);
-    };
-    const xBindingShiftFunc = function () {
-      // amount to inset by, relative to binding, on right side of book
-      const xgap = finalx - pagex * sx;
-      return padding.binding + (positioning == 'centered' ? xgap / 2 : 0);
-    };
-    const yTopShiftFunc = function () {
-      const ygap = finaly - pagey * sy;
-      return padding.top + ygap / 2;
-    };
-    const yBottomShiftFunc = function () {
-      const ygap = finaly - pagey * sy;
-      return padding.bottom + ygap / 2;
-    };
-    const xPdfWidthFunc = function () {
-      return pagex * sx - padding.fore_edge - padding.binding;
-    };
-    const yPdfHeightFunc = function () {
-      return pagey * sy - padding.top - padding.bottom;
-    };
-    return {
-      layout: layout,
-      rawPdfSize: [this.cropbox.width, this.cropbox.height],
-      pdfScale: [sx, sy],
-      pdfSize: [pagex, pagey],
-      layoutCell: [finalx, finaly],
-      padding: padding,
-
-      xForeEdgeShiftFunc: xForeEdgeShiftFunc,
-      xBindingShiftFunc: xBindingShiftFunc,
-      xPdfWidthFunc: xPdfWidthFunc,
-      yPdfHeightFunc: yPdfHeightFunc,
-      yTopShiftFunc: yTopShiftFunc,
-      yBottomShiftFunc: yBottomShiftFunc,
-
-      positioning: positioning,
-    };
-  }
-
-  /**
-   * When considering page size, don't forget to take into account
-   *  this.padding_pt's ['top','bottom','binding','fore_edge'] values
-   *
-   * @return an array of objects in the form {rotation: col, sx: sx, sy: sy, x: x, y: y}
-   */
-  calculatelayout() {
-    // vampire
-    const l = this.calculate_dimensions();
-    const cellWidth = l.layoutCell[0];
-    const cellHeight = l.layoutCell[1];
-    const positions = [];
-
-    l.layout.rotations.forEach((row, i) => {
-      row.forEach((col, j) => {
-        const xForeEdgeShift = l.xForeEdgeShiftFunc();
-        const xBindingShift = l.xBindingShiftFunc();
-        const yTopShift = l.yTopShiftFunc();
-        const yBottomShift = l.yBottomShiftFunc();
-
-        let isLeftPage = j % 2 == 0; //page on 'left' side of open book
-        let x = j * cellWidth + (isLeftPage ? xForeEdgeShift : xBindingShift);
-        let y = i * cellHeight + yBottomShift;
-        let spineMarkTop = [j * cellWidth, (i + 1) * cellHeight - yTopShift];
-        let spineMarkBottom = [(j + 1) * cellWidth, i * cellHeight + yBottomShift];
-
-        if (col == -180) {
-          // upside-down page
-          isLeftPage = j % 2 == 1; //page on 'left' (right side on screen)
-          y = (i + 1) * cellHeight - yBottomShift;
-          x = (j + 1) * cellWidth - (isLeftPage ? xForeEdgeShift : xBindingShift);
-          spineMarkTop = [(j + 1) * cellWidth, (i + 1) * cellHeight];
-          spineMarkBottom = [(j + 1) * cellWidth, i * cellHeight];
-        } else if (col == 90) {
-          // 'top' of page is on left, right side of screen
-          isLeftPage = i % 2 == 0; // page is on 'left' (top side of screen)
-          x = (1 + j) * cellHeight - yBottomShift;
-          y = i * cellWidth + (isLeftPage ? xBindingShift : xForeEdgeShift);
-          spineMarkTop = [(1 + j) * cellHeight, i * cellWidth];
-          spineMarkBottom = [j * cellHeight, i * cellWidth];
-        } else if (col == -90) {
-          // 'top' of page is on the right, left sight of screen
-          isLeftPage = i % 2 == 1; // page is on 'left' (bottom side of screen)
-          x = j * cellHeight + yBottomShift;
-          y = (1 + i) * cellWidth - (isLeftPage ? xForeEdgeShift : xBindingShift);
-          spineMarkTop = [(j + 1) * cellHeight - yTopShift, (isLeftPage ? i : i + 1) * cellWidth];
-          spineMarkBottom = [j * cellHeight + yBottomShift, (isLeftPage ? i : i + 1) * cellWidth];
-        }
-
-        console.log(
-          `>> (${i},${j})[${col}] : [${x},${y}] :: [xForeEdgeShift: ${xForeEdgeShift}][xBindingShift: ${xBindingShift}]`
-        );
-        positions.push({
-          rotation: col,
-          sx: l.pdfScale[0],
-          sy: l.pdfScale[1],
-          x: x,
-          y: y,
-          spineMarkTop: spineMarkTop,
-          spineMarkBottom: spineMarkBottom,
-          isLeftPage: isLeftPage,
-        });
-      });
-    });
-    console.log('And in the end of it all, (calculatelayout) we get: ', positions);
-    return positions;
-  }
-
   /**
    * PDF builder base function for Classic (non-Wacky) layouts. Called by [createoutputfiles]
    *
-   * @param config - object w/ the following parameters:
-   *    - pageIndexDetails : a nested list of objects. Each object: {info: page # or 'b', isSigStart: boolean, isSigEnd: boolean} ( [0] for duplex & front, [1] for backs -- value is null if no aggregate printing enabled). Ex: [[{info: 3, isSigStart: true, isSigend: false},{info: 4, isSigStart: false, isSigend: true}]]
-   *    - aggregatePdfs : list of destination PDF(s_ for aggregated content ( [0] for duplex & front, [1] for backs -- value is null if no aggregate printing enabled)
-   *    - embeddedPages : list of lists of embedded pages from source document ( [0] for duplex & front, [1] for backs -- value is null if no aggregate printing enabled)
-   *    - id : string dentifier for signature file name (null if no signature files to be generated)
-   *    - isDuplex : boolean
-   *    - fileList : list of filenames for sig filename to be added to (modifies list)
+   * @param {Object} config
+   * @param {PageInfo[][]|PageInfo[]} config.pageIndexDetails : a nested list of objects.
+   * @param config.aggregatePdfs : list of destination PDF(s_ for aggregated content ( [0] for duplex & front, [1] for backs -- value is null if no aggregate printing enabled)
+   * @param config.embeddedPages : list of lists of embedded pages from source document ( [0] for duplex & front, [1] for backs -- value is null if no aggregate printing enabled)
+   * @param {string} config.id : string dentifier for signature file name (null if no signature files to be generated)
+   * @param {boolean} config.isDuplex : boolean
+   * @param {string[]} config.fileList : list of filenames for sig filename to be added to (modifies list)
    */
   async createsignatures(config) {
     const printAggregate = config.aggregatePdfs != null;
@@ -900,7 +627,7 @@ export class Book {
     const pages = config.pageIndexDetails;
     //      duplex printers print both sides of the sheet,
     if (config.isDuplex) {
-      const outduplex = printSignatures ? `${config.id}duplex.pdf` : null;
+      const outduplex = printSignatures ? `${config.id}_duplex.pdf` : null;
       await this.writepages({
         outname: outduplex,
         pageList: pages[0],
@@ -915,8 +642,8 @@ export class Book {
     } else {
       //      for non-duplex printers we have two files, print the first, flip
       //      the sheets over, then print the second
-      const outname1 = printSignatures ? `${config.id}side1.pdf` : null;
-      const outname2 = printSignatures ? `${config.id}side2.pdf` : null;
+      const outname1 = printSignatures ? `${config.id}_side1.pdf` : null;
+      const outname2 = printSignatures ? `${config.id}_side2.pdf` : null;
 
       await this.writepages({
         outname: outname1,
@@ -956,23 +683,36 @@ export class Book {
     this.bundleSettings();
     return this.zip.generateAsync({ type: 'blob' }).then((blob) => {
       console.log('  calling saveAs on ', this.filename);
-      saveAs(blob, `${this.filename}.zip`);
+      saveAs(blob, `${this.filename}_bookbinder.zip`);
     });
   }
 
   /**
-   * @param id - base for the final PDF name
-   * @param builder - object to help construct this configuration. Object definition: {
-   *      sheetMaker: function that takes the page count as a param and returns an array of sheets. A sheet is {
-   *            num: page number from original doc,
-   *            isBlank: true renders it blank-- will override any `num` included,
-   *            vFlip: true if rendered upside down (180 rotation)
-   *       },
-   *      lineMaker: function that makes a function that generates trim lines for the PDF,
-   *      isLandscape: true if we need to have largest dimension be width,
-   *      fileNameMod: string to affix to exported file name (contains no buffer begin/end characters)
-   *      isPacked: boolean - true if white spaces goes on the outside, false if white space goes everywhere (non-binding edge)
-   * }
+   * @typedef Sheet
+   * @type {object}
+   * @property {string} num - page number from original doc
+   * @property {boolean} isBlank - true renders it blank-- will override any `num` included,
+   * @property {boolean} vFlip - true if rendered upside down (180 rotation)
+   */
+
+  /**
+   * @callback LineMaker
+   */
+
+  /**
+   * @callback SheetMaker
+   * @param {number} pageCount
+   * @returns {Sheet[]}
+   */
+
+  /**
+   * @param {string} id - base for the final PDF name
+   * @param {Object} builder
+   * @param {SheetMaker} builder.sheetMaker: function that takes the page count as a param and returns an array of sheets
+   * @param {LineMaker} builder.lineMaker: function that makes a function that generates trim lines for the PDF
+   * @param {boolean} builder.isLandscape: true if we need to have largest dimension be width
+   * @param {string} builder.fileNameMod: string to affix to exported file name (contains no buffer begin/end characters)
+   * @param {boolean} builder.isPacked: boolean - true if white spaces goes on the outside, false if white space goes everywhere (non-binding edge)
    */
   async buildSheets(id, builder) {
     const sheets = builder.sheetMaker(this.pagecount);
@@ -1024,15 +764,11 @@ export class Book {
    * The width of each rendered page is `papersize[0] / pagelist[x].length`.
    *
    * @param outPDF - the PDFDocument document we're appending a page to
-   * @param isLandscape - true if we need to have largest dimension be width
-   * @param isFront - true if front of page
-   * @param isFirst - true if this is the first (front/back) pair of sheets
-   * @param pagelist - a 2 dimensional array. Outer array is rows, nested array page objects. Object definition: {
-   *      num: page number from original doc,
-   *      isBlank: true renders it blank-- will override any `num` included,
-   *      vFlip: true if rendered upside down (180 rotation)
-   * }
-   * @param lineMaker - a function called to generate list of lines as described by PDF-lib.js's `PDFPageDrawLineOptions` object.
+   * @param {boolean} isLandscape - true if we need to have largest dimension be width
+   * @param {boolean} isFront - true if front of page
+   * @param {boolean} isFirst - true if this is the first (front/back) pair of sheets
+   * @param {Sheet[][]} pagelist - a 2 dimensional array. Outer array is rows, nested array page objects.
+   * @param {LineMaker} lineMaker - a function called to generate list of lines as described by PDF-lib.js's `PDFPageDrawLineOptions` object.
    *      Function takes as parameters:
    * @return
    */

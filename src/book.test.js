@@ -9,7 +9,6 @@ describe('Book model', () => {
   // TODO confirm that this is what a newly created book (that is, without any settings changed) should look like; I've copied the result from how it currently works assuming it's working as-intended
   const defaultBook = {
     inputpdf: null,
-    password: null,
     duplex: true,
     duplexrotate: false,
     papersize: [595, 842],

@@ -6,6 +6,13 @@ import { BOOKLET_LAYOUTS } from './constants';
 
 export class Signatures {
   // Takes a list of pagenumbers, splits them evenly, then rearranges the pages in each chunk.
+  /**
+   * Create a signature.
+   * @param {number[]} pages - List of pages in a book.
+   * @param {boolean} duplex - Whether both front and back sides go in the same file or not.
+   * @param {number} per_sheet - number of pages per sheet (front and back combined)
+   * @param {boolean} duplexrotate - whether to rotate alternating sheets or not.
+   */
 
   constructor(pages, duplex, sigsize, per_sheet, duplexrotate) {
     this.sigsize = sigsize;
@@ -110,7 +117,13 @@ export class Signatures {
 
     return result;
   }
-
+  /**
+   * Create a perfectbound book.
+   * @param {number[]} pages - List of pages in a book.
+   * @param {boolean} duplex - Whether both front and back sides go in the same file or not.
+   * @param {number} per_sheet - number of pages per sheet (front and back combined)
+   * @param {boolean} duplexrotate - whether to rotate alternating sheets or not.
+   */
   booklet(pages, duplex, per_sheet, duplexrotate) {
     const pagelistdetails = duplex ? [[]] : [[], []];
     const { front, rotate, back } = BOOKLET_LAYOUTS[per_sheet];
