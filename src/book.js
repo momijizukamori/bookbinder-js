@@ -298,7 +298,7 @@ export class Book {
   async createoutputfiles(isPreview) {
     const previewFrame = document.getElementById('pdf');
     previewFrame.style.display = 'none';
-    let resultPDF = null;
+    let previewPdf = null;
 
     //  create a directory named after the input pdf and fill it with
     //  the signatures
@@ -316,124 +316,126 @@ export class Book {
       this.format == 'standardsig' ||
       this.format == 'customsig'
     ) {
-      const generateAggregate = this.print_file != 'signatures';
-      const generateSignatures = this.print_file != 'aggregated';
-      const side1PageNumbers = new Set(
-        this.rearrangedpages.reduce((accumulator, currentValue) => {
-          const pageNums = currentValue[0].map((pageInfo) => pageInfo.info);
-          return accumulator.concat(pageNums);
-        }, [])
-      );
-      const [pdf0PageNumbers, pdf1PageNumbers] =
-        !generateAggregate || this.duplex
-          ? [null, null]
-          : [
-              Array.from(Array(this.managedDoc.getPageCount()).keys()).map((p) => {
-                return side1PageNumbers.has(p) ? p : 'b';
-              }),
-              Array.from(Array(this.managedDoc.getPageCount()).keys()).map((p) => {
-                return !side1PageNumbers.has(p) ? p : 'b';
-              }),
-            ];
-      const [aggregatePdf0, embeddedPages0] = generateAggregate
-        ? await this.embedPagesInNewPdf(this.managedDoc, pdf0PageNumbers)
-        : [null, null];
-      const [aggregatePdf1, embeddedPages1] =
-        generateAggregate && !this.duplex
-          ? await this.embedPagesInNewPdf(this.managedDoc, pdf1PageNumbers)
-          : [null, null];
-      const forLoop = async () => {
-        for (let i = 0; i < this.rearrangedpages.length; i++) {
-          const signature = this.rearrangedpages[i];
-          console.log(signature);
-          const sigName = `${this.filename}_signature${i}`;
-          const [sigFront, sigBack] = await this.createSignatures({
-            pageIndexDetails: signature,
-            id: generateSignatures ? `${this.filename}_signature${i}` : null,
-            isDuplex: this.duplex,
-            fileList: this.filelist,
+      // Only generate the first signature for preview
+      const pagesArr = isPreview ? this.rearrangedpages.slice(0, 1) : this.rearrangedpages;
+      const signatures = [{}];
+      const makeSignatures = async () => {
+        const tasks = pagesArr.map(async (pages, i) => {
+          console.log(pages);
+          signatures[i] = { name: `${this.filename}_signature${i}` };
+          [signatures[i].front, signatures[i].back] = await this.createSignatures({
+            pageIndexDetails: pages,
           });
+        });
+        await Promise.all(tasks);
+      };
+      await makeSignatures();
 
-          if (this.duplex) {
-            // collate
-            const sig = await interleavePages(sigFront, sigBack);
+      // always duplex for preview
+      if (this.duplex || isPreview) {
+        const duplexSignatures = async () => {
+          const tasks = signatures.map(async (sig, i) => {
+            signatures[i].duplex = await interleavePages(sig.front, sig.back);
+            signatures[i].back = signatures[i].front = null;
+          });
+          await Promise.all(tasks);
+        };
+        await duplexSignatures();
+        previewPdf = signatures[0].duplex;
+      }
 
-            if (generateSignatures) {
-              await sig.save().then((pdfBytes) => {
-                this.zip.file(`signatures/${sigName}_duplex`, pdfBytes);
-              });
-            }
+      if (this.print_file != 'aggregated' && !isPreview) {
+        const saveSignatures = async () => {
+          const tasks = signatures.map(async (sig) => {
+            await sig.front?.save().then((pdfBytes) => {
+              this.zip.file(`signatures/${sig.name}_side1.pdf`, pdfBytes);
+            });
+            await sig.back?.save().then((pdfBytes) => {
+              this.zip.file(`signatures/${sig.name}_side2.pdf`, pdfBytes);
+            });
+            await sig.duplex?.save().then((pdfBytes) => {
+              this.zip.file(`signatures/${sig.name}_duplex.pdf`, pdfBytes);
+            });
+          });
+          await Promise.all(tasks);
+        };
+        await saveSignatures();
+      }
 
-            if (generateAggregate) {
-              const copiedPages = await aggregatePdf0.copyPages(sig, sig.getPageIndices());
-              copiedPages.forEach((page) => aggregatePdf0.addPage(page));
-            }
-          } else {
-            if (generateSignatures) {
-              await sigFront.save().then((pdfBytes) => {
-                this.zip.file(`signatures/${sigName}_side1`, pdfBytes);
-              });
-              await sigBack.save().then((pdfBytes) => {
-                this.zip.file(`signatures/${sigName}_side2`, pdfBytes);
-              });
-            }
-
-            if (generateAggregate) {
-              const copiedPagesFront = await aggregatePdf0.copyPages(
-                sigFront,
-                sigFront.getPageIndices()
+      if (this.print_file != 'signatures' && !isPreview) {
+        const saveAggregate = async () => {
+          const aggregate = {
+            front: !this.duplex ? await PDFDocument.create() : null,
+            back: !this.duplex ? await PDFDocument.create() : null,
+            duplex: this.duplex ? await PDFDocument.create() : null,
+          };
+          for (const sig of signatures) {
+            // Adding pages to aggregate PDFs has to be done in order, not with promises
+            if (aggregate.front) {
+              const copiedPages = await aggregate.front.copyPages(
+                sig.front,
+                sig.front.getPageIndices()
               );
-              copiedPagesFront.forEach((page) => aggregatePdf0.addPage(page));
-
-              const copiedPagesBack = await aggregatePdf1.copyPages(
-                sigBack,
-                sigBack.getPageIndices()
+              copiedPages.forEach((page) => aggregate.front.addPage(page));
+            }
+            if (aggregate.back) {
+              const copiedPages = await aggregate.back.copyPages(
+                sig.back,
+                sig.back.getPageIndices()
               );
-              copiedPagesBack.forEach((page) => aggregatePdf1.addPage(page));
+              copiedPages.forEach((page) => aggregate.back.addPage(page));
+            }
+            if (aggregate.duplex) {
+              const copiedPages = await aggregate.duplex.copyPages(
+                sig.duplex,
+                sig.duplex.getPageIndices()
+              );
+              copiedPages.forEach((page) => aggregate.duplex.addPage(page));
             }
           }
-        }
-      };
-      await forLoop();
+          if (aggregate.front) {
+            await aggregate.front.save().then((pdfBytes) => {
+              this.zip.file(`${this.filename}_typeset_side1.pdf`, pdfBytes);
+            });
+          }
+          if (aggregate.back) {
+            await aggregate.back.save().then((pdfBytes) => {
+              this.zip.file(`${this.filename}_typeset_side2.pdf`, pdfBytes);
+            });
+          }
+          if (aggregate.duplex) {
+            await aggregate.duplex.save().then((pdfBytes) => {
+              this.zip.file(`${this.filename}_typeset.pdf`, pdfBytes);
+            });
+          }
+        };
+        await saveAggregate();
+      }
 
-      if (aggregatePdf1 != null) {
-        await aggregatePdf1.save().then((pdfBytes) => {
-          if (!isPreview) this.zip.file(`${this.filename}_typeset_side2.pdf`, pdfBytes);
-        });
-      }
-      if (aggregatePdf0 != null) {
-        await aggregatePdf0.save().then((pdfBytes) => {
-          if (!isPreview)
-            this.zip.file(
-              this.duplex ? `${this.filename}_typeset.pdf` : `${this.filename}_typeset_side1.pdf`,
-              pdfBytes
-            );
-        });
-      }
       var rotationMetaInfo =
         (this.paper_rotation_90 ? 'paper_rotated' : '') +
         (this.source_rotation == 'none' ? '' : `_${this.source_rotation}`);
       this.filename = `${origFileName}${rotationMetaInfo}`;
     } else if (this.format == 'a9_3_3_4') {
-      resultPDF = await this.buildSheets(this.filename, this.book.a9_3_3_4_builder());
+      previewPdf = await this.buildSheets(this.filename, this.book.a9_3_3_4_builder());
     } else if (this.format == 'a10_6_10s') {
-      resultPDF = await this.buildSheets(this.filename, this.book.a10_6_10s_builder());
+      previewPdf = await this.buildSheets(this.filename, this.book.a10_6_10s_builder());
     } else if (this.format == 'a_4_8s') {
-      resultPDF = await this.buildSheets(this.filename, this.book.a_4_8s_builder());
+      previewPdf = await this.buildSheets(this.filename, this.book.a_4_8s_builder());
     } else if (this.format == 'a_3_6s') {
-      resultPDF = await this.buildSheets(this.filename, this.book.a_3_6s_builder());
+      previewPdf = await this.buildSheets(this.filename, this.book.a_3_6s_builder());
     } else if (this.format == 'A7_2_16s') {
-      resultPDF = await this.buildSheets(this.filename, this.book.a7_2_16s_builder());
+      previewPdf = await this.buildSheets(this.filename, this.book.a7_2_16s_builder());
     } else if (this.format == '1_3rd') {
-      resultPDF = await this.buildSheets(this.filename, this.book.page_1_3rd_builder());
+      previewPdf = await this.buildSheets(this.filename, this.book.page_1_3rd_builder());
     } else if (this.format == '8_zine') {
-      resultPDF = await this.buildSheets(this.filename, this.book.page_8_zine_builder());
+      previewPdf = await this.buildSheets(this.filename, this.book.page_8_zine_builder());
     }
-    console.log('Attempting to generate preview for ', resultPDF);
+    console.log('Attempting to generate preview for ', previewPdf);
 
-    if (resultPDF != null) {
-      const pdfDataUri = await resultPDF.saveAsBase64({ dataUri: true });
-      const viewerPrefs = resultPDF.catalog.getOrCreateViewerPreferences();
+    if (previewPdf != null) {
+      const pdfDataUri = await previewPdf.saveAsBase64({ dataUri: true });
+      const viewerPrefs = previewPdf.catalog.getOrCreateViewerPreferences();
       viewerPrefs.setHideToolbar(false);
       viewerPrefs.setHideMenubar(false);
       viewerPrefs.setHideWindowUI(false);
@@ -508,11 +510,7 @@ export class Book {
       block_end += offset;
     }
 
-    if (printSignatures) {
-      await outPDF.save().then((pdfBytes) => {
-        this.zip.file(`signatures/${config.outname}`, pdfBytes);
-      });
-    }
+    return outPDF;
   }
   /**
    *
@@ -588,42 +586,25 @@ export class Book {
    * PDF builder base function for Classic (non-Wacky) layouts. Called by [createoutputfiles]
    *
    * @param {Object} config
-   * @param {PageInfo[][]|PageInfo[]} config.pageIndexDetails : a nested list of objects.
-   * @param config.embeddedPages : list of lists of embedded pages from source document ( [0] for duplex & front, [1] for backs -- value is null if no aggregate printing enabled)
-   * @param {string} config.id : string dentifier for signature file name (null if no signature files to be generated)
-   * @param {boolean} config.isDuplex : boolean
-   * @param {string[]} config.fileList : list of filenames for sig filename to be added to (modifies list)
+   * @param {PageInfo[][]} config.pageIndexDetails : a nested list of objects.
    */
   async createSignatures(config) {
     const pages = config.pageIndexDetails;
-    //      duplex printers print both sides of the sheet,
-    if (config.isDuplex) {
-      const outduplex = printSignatures ? `${config.id}_duplex.pdf` : null;
-      await this.writepages({
-        outname: outduplex,
-        pageList: pages[0],
-        back: false,
-        alt: true,
-      });
-      config.fileList[config.index] = outduplex;
-    } else {
-      //      for non-duplex printers we have two files, print the first, flip
-      //      the sheets over, then print the second
-      const outname1 = printSignatures ? `${config.id}_side1.pdf` : null;
-      const outname2 = printSignatures ? `${config.id}_side2.pdf` : null;
-
-      await this.writepages({
-        outname: outname1,
+    const tasks = [
+      this.writepages({
         pageList: pages[0],
         back: false,
         alt: false,
-      });
-      const pdfBack = await this.writepages({
+      }),
+      this.writepages({
         pageList: pages[1],
         back: true,
         alt: false,
-      });
-      return [pdfFront, pdfBack];
+      }),
+    ];
+    const [pdfFront, pdfBack] = await Promise.all(tasks);
+
+    return [pdfFront, pdfBack];
   }
 
   bundleSettings() {

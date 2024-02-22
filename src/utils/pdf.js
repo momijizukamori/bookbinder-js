@@ -11,14 +11,21 @@ import { PDFDocument } from 'pdf-lib';
 export async function interleavePages(pdfA, pdfB) {
   const mergedPdf = await PDFDocument.create();
   const pageCount = Math.max(pdfA.getPageCount(), pdfB.getPageCount());
-  for (let i = 0; i < pageCount; i++) {
-    const pageA = pdfA.getPage(i);
-    if (pageA) mergedPdf.addPage((await mergedPdf.copyPages(pdfA, [i]))[0]);
+  const promises = [];
 
-    const pageB = pdfB.getPage(i);
+  for (let i = 0; i < pageCount; i++) {
+    const pageAPromise = pdfA.getPage(i);
+    const pageBPromise = pdfB.getPage(i);
+
+    promises.push(pageAPromise, pageBPromise);
+
+    const [pageA, pageB] = await Promise.all([pageAPromise, pageBPromise]);
+
+    if (pageA) mergedPdf.addPage((await mergedPdf.copyPages(pdfA, [i]))[0]);
     if (pageB) mergedPdf.addPage((await mergedPdf.copyPages(pdfB, [i]))[0]);
   }
 
+  await Promise.all(promises); // Wait for all page retrieval promises to resolve
   return mergedPdf;
 }
 
