@@ -9,7 +9,6 @@ import { Signatures } from './signatures';
 describe('Signatures model', () => {
   it('returns a new Signatures instance', () => {
     const testPages = [];
-    const testDuplex = false;
     const testSigSize = 4;
     const testPerSheet = 8;
     const testDuplexRotate = true;
@@ -24,13 +23,7 @@ describe('Signatures model', () => {
       sigconfig: [],
       signaturepagelists: [],
     };
-    const actual = new Signatures(
-      testPages,
-      testDuplex,
-      testSigSize,
-      testPerSheet,
-      testDuplexRotate
-    );
+    const actual = new Signatures(testPages, testSigSize, testPerSheet, testDuplexRotate);
     expect(actual).toEqual(expected);
   });
   // TODO add tests with actual pages

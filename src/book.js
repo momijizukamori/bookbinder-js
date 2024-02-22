@@ -12,6 +12,7 @@ import JSZip from 'jszip';
 import { loadConfiguration } from './utils/formUtils.js';
 import { drawFoldlines, drawCropmarks, drawSpineMarks } from './utils/drawing.js';
 import { calculateDimensions, calculateLayout } from './utils/layout.js';
+import { interleavePages, embedPagesInNewPdf } from './utils/pdf.js';
 
 // Some JSDoc typedefs we use multiple places
 /**
@@ -182,7 +183,7 @@ export class Book {
   async createpages() {
     this.createpagelist();
     let pages;
-    [this.managedDoc, pages] = await this.embedPagesInNewPdf(this.currentdoc);
+    [this.managedDoc, pages] = await embedPagesInNewPdf(this.currentdoc);
 
     for (var i = 0; i < pages.length; ++i) {
       var page = pages[i];
@@ -355,7 +356,7 @@ export class Book {
 
           if (this.duplex) {
             // collate
-            const sig = await this.collatePages(sigFront, sigBack);
+            const sig = await interleavePages(sigFront, sigBack);
 
             if (generateSignatures) {
               await sig.save().then((pdfBytes) => {
@@ -452,51 +453,6 @@ export class Book {
   }
 
   /**
-   * Generates a new PDF & embeds the prescribed pages of the source PDF into it
-   * @param sourcePdf
-   * @param {(string|number)[]} [pageNumbers] - an array of page numbers. Ex: [1,5,6,7,8,'b',10] or null to embed all pages from source
-   *          NOTE: re-construction behavior kicks in if there's 'b's in the list
-   *
-   * @return {Promise<[PDFDocument, PDFEmbeddedPage[]]>} PDF with pages embedded, embedded page array
-   */
-  async embedPagesInNewPdf(sourcePdf, pageNumbers) {
-    const newPdf = await PDFDocument.create();
-    const needsReSorting = pageNumbers != null && pageNumbers.includes('b');
-    if (pageNumbers == null) {
-      pageNumbers = Array.from(Array(sourcePdf.getPageCount()).keys());
-    } else {
-      pageNumbers = pageNumbers.filter((p) => {
-        return typeof p === 'number';
-      });
-    }
-    let embeddedPages = await newPdf.embedPdf(sourcePdf, pageNumbers);
-    // what a gnarly little hack. Letting this sit for now --
-    //   --- downstream code requires embeds to be in their 'correct' index possition
-    //    but we want to only embed half the pages for the aggregate single sides
-    //    thus we expand the embedded pages to allow those gaps to return. This is gross & dumb but whatever...
-    if (needsReSorting) {
-      embeddedPages = embeddedPages.reduce((acc, curVal, curI) => {
-        acc[pageNumbers[curI]] = curVal;
-        return acc;
-      }, []);
-    }
-    return [newPdf, embeddedPages];
-  }
-
-  async collatePages(pdfA, pdfB) {
-    const mergedPdf = await PDFDocument.create();
-    const pageCount = Math.max(pdfA.getPageCount(), pdfB.getPageCount());
-    for (let i = 0; i < pageCount; i++) {
-      const pageA = pdfA.getPage(i);
-      if (pageA) mergedPdf.addPage((await mergedPdf.copyPages(pdfA, [i]))[0]);
-
-      const pageB = pdfB.getPage(i);
-      if (pageB) mergedPdf.addPage((await mergedPdf.copyPages(pdfB, [i]))[0]);
-    }
-
-    return mergedPdf;
-  }
-  /**
    * Part of the Classic (non-Wacky) flow. Called by [createsignatures].
    *   (conditionally) populates the destPdf and (conditionally) generates the outname PDF
    *
@@ -518,7 +474,7 @@ export class Book {
         blankIndices.push(i);
       }
     });
-    const [outPDF, embeddedPages] = await this.embedPagesInNewPdf(this.managedDoc, filteredList);
+    const [outPDF, embeddedPages] = await embedPagesInNewPdf(this.managedDoc, filteredList);
 
     blankIndices.forEach((i) => embeddedPages.splice(i, 0, 'b'));
 
