@@ -297,7 +297,6 @@ export class Book {
    */
   async createoutputfiles(isPreview) {
     const previewFrame = document.getElementById('pdf');
-    previewFrame.style.display = 'none';
     let previewPdf = null;
 
     //  create a directory named after the input pdf and fill it with
@@ -372,25 +371,25 @@ export class Book {
           for (const sig of signatures) {
             // Adding pages to aggregate PDFs has to be done in order, not with promises
             if (aggregate.front) {
-              const copiedPages = await aggregate.front.copyPages(
+              const copiedPages = await aggregate.front.embedPdf(
                 sig.front,
                 sig.front.getPageIndices()
               );
-              copiedPages.forEach((page) => aggregate.front.addPage(page));
+              copiedPages.forEach((page) => aggregate.front.addPage().drawPage(page));
             }
             if (aggregate.back) {
-              const copiedPages = await aggregate.back.copyPages(
+              const copiedPages = await aggregate.back.embedPdf(
                 sig.back,
                 sig.back.getPageIndices()
               );
-              copiedPages.forEach((page) => aggregate.back.addPage(page));
+              copiedPages.forEach((page) => aggregate.back.addPage().drawPage(page));
             }
             if (aggregate.duplex) {
-              const copiedPages = await aggregate.duplex.copyPages(
+              const copiedPages = await aggregate.duplex.embedPdf(
                 sig.duplex,
                 sig.duplex.getPageIndices()
               );
-              copiedPages.forEach((page) => aggregate.duplex.addPage(page));
+              copiedPages.forEach((page) => aggregate.duplex.addPage().drawPage(page));
             }
           }
           if (aggregate.front) {
@@ -443,11 +442,11 @@ export class Book {
       viewerPrefs.setCenterWindow(true);
       viewerPrefs.setDisplayDocTitle(true);
 
+      previewFrame.src = pdfDataUri;
       previewFrame.style.width = `450px`;
       const height = (this.papersize[1] / this.papersize[0]) * 500;
       previewFrame.style.height = `${height}px`;
       previewFrame.style.display = '';
-      previewFrame.src = pdfDataUri;
     }
 
     if (!isPreview) return this.saveZip();

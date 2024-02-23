@@ -13,16 +13,16 @@ export async function interleavePages(pdfA, pdfB) {
   const pageCount = Math.max(pdfA.getPageCount(), pdfB.getPageCount());
   const promises = [];
 
+  const pagesAPromise = mergedPdf.copyPages(pdfA, pdfA.getPageIndices());
+  const pagesBPromise = mergedPdf.copyPages(pdfB, pdfB.getPageIndices());
+
+  promises.push(pagesAPromise, pagesBPromise);
+
+  const [pagesA, pagesB] = await Promise.all([pagesAPromise, pagesBPromise]);
+
   for (let i = 0; i < pageCount; i++) {
-    const pageAPromise = pdfA.getPage(i);
-    const pageBPromise = pdfB.getPage(i);
-
-    promises.push(pageAPromise, pageBPromise);
-
-    const [pageA, pageB] = await Promise.all([pageAPromise, pageBPromise]);
-
-    if (pageA) mergedPdf.addPage((await mergedPdf.copyPages(pdfA, [i]))[0]);
-    if (pageB) mergedPdf.addPage((await mergedPdf.copyPages(pdfB, [i]))[0]);
+    if (i < pagesA.length) mergedPdf.addPage(pagesA[i]);
+    if (i < pagesB.length) mergedPdf.addPage(pagesB[i]);
   }
 
   await Promise.all(promises); // Wait for all page retrieval promises to resolve
