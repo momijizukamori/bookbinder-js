@@ -3,7 +3,11 @@
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 import { saveForm, updateRenderedForm } from './formUtils';
-import { updatePaperSelectOptionsUnits, updateAddOrRemoveCustomPaperOption } from './renderUtils';
+import {
+  updatePaperSelectOptionsUnits,
+  updateAddOrRemoveCustomPaperOption,
+  clearPreview,
+} from './renderUtils';
 
 export function handleInputChange(book, bookbinderForm) {
   const formData = new FormData(bookbinderForm);
@@ -17,6 +21,7 @@ export function handleInputChange(book, bookbinderForm) {
 }
 
 export function handleFileChange(e, book) {
+  clearPreview();
   const fileList = e.target.files;
   if (fileList.length > 0) {
     const updated = book.openpdf(fileList[0]);

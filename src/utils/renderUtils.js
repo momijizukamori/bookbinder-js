@@ -251,3 +251,9 @@ export function renderFormFromSettings(configuration) {
     example.style.display = example.id === selectedValue ? 'block' : 'none';
   });
 }
+
+export function clearPreview() {
+  const previewFrame = document.getElementById('pdf');
+  previewFrame.style.display = 'none';
+  previewFrame.src = '';
+}
