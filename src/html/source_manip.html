@@ -1,0 +1,57 @@
+<div class="section" id="input">
+  <h2>Source Manipulation</h2>
+  <label for="source_rotation">Style </label>
+  <select name="source_rotation" id="source_rotation">
+    <option id="none" value="none" selected="selected">no modification</option>
+    <option id="90cw" value="90cw">rotate pages 90° clockwise</option>
+    <option id="90ccw" value="90ccw">rotate pages 90° counter clockwise</option>
+    <option id="out_binding" value="out_binding">
+      odd pages 90° clockwise, even pages 90° anti-clockwise
+    </option>
+    <option id="in_binding" value="in_binding">
+      odd pages 90° anti-clockwise, even pages 90° clockwise
+    </option>
+  </select>
+  <div>
+    <div id="none_example" class="row source_rotation_example">
+      <img src="/img/noRotationDiagram.png" width="100px" class="float_left" />
+      <p>
+        <br />
+        For books that read like a standard novel<br />
+        no rotation of pages applied
+      </p>
+    </div>
+    <div id="90cw_example" class="hidden source_rotation_example">
+      <img src="/img/90cwDiagram.png" width="100px" class="float_left" />
+      <p>
+        <br />
+        For books that turn pages like a calender<br />
+        back to front, rotate all pages 90° clockwise
+      </p>
+    </div>
+    <div id="90ccw_example" class="hidden source_rotation_example">
+      <img src="/img/90ccwDiagram.png" width="100px" class="float_left" />
+      <p>
+        <br />
+        For books that turn pages like a calender<br />
+        front to back, rotate all pages 90° counter clockwise
+      </p>
+    </div>
+    <div id="out_binding_example" class="hidden source_rotation_example row">
+      <img src="/img/bottomBindingDiagram.png" width="100px" class="float_left" />
+      <p>
+        <br />
+        For books with bound edge at bottom of the page<br />
+        rotate all odd pages 90° clockwise, all even pages 90° anti-clockwise
+      </p>
+    </div>
+    <div id="in_binding_example" class="hidden source_rotation_example">
+      <img src="/img/topBindingDiagram.png" width="100px" class="float_left" />
+      <p>
+        <br />
+        For books with bound edge at top of the page<br />
+        rotate all odd pages 90° anti-clockwise, all even pages 90° clockwise
+      </p>
+    </div>
+  </div>
+</div>
