@@ -371,25 +371,25 @@ export class Book {
           for (const sig of signatures) {
             // Adding pages to aggregate PDFs has to be done in order, not with promises
             if (aggregate.front) {
-              const copiedPages = await aggregate.front.embedPdf(
+              const copiedPages = await aggregate.front.copyPages(
                 sig.front,
                 sig.front.getPageIndices()
               );
-              copiedPages.forEach((page) => aggregate.front.addPage().drawPage(page));
+              copiedPages.forEach((page) => aggregate.front.addPage(page));
             }
             if (aggregate.back) {
-              const copiedPages = await aggregate.back.embedPdf(
+              const copiedPages = await aggregate.back.copyPages(
                 sig.back,
                 sig.back.getPageIndices()
               );
-              copiedPages.forEach((page) => aggregate.back.addPage().drawPage(page));
+              copiedPages.forEach((page) => aggregate.back.addPage(page));
             }
             if (aggregate.duplex) {
-              const copiedPages = await aggregate.duplex.embedPdf(
+              const copiedPages = await aggregate.duplex.copyPages(
                 sig.duplex,
                 sig.duplex.getPageIndices()
               );
-              copiedPages.forEach((page) => aggregate.duplex.addPage().drawPage(page));
+              copiedPages.forEach((page) => aggregate.duplex.addPage(page));
             }
           }
           if (aggregate.front) {
