@@ -12,7 +12,7 @@ If you require more detailed instructions on any of these steps, please see the 
 ## Running the App
 
 1. Run the development server step with `npm run dev` - this will start the Vite dev server on http://localhost:5173/bookbinder-js/ which will refresh when you save changes to any of the source files.
-1. If you want to check something in a 'final' build, you can run `npm run preview`, which will build and then serve the app on http://localhost:4173/bookbinder-js/ - this mode will *not* auto-refresh.
+1. If you want to check something in a 'final' build, you can run `npm run preview`, which will build and then serve the app on http://localhost:4173/bookbinder-js/ - this mode will _not_ auto-refresh.
 1. If you are using VS Code, you can install the 'Debugger for Chrome' or 'Debugger for Firefox' extensions, and then launch the app via VS Code's Run menu to get an IDE debug session.
 
 ## Branching and Committing
