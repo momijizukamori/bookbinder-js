@@ -2,7 +2,7 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-import { PDFDocument, PDFEmbeddedPage, degrees } from 'pdf-lib';
+import { PDFDocument, PDFEmbeddedPage, degrees } from '@cantoo/pdf-lib';
 import { saveAs } from 'file-saver';
 import { Signatures } from './signatures.js';
 import { WackyImposition } from './wacky_imposition.js';
@@ -122,22 +122,12 @@ export class Book {
     pages.forEach((page) => {
       if (!page.node.Contents()) {
         page.drawLine({
-          start: { x: 25, y: 75 },
-          end: { x: 125, y: 175 },
+          start: { x: 25, y: 26 },
+          end: { x: 125, y: 126 },
           opacity: 0.0,
         });
       } else {
         if (!this.cropbox) {
-          const cropBox = page.getCropBox();
-          const bleedBox = page.getBleedBox();
-          const trimBox = page.getTrimBox();
-          const artBox = page.getArtBox();
-          console.log(
-            `\n\tCropBox [${cropBox}]`,
-            `\n\tBleedBox [${bleedBox}]`,
-            `\n\tTrimBox [${trimBox}]`,
-            `\n\tArtBox [${artBox}]`
-          );
           this.cropbox = page.getCropBox();
         }
       }
@@ -185,38 +175,40 @@ export class Book {
     let pages;
     [this.managedDoc, pages] = await embedPagesInNewPdf(this.currentdoc);
 
+    const isNone = this.source_rotation == 'none';
+    const is90cw = this.source_rotation == '90cw';
+    const is90ccw = this.source_rotation == '90ccw';
+    const isInBinding = this.source_rotation == 'in_binding';
+    const isOutBinding = this.source_rotation == 'out_binding';
     for (var i = 0; i < pages.length; ++i) {
-      var page = pages[i];
-      var newPage = this.managedDoc.addPage();
-      var rotate90cw =
-        this.source_rotation == '90cw' ||
-        (this.source_rotation == 'out_binding' && i % 2 == 0) ||
-        (this.source_rotation == 'in_binding' && i % 2 == 1);
-      var rotate90ccw =
-        this.source_rotation == '90ccw' ||
-        (this.source_rotation == 'out_binding' && i % 2 == 1) ||
-        (this.source_rotation == 'in_binding' && i % 2 == 0);
-      if (this.source_rotation == 'none') {
+      const page = pages[i];
+      const newPage = this.managedDoc.addPage();
+      if (isNone) {
         newPage.setSize(page.width, page.height);
         newPage.drawPage(page);
-      } else if (rotate90ccw) {
-        newPage.setSize(page.height, page.width);
-        newPage.drawPage(page, {
-          x: page.height,
-          y: 0,
-          rotate: degrees(90),
-        });
-      } else if (rotate90cw) {
-        newPage.setSize(page.height, page.width);
-        newPage.drawPage(page, {
-          x: 0,
-          y: page.width,
-          rotate: degrees(-90),
-        });
       } else {
-        var e = new Error("??? what sorta' layout you think you're going to get?");
-        console.error(e);
-        throw e;
+        const isEvenPage = i % 2 == 0;
+        var rotate90cw = is90cw || (isOutBinding && isEvenPage) || (isInBinding && !isEvenPage);
+        var rotate90ccw = is90ccw || (isOutBinding && !isEvenPage) || (isInBinding && isEvenPage);
+        if (rotate90ccw) {
+          newPage.setSize(page.height, page.width);
+          newPage.drawPage(page, {
+            x: page.height,
+            y: 0,
+            rotate: degrees(90),
+          });
+        } else if (rotate90cw) {
+          newPage.setSize(page.height, page.width);
+          newPage.drawPage(page, {
+            x: 0,
+            y: page.width,
+            rotate: degrees(-90),
+          });
+        } else {
+          var e = new Error("??? what sorta' layout you think you're going to get?");
+          console.error(e);
+          throw e;
+        }
       }
       page.embed();
       this.cropbox = newPage.getCropBox();
@@ -371,25 +363,25 @@ export class Book {
           for (const sig of signatures) {
             // Adding pages to aggregate PDFs has to be done in order, not with promises
             if (aggregate.front) {
-              const copiedPages = await aggregate.front.embedPdf(
+              const copiedPages = await aggregate.front.copyPages(
                 sig.front,
                 sig.front.getPageIndices()
               );
-              copiedPages.forEach((page) => aggregate.front.addPage().drawPage(page));
+              copiedPages.forEach((page) => aggregate.front.addPage(page));
             }
             if (aggregate.back) {
-              const copiedPages = await aggregate.back.embedPdf(
+              const copiedPages = await aggregate.back.copyPages(
                 sig.back,
                 sig.back.getPageIndices()
               );
-              copiedPages.forEach((page) => aggregate.back.addPage().drawPage(page));
+              copiedPages.forEach((page) => aggregate.back.addPage(page));
             }
             if (aggregate.duplex) {
-              const copiedPages = await aggregate.duplex.embedPdf(
+              const copiedPages = await aggregate.duplex.copyPages(
                 sig.duplex,
                 sig.duplex.getPageIndices()
               );
-              copiedPages.forEach((page) => aggregate.duplex.addPage().drawPage(page));
+              copiedPages.forEach((page) => aggregate.duplex.addPage(page));
             }
           }
           if (aggregate.front) {
