@@ -1,0 +1,184 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
+* {
+  --background: #e6e6e5;
+  --text: #292929;
+  --disabled-text: gray;
+  --link: #1616ad;
+
+  box-sizing: border-box;
+}
+
+@media (prefers-color-scheme: dark) {
+  * {
+    --background: #292929;
+    --text: #e6e6e5;
+    --disabled-text: rgba(211, 211, 211, 0.5);
+    --link: skyblue;
+  }
+}
+
+body {
+  font-family: Helvetica, Arial, sans-serif;
+  background-color: var(--background);
+  color: var(--text);
+}
+
+a:link,
+a:visited {
+  color: var(--link);
+}
+
+*:disabled {
+  color: var(--disabled-text);
+}
+
+h1,
+h2 {
+  margin-top: 0;
+}
+
+body,
+.wrapper,
+#bookbinder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+button {
+  border: none;
+  border-radius: 2px;
+  padding: 4px;
+  text-align: center;
+  display: inline-block;
+  font-size: 16px;
+}
+
+.large_btn {
+  height: 48px;
+  font-size: 24px;
+}
+
+.medium_btn {
+  width: 90px;
+  height: 36px;
+  font-size: 12px;
+}
+
+.wrapper {
+  max-width: 500px;
+}
+
+.section {
+  border: 1px solid var(--text);
+  padding: 0.5em;
+  margin: 0.5em auto;
+  width: 100%;
+}
+
+.row {
+  display: block;
+}
+
+.hidden {
+  display: none;
+}
+
+.instruction-indent {
+  margin-left: 25px;
+}
+
+.layout_margin_user_input {
+  width: 225px;
+  margin-top: 15px;
+  margin-bottom: 15px;
+  text-align: right;
+}
+.layout_margin_user_input_field {
+  width: 4em;
+  margin-left: 10px;
+}
+.layout_margin_description {
+  width: 225px;
+  position: absolute;
+  margin-left: 250px;
+  font-size: smaller;
+}
+
+#show_layout_info {
+  display: none;
+  margin-left: 10px;
+  margin-bottom: 20px;
+}
+.layout_spine_label {
+  transform: rotate(-90deg);
+  position: absolute;
+  text-align: center;
+  padding: 0px;
+  height: 40px;
+  margin: 105px -123px;
+  width: 250px;
+  font-family: monospace;
+  letter-spacing: 14px;
+}
+.grid_layout_page {
+  border: 1px solid purple;
+  width: 250px;
+  height: 250px;
+  margin-left: 0px;
+  background: #80008063;
+  pointer-events: none;
+}
+.pdf_layout_page {
+  border: 1px solid orange;
+  width: 150px;
+  height: 24px;
+  position: absolute;
+  margin: 0px;
+  padding: 0px;
+  background: #ffa50042;
+  pointer-events: none;
+}
+.layout_margin_info {
+  position: absolute;
+  padding-left: 255px;
+  width: 480px;
+  font-size: small;
+}
+.stripes_paper {
+  background: repeating-linear-gradient(45deg, #606dbc, #606dbc 10px, #465298 10px, #465298 20px);
+}
+.stripes_pdf {
+  background: repeating-linear-gradient(
+    133deg,
+    #ffeb3b3b,
+    #ffc1078c 10px,
+    #ff9800 10px,
+    #ff9800 15px
+  );
+}
+.stripes_sample_box {
+  width: 20px;
+  height: 20px;
+  display: inline-block;
+}
+.pdf_offset_dimensions_box {
+  padding-left: 10px;
+  display: inline-block;
+  vertical-align: top;
+}
+
+.float_left {
+  float: left;
+}
+
+.space_out {
+  display: flex;
+  width: 100%;
+  justify-content: space-between;
+}
