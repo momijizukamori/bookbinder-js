@@ -77,12 +77,13 @@ export class Signatures {
     const newsigs = [];
 
     //      Use the booklet class for each signature
-    this.signaturepagelists.forEach((pagerange) => {
+    this.signaturepagelists.forEach((pagerange, i) => {
       const pagelistdetails = this.booklet(
         pagerange,
         this.duplex,
         this.per_sheet,
-        this.duplexrotate
+        this.duplexrotate,
+        i
       );
       newsigs.push(pagelistdetails);
     });
@@ -122,8 +123,9 @@ export class Signatures {
    * @param {boolean} duplex - Whether both front and back sides go in the same file or not.
    * @param {number} per_sheet - number of pages per sheet (front and back combined)
    * @param {boolean} duplexrotate - whether to rotate alternating sheets or not.
+   * @param {number} sig_num - signature number (0 indexed)
    */
-  booklet(pages, duplex, per_sheet, duplexrotate) {
+  booklet(pages, duplex, per_sheet, duplexrotate, sig_num) {
     const pagelistdetails = duplex ? [[]] : [[], []];
     const { front, rotate, back } = BOOKLET_LAYOUTS[per_sheet];
 
@@ -139,19 +141,21 @@ export class Signatures {
     let front_end = center;
     let back_start = center;
     let back_end = center + pageblock;
-
+    console.log("outside")
     while (front_start >= 0 && back_end <= pages.length) {
       const front_block = pages.slice(front_start, front_end);
       const back_block = pages.slice(back_start, back_end);
 
       const block = [...front_block, ...back_block];
 
+      console.log(" ~~~~ SIG NUM "+sig_num+" on "+front_start+" --> "+back_end)
       front_config.forEach((pnum) => {
         const page = block[pnum - 1]; //page layouts are 1-indexed, not 0-index
         pagelistdetails[0].push({
           info: page,
           isSigStart: front_start == 0 && pnum == 1,
           isSigEnd: front_start == 0 && pnum == block.length,
+          signatureNum: sig_num,
         });
       });
 
@@ -163,11 +167,14 @@ export class Signatures {
           info: page,
           isSigStart: front_start == 0 && pnum == 1,
           isSigEnd: front_start == 0 && pnum == block.length,
+          signatureNum: sig_num,
         });
       });
 
       // Update all our counters
+      console.log("stepa "+front_start)
       front_start -= pageblock;
+      console.log("stepb "+front_start)
       front_end -= pageblock;
       back_start += pageblock;
       back_end += pageblock;
