@@ -99,3 +99,18 @@ export const schema = z.object({
 });
 
 /** @typedef {z.infer<typeof schema>} Configuration */
+
+export const defaultConfig = {
+  rotatePage: false,
+  paperRotation90: false,
+  cropMarks: false,
+  cutMarks: false,
+  pdfEdgeMarks: false,
+  mainForeEdgePaddingPt: 0,
+  bindingEdgePaddingPt: 0,
+  topEdgePaddingPt: 0,
+  bottomEdgePaddingPt: 0,
+  sigLength: 4, // Specific to standard
+  foreEdgePaddingPt: 0, // specific to wacky small
+  flyleafs: 1,
+};
