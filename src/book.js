@@ -94,6 +94,11 @@ export class Book {
     const pageLayout = PAGE_LAYOUTS[configuration.pageLayout];
 
     this.page_layout = pageLayout;
+    // Slightly messy hack because folio with duplex rotation is the only layout where different sides have different rotations
+    this.alt_layout =
+      configuration.rotatePage && configuration.pageLayout === 'folio'
+        ? PAGE_LAYOUTS.folio_alt
+        : null;
     this.per_sheet = pageLayout.per_sheet;
     this.pack_pages = configuration.wackySpacing === 'wacky_pack';
     this.fore_edge_padding_pt = configuration.foreEdgePaddingPt;
@@ -477,7 +482,8 @@ export class Book {
 
     // const alt_folio = this.per_sheet == 4 && back;
 
-    const positions = calculateLayout(this);
+    const positions =
+      this.alt_layout && !back ? calculateLayout(this) : calculateLayout(this, true);
 
     let side2flag = back;
 
