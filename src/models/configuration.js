@@ -94,23 +94,10 @@ export const schema = z.object({
   foreEdgePaddingPt: urlSafe(z.coerce.number()).default(0), // specific to wacky small
   wackySpacing, // specific to wacky small
   flyleafs: urlSafe(z.coerce.number()).default(1),
-  paperSizeCustomWidth: urlSafe(z.coerce.number()),
-  paperSizeCustomHeight: urlSafe(z.coerce.number()),
+  paperSizeCustomWidth: urlSafe(z.coerce.number()).default(0),
+  paperSizeCustomHeight: urlSafe(z.coerce.number()).default(0),
 });
 
 /** @typedef {z.infer<typeof schema>} Configuration */
 
-export const defaultConfig = {
-  rotatePage: false,
-  paperRotation90: false,
-  cropMarks: false,
-  cutMarks: false,
-  pdfEdgeMarks: false,
-  mainForeEdgePaddingPt: 0,
-  bindingEdgePaddingPt: 0,
-  topEdgePaddingPt: 0,
-  bottomEdgePaddingPt: 0,
-  sigLength: 4, // Specific to standard
-  foreEdgePaddingPt: 0, // specific to wacky small
-  flyleafs: 1,
-};
+export const defaultConfig = schema.parse({});

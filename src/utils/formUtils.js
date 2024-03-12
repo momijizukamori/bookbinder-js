@@ -2,7 +2,7 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-import { defaultConfig, schema } from '../models/configuration';
+import { schema } from '../models/configuration';
 import { clearLocalSettings, getLocalSettings, setLocalSettings } from './localStorageUtils';
 import { renderFormFromSettings, renderInfoBox, renderPageCount, renderWacky } from './renderUtils';
 import { clearUrlParams, setUrlParams, toUrlParams, updateWindowLocation } from './uri';
@@ -47,8 +47,7 @@ const fromFormToConfiguration = (form) =>
  * @param { import("../models/configuration").Configuration } configuration The configuration to set
  */
 const setConfigurationToUrl = (configuration) => {
-  const cleanedConfig = removeDefaults(configuration);
-  updateWindowLocation(setUrlParams(window.location.href, cleanedConfig));
+  updateWindowLocation(setUrlParams(window.location.href, configuration));
 };
 
 /**
@@ -109,19 +108,3 @@ export const resetForm = () => {
   updateWindowLocation(clearUrlParams(window.location.href));
   return loadForm();
 };
-
-/**
- * Returns a version of the configuration with any items set to default values removed
- * to keep url strings a little cleaner.
- * @param { import("../models/configuration").Configuration } configuration The form to save
- * @returns { import("../models/configuration").Configuration } The updated configuration set
- */
-function removeDefaults(configuration) {
-  const cleaned = {};
-  Object.keys(configuration).forEach((key) => {
-    if (defaultConfig[key] != configuration[key]) {
-      cleaned[key] = configuration[key];
-    }
-  });
-  return cleaned;
-}
