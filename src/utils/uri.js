@@ -2,6 +2,8 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
+import { defaultConfig } from '../models/configuration';
+
 /**
  * Gets parameters from a URL.
  * @param { string } url The URL to get the params from
@@ -23,6 +25,11 @@ export const setUrlParams = (url, params) => {
 
   for (const [key, value] of Object.entries(params)) {
     if (value === null || value === undefined) {
+      continue;
+    }
+
+    if (value === defaultConfig[key]) {
+      urlRepresentation.searchParams.delete(key);
       continue;
     }
 
