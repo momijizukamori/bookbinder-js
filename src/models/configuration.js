@@ -90,7 +90,7 @@ export const schema = z.object({
   bottomEdgePaddingPt: urlSafe(z.coerce.number()).default(0),
   sigFormat,
   sigLength: urlSafe(z.coerce.number()).default(4), // Specific to standard
-  customSigLength: urlSafe(commaSeparatedNumberList).default([]), // Specific to custom.
+  customSigLength: urlSafe(commaSeparatedNumberList).default(null), // Specific to custom.
   foreEdgePaddingPt: urlSafe(z.coerce.number()).default(0), // specific to wacky small
   wackySpacing, // specific to wacky small
   flyleafs: urlSafe(z.coerce.number()).default(1),
