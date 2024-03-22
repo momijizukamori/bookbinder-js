@@ -183,6 +183,10 @@ export function renderFormFromSettings(configuration) {
     document.querySelector("input[name='cropmarks']").checked = true;
   }
 
+  if (configuration.sigOrderMarks) {
+    document.querySelector("input[name='sig_order_marks']").checked = true;
+  }
+
   if (configuration.pdfEdgeMarks) {
     document.querySelector("input[name='pdf_edge_marks']").checked = true;
   }

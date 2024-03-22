@@ -82,6 +82,7 @@ export const schema = z.object({
   cropMarks: urlSafe(coercedBoolean).default(false),
   cutMarks: urlSafe(coercedBoolean).default(false),
   pdfEdgeMarks: urlSafe(coercedBoolean).default(false),
+  sigOrderMarks: urlSafe(coercedBoolean).default(false),
   pageScaling,
   pagePositioning,
   mainForeEdgePaddingPt: urlSafe(z.coerce.number()).default(0),
