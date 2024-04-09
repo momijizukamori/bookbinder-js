@@ -11,9 +11,9 @@ If you require more detailed instructions on any of these steps, please see the 
 
 ## Running the App
 
-1. Run the webpack build step with `npm run build` - this will update the generated `preload.js` file with the latest code from `src/`
-1. At present, this project does not automatically rebuild to reflect your changes. If you have made changes to files in `src/` you will need to run `npm run build` to see them reflected in the app.
-1. Open `index.html` in your browser and you're all set! (if you're not using a tool like VS Code's [LiveServer](https://marketplace.visualstudio.com/items?itemName=ritwickdey.LiveServer) extension you will need to refresh the page to see changes you've made)
+1. Run the development server step with `npm run dev` - this will start the Vite dev server on http://localhost:5173/bookbinder-js/ which will refresh when you save changes to any of the source files.
+1. If you want to check something in a 'final' build, you can run `npm run preview`, which will build and then serve the app on http://localhost:4173/bookbinder-js/ - this mode will _not_ auto-refresh.
+1. If you are using VS Code, you can install the 'Debugger for Chrome' or 'Debugger for Firefox' extensions, and then launch the app via VS Code's Run menu to get an IDE debug session.
 
 ## Branching and Committing
 
@@ -21,6 +21,7 @@ If you require more detailed instructions on any of these steps, please see the 
 1. Commit your changes as you go with meaningful commit messages
 1. Ideally, write tests for any new behavior you're introducting
 1. Run tests with `npm run test` as you introduce changes; try to catch any breaking changes early and, as appropriate, either debug your code to find the problem or update the existing tests to reflect the new expected behavior
+1. When you're done with your changes, make sure it passes the formatting and linting checks. These can be run as `npm run prettier` and `npm run lint` to simply check, or `npm run prettier:fix` and `npm run lint:fix` to autofix as much as possible (and show messages about the portions that can't be automatically fixed)
 1. Push your changes up to the feature branch on your fork as you go with `git push origin [name of branch]`, for example, `git push origin feature/contribution-docs`
 
 ## Pull Requests

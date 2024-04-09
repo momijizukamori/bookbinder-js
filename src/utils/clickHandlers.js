@@ -3,7 +3,11 @@
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 import { resetForm } from './formUtils';
-import { updateAddOrRemoveCustomPaperOption, updatePaperSelectOptionsUnits } from './renderUtils';
+import {
+  clearPreview,
+  updateAddOrRemoveCustomPaperOption,
+  updatePaperSelectOptionsUnits,
+} from './renderUtils';
 
 export function handleGenerateClick(generateEl, book) {
   generateEl.setAttribute('disabled', true);
@@ -28,6 +32,7 @@ export function handleGenerateClick(generateEl, book) {
 export function handlePreviewClick(previewEl, book) {
   previewEl.setAttribute('disabled', true);
   previewEl.innerText = 'Generating Preview...';
+  clearPreview();
   const result = book.createoutputfiles(true);
   result
     .then(() => {

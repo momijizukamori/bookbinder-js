@@ -1,5 +1,5 @@
 import { LINE_LEN } from '../constants';
-import { rgb } from 'pdf-lib';
+import { rgb } from '@cantoo/pdf-lib';
 
 /**
  * @typedef Point
