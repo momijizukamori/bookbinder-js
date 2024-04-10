@@ -64,7 +64,7 @@ If you require this nginx to open a port, feel free to add your own (docker-)com
 services:
   bookbinder-nginx:
     ports:
-      - "80:80"
+      - '80:80'
 ```
 
 ### Development
@@ -76,6 +76,6 @@ services:
   bookbinder-app:
     # environment:
     #   BASE: "http://localhost" <-- can be adjusted to your environment
-    network_mode: "host"
+    network_mode: 'host'
     command: bash -c "cd /app && npm install && npm run dev"
 ```
