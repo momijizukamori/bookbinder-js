@@ -1,7 +1,7 @@
-version: "3.8"
-
 services:
   bookbinder-app:
+    environment:
+      BASE: 'https://momijizukamori.github.io/bookbinder-js/'
     image: node:20
     volumes:
       - .:/app
