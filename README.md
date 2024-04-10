@@ -74,6 +74,8 @@ If you need to run bookbinder-js in development mode, feel free to create your c
 ```yaml
 services:
   bookbinder-app:
+    # environment:
+    #   BASE: "http://localhost" <-- can be adjusted to your environment
     network_mode: "host"
     command: bash -c "cd /app && npm install && npm run dev"
 ```
