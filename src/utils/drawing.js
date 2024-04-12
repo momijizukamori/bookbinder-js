@@ -169,7 +169,7 @@ export function drawSigOrderMark(sigDetails, position, maxSigCount, w, suggested
   const dist = (position.rotation == 0) ? top.start.y - bottom.start.y : top.start.x - bottom.start.x;
   let h = Math.min(suggested_h, dist/maxSigCount);
   const offset = h * sigDetails.signatureNum;
-  console.log("Looking at signature ",sigDetails.signatureNum," of ",maxSigCount," PDF top/bottom distance ",dist," results in ",h," (",suggested_h," vs ",(dist/maxSigCount),") order mark height w/ offset ",offset," (width ",w,")");
+  // console.log("Looking at signature ",sigDetails.signatureNum," of ",maxSigCount," PDF top/bottom distance ",dist," results in ",h," (",suggested_h," vs ",(dist/maxSigCount),") order mark height w/ offset ",offset," (width ",w,")");
 
   if (position.rotation == 0) {
     h = h * -1;
