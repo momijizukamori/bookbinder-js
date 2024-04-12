@@ -150,6 +150,8 @@ export function drawSpineMark(draw_top_mark, position, w) {
 
 
 /**
+ * TODO : these params should probably be pushed into a config... maybe next time/next pass
+ *
  * @param {import("../book.js").PageInfo} sigDetails - page info object
  * @param {import("../book.js").Position} position - position info object
  * @param {number} maxSigCount - number of total signatures

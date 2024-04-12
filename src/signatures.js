@@ -141,14 +141,13 @@ export class Signatures {
     let front_end = center;
     let back_start = center;
     let back_end = center + pageblock;
-    console.log("outside")
+
     while (front_start >= 0 && back_end <= pages.length) {
       const front_block = pages.slice(front_start, front_end);
       const back_block = pages.slice(back_start, back_end);
 
       const block = [...front_block, ...back_block];
 
-      console.log(" ~~~~ SIG NUM "+sig_num+" on "+front_start+" --> "+back_end)
       front_config.forEach((pnum) => {
         const page = block[pnum - 1]; //page layouts are 1-indexed, not 0-index
         pagelistdetails[0].push({
@@ -172,9 +171,7 @@ export class Signatures {
       });
 
       // Update all our counters
-      console.log("stepa "+front_start)
       front_start -= pageblock;
-      console.log("stepb "+front_start)
       front_end -= pageblock;
       back_start += pageblock;
       back_end += pageblock;

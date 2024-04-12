@@ -290,6 +290,8 @@ export class Book {
    *      generate preview content AND a downloadable zip
    */
   async createoutputfiles(isPreview) {
+    // set this to `true` to enable full-book previews (placeholder till it's in the UI)
+    const fullPreviewDevHack = true
     const previewFrame = document.getElementById('pdf');
     let previewPdf = null;
 
@@ -310,13 +312,13 @@ export class Book {
       this.format == 'customsig'
     ) {
       // Only generate the first signature for preview
-      const pagesArr = this.rearrangedpages;
+      const pagesArr = (isPreview && !fullPreviewDevHack) ? this.rearrangedpages.slice(0, 1) : this.rearrangedpages;
       const signatures = [{}];
       const makeSignatures = async () => {
         const tasks = pagesArr.map(async (pages, i) => {
           console.log(pages);
           signatures[i] = { name: `${this.filename}_signature${i}` };
-          [signatures[i].front, signatures[i].back] = await this.createSignatures({
+          [signatures[i].front, signatures[i].back] = await this.createSignature({
             pageIndexDetails: pages,
             maxSigCount: pagesArr.length
           });
@@ -335,11 +337,10 @@ export class Book {
           await Promise.all(tasks);
         };
         await duplexSignatures();
-        console.log("Shark")
-        // previewPdf = signatures[0].duplex;
+        previewPdf = signatures[0].duplex;
       }
 
-      if (this.print_file != 'aggregated' && !isPreview) {
+      if (this.print_file != 'aggregated' && (!isPreview || fullPreviewDevHack)) {
         const saveSignatures = async () => {
           const tasks = signatures.map(async (sig) => {
             await sig.front?.save().then((pdfBytes) => {
@@ -357,7 +358,7 @@ export class Book {
         await saveSignatures();
       }
 
-      if (this.print_file != 'signatures') {
+      if (this.print_file != 'signatures' && (!isPreview || fullPreviewDevHack)) {
         const saveAggregate = async () => {
           const aggregate = {
             front: !this.duplex ? await PDFDocument.create() : null,
@@ -403,11 +404,10 @@ export class Book {
               this.zip.file(`${this.filename}_typeset.pdf`, pdfBytes);
             });
           }
-          console.log("Do I have this?  ",aggregate.duplex.getPageCount())
           previewPdf = aggregate.duplex
-          return aggregate
         };
-        var results = await saveAggregate();
+
+        await saveAggregate();
       }
 
       var rotationMetaInfo =
@@ -453,7 +453,7 @@ export class Book {
   }
 
   /**
-   * Part of the Classic (non-Wacky) flow. Called by [createsignatures].
+   * Part of the Classic (non-Wacky) flow. Called by [createsignature].
    *   (conditionally) populates the destPdf and (conditionally) generates the outname PDF
    *
    * @param {Object} config - object /w the following parameters:
@@ -464,7 +464,6 @@ export class Book {
    * @return reference to the new PDF created
    */
   async writepages(config) {
-    console.log("Write pages ", config)
     const pagelist = config.pageList;
     const back = config.back;
     const maxSigCount = config.maxSigCount;
@@ -549,7 +548,6 @@ export class Book {
     const alt = config.alt;
     const maxSigCount = config.maxSigCount
     let side2flag = config.side2flag;
-    console.log("burp I see ",maxSigCount)
 
     const block = config.embeddedPages.slice(block_start, block_end);
     const currPage = outPDF.addPage(papersize);
@@ -606,13 +604,14 @@ export class Book {
 
   /**
    * PDF builder base function for Classic (non-Wacky) layouts. Called by [createoutputfiles]
+   * Generates a single signature  (or is it just a single sheet? -- comments left long after coding)
+   * TODO : re-examine this logic and clean up this comment. What is going on??
    *
    * @param {Object} config
    * @param {number} config.maxSigCount
    * @param {PageInfo[][]} config.pageIndexDetails : a nested list of objects.
    */
-  async createSignatures(config) {
-    console.log("createSignatures ",config)
+  async createSignature(config) {
     const pages = config.pageIndexDetails;
     const tasks = [
       this.writepages({
