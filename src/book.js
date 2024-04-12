@@ -291,7 +291,7 @@ export class Book {
    */
   async createoutputfiles(isPreview) {
     // set this to `true` to enable full-book previews (placeholder till it's in the UI)
-    const fullPreviewDevHack = true
+    const fullPreviewDevHack = true;
     const previewFrame = document.getElementById('pdf');
     let previewPdf = null;
 
@@ -404,7 +404,7 @@ export class Book {
               this.zip.file(`${this.filename}_typeset.pdf`, pdfBytes);
             });
           }
-          previewPdf = aggregate.duplex
+          previewPdf = aggregate.duplex;
         };
 
         await saveAggregate();
@@ -546,7 +546,7 @@ export class Book {
     const pdfEdgeMarks = config.pdfEdgeMarks;
     const cutmarks = config.cutmarks;
     const alt = config.alt;
-    const maxSigCount = config.maxSigCount
+    const maxSigCount = config.maxSigCount;
     let side2flag = config.side2flag;
 
     const block = config.embeddedPages.slice(block_start, block_end);
@@ -594,7 +594,7 @@ export class Book {
     });
     drawRects.forEach((rect) => {
       currPage.drawRectangle(rect);
-    })
+    });
 
     if (alt) {
       side2flag = !side2flag;
