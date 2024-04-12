@@ -96,6 +96,11 @@ export const schema = z.object({
   flyleafs: urlSafe(z.coerce.number()).default(1),
   paperSizeCustomWidth: urlSafe(z.coerce.number()),
   paperSizeCustomHeight: urlSafe(z.coerce.number()),
+
+  frenchStitchLinkEnabled: urlSafe(coercedBoolean).default(false),
+  frenchStitchLinkMarginPt: urlSafe(z.coerce.number()).default(72),
+  frenchStitchesAmount: urlSafe(z.coerce.number()).default(3),
+  frenchStitchesSpacingPt: urlSafe(z.coerce.number()).default(36)
 });
 
 /** @typedef {z.infer<typeof schema>} Configuration */

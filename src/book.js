@@ -10,7 +10,7 @@ import { PAGE_LAYOUTS, PAGE_SIZES } from './constants.js';
 import { updatePageLayoutInfo } from './utils/renderUtils.js';
 import JSZip from 'jszip';
 import { loadConfiguration } from './utils/formUtils.js';
-import { drawFoldlines, drawCropmarks, drawSpineMarks } from './utils/drawing.js';
+import { drawFoldlines, drawCropmarks, drawSpineMarks, drawFrenchStichMarks } from './utils/drawing.js';
 import { calculateDimensions, calculateLayout } from './utils/layout.js';
 import { interleavePages, embedPagesInNewPdf } from './utils/pdf.js';
 
@@ -34,6 +34,15 @@ import { interleavePages, embedPagesInNewPdf } from './utils/pdf.js';
  * @property {number[]} [spineMarkTop]: spineMarkTop,
  * @property {number[]} [spineMarkBottom]: spineMarkBottom,
  * @property {boolean} [isLeftPage]: isLeftPage,
+ */
+
+/**
+ * @typedef FrenchMarks
+ * @type {object}
+ * @property {boolean} isEnabled - specifies if marks should be drawed,
+ * @property {number} amount - amount of places to saw.
+ * @property {number} marginPt - distance from the end of page to a kettle point,
+ * @property {number} spacingPt - distance between two seing points
  */
 
 export class Book {
@@ -80,6 +89,12 @@ export class Book {
     this.page_positioning = configuration.pagePositioning;
     this.flyleafs = configuration.flyleafs;
     this.cropmarks = configuration.cropMarks;
+    this.frenchStichLink = {
+      isEnabled: configuration.frenchStitchLinkEnabled,
+      amount: configuration.frenchStitchesAmount,
+      marginPt: configuration.frenchStitchLinkMarginPt,
+      spacingPt: configuration.frenchStitchesSpacingPt
+    };
     this.pdfEdgeMarks = configuration.pdfEdgeMarks;
     this.cutmarks = configuration.cutMarks;
     this.format = configuration.sigFormat;
@@ -496,6 +511,7 @@ export class Book {
         cutmarks: this.cutmarks,
         alt: config.alt,
         side2flag: side2flag,
+        frenchStichLink: this.frenchStichLink
       });
       block_start += offset;
       block_end += offset;
@@ -519,6 +535,7 @@ export class Book {
    * @param {Position[]} config.positions: list of page positions
    * @param {PDFDocument} [config.outPDF]: PDF to write to, in addition to PDF created w/ `outname` (or null)
    * @param {(PDFEmbeddedPage|string)[]} [config.embeddedPages] : pages already embedded in the `destPdf` to assemble in addition (or null)
+   * @param {FrenchMarks} config.frenchStichLink: config for drawing FrenchMarks
    */
 
   draw_block_onto_page(config) {
@@ -533,14 +550,17 @@ export class Book {
     const cutmarks = config.cutmarks;
     const alt = config.alt;
     let side2flag = config.side2flag;
+    const frenchStichLink = config.frenchStichLink;
 
     const block = config.embeddedPages.slice(block_start, block_end);
     const currPage = outPDF.addPage(papersize);
+    const frenchPoints = frenchStichLink.isEnabled ? drawFrenchStichMarks(papersize, frenchStichLink.amount, frenchStichLink.marginPt, frenchStichLink.spacingPt) : [];
     const cropLines = cutmarks ? drawCropmarks(papersize, this.per_sheet) : [];
     const foldLines = foldmarks
       ? drawFoldlines(side2flag, this.duplexrotate, papersize, this.per_sheet)
       : [];
     const drawLines = [...cropLines, ...foldLines];
+    const drawPoints = [ ...frenchPoints];
 
     block.forEach((page, i) => {
       if (page == 'b' || page === undefined) {
@@ -566,6 +586,10 @@ export class Book {
     drawLines.forEach((line) => {
       currPage.drawLine(line);
     });
+
+    drawPoints.forEach((point) => {
+      currPage.drawCircle(point);
+    })
 
     if (alt) {
       side2flag = !side2flag;

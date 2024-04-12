@@ -1,5 +1,5 @@
 import { LINE_LEN } from '../constants';
-import { rgb } from '@cantoo/pdf-lib';
+import { rgb, grayscale } from '@cantoo/pdf-lib';
 
 /**
  * @typedef Point
@@ -15,6 +15,15 @@ import { rgb } from '@cantoo/pdf-lib';
  * @property {Point} end - end position
  * @property {number} [opacity] - line opacity
  * @property {number[]} [dashArray] - sequence of dash and gap lengths to be repeated for a dashed line
+ */
+
+/**
+ * @typedef Point
+ * @property {number} x,
+ * @property {number} y,
+ * @property {number} size,
+ * @property {Grayscale|RGB|CMYK} color,
+ * 
  */
 
 /**
@@ -110,6 +119,41 @@ export function drawCropmarks(papersize, per_sheet) {
   }
 
   return lines;
+}
+
+/**
+ * @param {number[]} papersize - paper dimensions
+ * @param {number} amount - amount of sewing crosses.
+ * @param {number} marginPt - distance from the end of sheet of paper to kettle mark
+ * @param {number} spacingPt - distance between two points in a single sewwing cross.
+ * @returns {Point[]}
+ */
+export function drawFrenchStichMarks(papersize, amount, marginPt, spacingPt) {
+  console.log("French marking!");
+  const [width, height] = papersize;
+  
+  const y = height * 0.5;
+  const commonCircleValues = {y: y, size: 1, color: grayscale(0.0)}
+
+  const workingWidth = width - 2 * marginPt;
+  const spaceBettwenPoints = workingWidth / (amount + 1);
+
+  let sewingPoints = [];
+  
+  for (let index = 1; index <= amount ; index++) {
+    const halfOfSpaceing = spacingPt / 2;
+    sewingPoints.push(
+      {x: marginPt + spaceBettwenPoints * index + halfOfSpaceing, ...commonCircleValues},
+      {x: marginPt + spaceBettwenPoints * index - halfOfSpaceing, ...commonCircleValues}
+    )
+    
+  }
+
+  return [
+    { x : marginPt,  ...commonCircleValues},
+    { x : width - marginPt, ...commonCircleValues },
+    ...sewingPoints
+  ];
 }
 
 /**

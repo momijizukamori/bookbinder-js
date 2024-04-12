@@ -198,6 +198,16 @@ export function renderFormFromSettings(configuration) {
     `input[name="wacky_spacing"][value="${configuration.wackySpacing}"]`
   ).checked = true;
 
+  // Set french link stitches settings
+  document.querySelector('input[name="add_french_link_stich_checkbox"]').checked =
+    configuration.frenchStitchLinkEnabled;
+    document.querySelector('input[name="french_link_stitch_margin_pt"]').value =
+    configuration.frenchStitchLinkMarginPt;
+    document.querySelector('input[name="french_link_stitch_amount_pt"]').value =
+    configuration.frenchStitchesAmount;
+    document.querySelector('input[name="french_link_stitch_space_pt"]').value =
+    configuration.frenchStitchesSpacingPt;
+
   // Set freeform inputs
   document.querySelector('input[name="main_fore_edge_padding_pt"]').value =
     configuration.mainForeEdgePaddingPt;
