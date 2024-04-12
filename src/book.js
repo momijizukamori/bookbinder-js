@@ -312,7 +312,8 @@ export class Book {
       this.format == 'customsig'
     ) {
       // Only generate the first signature for preview
-      const pagesArr = (isPreview && !fullPreviewDevHack) ? this.rearrangedpages.slice(0, 1) : this.rearrangedpages;
+      const pagesArr =
+        isPreview && !fullPreviewDevHack ? this.rearrangedpages.slice(0, 1) : this.rearrangedpages;
       const signatures = [{}];
       const makeSignatures = async () => {
         const tasks = pagesArr.map(async (pages, i) => {
@@ -320,7 +321,7 @@ export class Book {
           signatures[i] = { name: `${this.filename}_signature${i}` };
           [signatures[i].front, signatures[i].back] = await this.createSignature({
             pageIndexDetails: pages,
-            maxSigCount: pagesArr.length
+            maxSigCount: pagesArr.length,
           });
         });
         await Promise.all(tasks);
@@ -460,7 +461,7 @@ export class Book {
    * @param {PageInfo[]} config.pageList : see documentation at top of file
    * @param {boolean} config.back : is 'back' of page  (boolean)
    * @param {boolean} config.alt : alternate pages (boolean)
-   * @param {number} config.maxSigCount 
+   * @param {number} config.maxSigCount
    * @return reference to the new PDF created
    */
   async writepages(config) {
@@ -581,8 +582,7 @@ export class Book {
         if (sigOrderMarks) {
           drawRects.push(drawSigOrderMark(sigDetails[i], positions[i], maxSigCount, 5, 20));
         }
-      }
-      else if (sigDetails[i].isSigEnd) {
+      } else if (sigDetails[i].isSigEnd) {
         if (pdfEdgeMarks) {
           drawLines.push(drawSpineMark(false, positions[i], 5));
         }

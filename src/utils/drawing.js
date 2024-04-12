@@ -148,7 +148,6 @@ export function drawSpineMark(draw_top_mark, position, w) {
   return drawLineArgs;
 }
 
-
 /**
  * TODO : these params should probably be pushed into a config... maybe next time/next pass
  *
@@ -166,8 +165,8 @@ export function drawSigOrderMark(sigDetails, position, maxSigCount, w, suggested
   let x = top.start.x;
   let y = top.start.y;
 
-  const dist = (position.rotation == 0) ? top.start.y - bottom.start.y : top.start.x - bottom.start.x;
-  let h = Math.min(suggested_h, dist/maxSigCount);
+  const dist = position.rotation == 0 ? top.start.y - bottom.start.y : top.start.x - bottom.start.x;
+  let h = Math.min(suggested_h, dist / maxSigCount);
   const offset = h * sigDetails.signatureNum;
   // console.log("Looking at signature ",sigDetails.signatureNum," of ",maxSigCount," PDF top/bottom distance ",dist," results in ",h," (",suggested_h," vs ",(dist/maxSigCount),") order mark height w/ offset ",offset," (width ",w,")");
 
@@ -180,7 +179,7 @@ export function drawSigOrderMark(sigDetails, position, maxSigCount, w, suggested
     w = temp * -1;
     x -= offset;
   }
-  
+
   return {
     x: x,
     y: y,
