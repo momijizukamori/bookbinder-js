@@ -101,7 +101,7 @@ export const schema = z.object({
   frenchStitchesSpacingPt: urlSafe(z.coerce.number()).default(36),
 
   paperSizeCustomWidth: urlSafe(z.coerce.number()).default(0),
-  paperSizeCustomHeight: urlSafe(z.coerce.number()).default(0)
+  paperSizeCustomHeight: urlSafe(z.coerce.number()).default(0),
 });
 
 /** @typedef {z.infer<typeof schema>} Configuration */
