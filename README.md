@@ -11,14 +11,33 @@ A very helpful guide on page size given layout and paper selection has been crea
 Snapshot of the size chart as of 2022-08-11
 ![Snapshot of sizes as of 2022-08-11](/docs/sizes_guide_snapshot_2022_08_11.png)
 
-## Building
+## Contributing
+
+See the [contributing](/CONTRIBUTING.md) documentation!
+
+## Dev script cheatsheet
+
+```shell
+npm run dev          # Starts the development server (auto-refreshes changes) on http://localhost:5173/bookbinder-js/
+npm run build        # Builds output files into the /dist folder, to be copied and served elsewhere
+npm run preview      # Builds output files into the /dist folder and serves locally on http://localhost:4173/bookbinder-js/
+npm run test         # Runs vitest, and auto-retests if you make changes to test files
+npm run lint         # Runs ESLint to check for coding style violations
+npm run lint:fix     # Runs ESLint to check for coding style violations, and attempts to fix all easily-fixed ones
+npm run prettier     # Runs Prettier to check for file formatting violations
+npm run prettier:fix # Runs ESLint to check for file formatting violations, and attempts reformat any bad files
+```
+
+To close out of any of the commands that don't automatically exist (`dev`, `preview`, and `test`), type `q` and then hit Enter.
+
+## Running Locally
 
 ```
 npm install
 npm run dev
 ```
 
-And load `index.html` in any modern web browser.
+And load http://localhost:4173/bookbinder-js/ in any modern web browser.
 
 ## Auditing Results
 
