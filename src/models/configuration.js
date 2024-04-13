@@ -90,17 +90,20 @@ export const schema = z.object({
   bottomEdgePaddingPt: urlSafe(z.coerce.number()).default(0),
   sigFormat,
   sigLength: urlSafe(z.coerce.number()).default(4), // Specific to standard
-  customSigLength: urlSafe(commaSeparatedNumberList).default([]), // Specific to custom.
+  customSigLength: urlSafe(commaSeparatedNumberList).default(null), // Specific to custom.
   foreEdgePaddingPt: urlSafe(z.coerce.number()).default(0), // specific to wacky small
   wackySpacing, // specific to wacky small
   flyleafs: urlSafe(z.coerce.number()).default(1),
-  paperSizeCustomWidth: urlSafe(z.coerce.number()),
-  paperSizeCustomHeight: urlSafe(z.coerce.number()),
 
   frenchStitchLinkEnabled: urlSafe(coercedBoolean).default(false),
   frenchStitchLinkMarginPt: urlSafe(z.coerce.number()).default(72),
   frenchStitchesAmount: urlSafe(z.coerce.number()).default(3),
-  frenchStitchesSpacingPt: urlSafe(z.coerce.number()).default(36)
+  frenchStitchesSpacingPt: urlSafe(z.coerce.number()).default(36),
+
+  paperSizeCustomWidth: urlSafe(z.coerce.number()).default(0),
+  paperSizeCustomHeight: urlSafe(z.coerce.number()).default(0)
 });
 
 /** @typedef {z.infer<typeof schema>} Configuration */
+
+export const defaultConfig = schema.parse({});
