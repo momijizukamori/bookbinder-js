@@ -4,7 +4,7 @@
  *
  * @return {import("../book.js").Position[]}
  */
-export function calculateLayout(book) {
+export function calculateLayout(book, alt) {
   const l = calculateDimensions(book);
   const {
     layoutCell,
@@ -16,8 +16,8 @@ export function calculateLayout(book) {
   } = l;
   const [cellWidth, cellHeight] = layoutCell;
   const positions = [];
-
-  l.layout.rotations.forEach((row, i) => {
+  const rotations = alt && l.alt_layout ? l.alt_layout.rotations : l.layout.rotations;
+  rotations.forEach((row, i) => {
     row.forEach((col, j) => {
       const xForeEdgeShift = xForeEdgeShiftFunc();
       const xBindingShift = xBindingShiftFunc();
@@ -94,7 +94,15 @@ export function calculateLayout(book) {
  * }
  */
 export function calculateDimensions(book) {
-  const { cropbox, padding_pt, papersize, page_layout, page_positioning, page_scaling } = book;
+  const {
+    cropbox,
+    padding_pt,
+    papersize,
+    page_layout,
+    alt_layout,
+    page_positioning,
+    page_scaling,
+  } = book;
 
   const { width, height } = cropbox;
   const pageX = width + Math.max(padding_pt.binding, 0) + Math.max(padding_pt.fore_edge, 0);
@@ -160,6 +168,7 @@ export function calculateDimensions(book) {
   };
   return {
     layout: page_layout,
+    alt_layout: alt_layout,
     rawPdfSize: [width, height],
     pdfScale: [sx, sy],
     pdfSize: [pageX, pageY],

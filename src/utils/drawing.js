@@ -18,13 +18,13 @@ import { rgb } from '@cantoo/pdf-lib';
  */
 
 /**
- *  @param {boolean} side2flag - whether we're on the back or not.
+ *  @param {boolean} back - whether we're on the back or not.
  * @param {boolean} duplexrotate - if alternate sides are rotated or not
  * @param {number[]} papersize - paper dimensions
  * @param {number} per_sheet - pages per sheet of paper
  * @returns {Line[]}
  */
-export function drawFoldlines(side2flag, duplexrotate, papersize, per_sheet) {
+export function drawFoldlines(back, duplexrotate, papersize, per_sheet) {
   const lineSettings = {
     opacity: 0.4,
     dashArray: [1, 5],
@@ -36,7 +36,7 @@ export function drawFoldlines(side2flag, duplexrotate, papersize, per_sheet) {
 
   switch (per_sheet) {
     case 32:
-      if (side2flag) {
+      if (back) {
         lineSettings.dashArray = [1, 5];
 
         x = duplexrotate ? width * 0.75 : width * 0.25;
@@ -47,7 +47,7 @@ export function drawFoldlines(side2flag, duplexrotate, papersize, per_sheet) {
       }
     /* falls through */
     case 16:
-      if (side2flag) {
+      if (back) {
         lineSettings.dashArray = [3, 5];
 
         y = duplexrotate ? height * 0.75 : height * 0.25;
@@ -58,7 +58,7 @@ export function drawFoldlines(side2flag, duplexrotate, papersize, per_sheet) {
       }
     /* falls through */
     case 8:
-      if (side2flag) {
+      if (back) {
         lineSettings.dashArray = [5, 5];
 
         x = width * 0.5;
@@ -69,7 +69,7 @@ export function drawFoldlines(side2flag, duplexrotate, papersize, per_sheet) {
       }
     /* falls through */
     case 4:
-      if (!side2flag) {
+      if (!back) {
         lineSettings.dashArray = [10, 5];
         lines.push({ ...drawHLine(height * 0.5, 0, width), ...lineSettings });
       }

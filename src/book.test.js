@@ -32,6 +32,7 @@ describe('Book model', () => {
       cols: 1,
       per_sheet: 4,
     },
+    alt_layout: null,
     per_sheet: 4,
     cropmarks: false,
     pdfEdgeMarks: false,
