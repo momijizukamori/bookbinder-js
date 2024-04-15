@@ -97,10 +97,10 @@ export const schema = z.object({
   paperSizeCustomWidth: urlSafe(z.coerce.number()),
   paperSizeCustomHeight: urlSafe(z.coerce.number()),
 
-  frenchStitchLinkEnabled: urlSafe(coercedBoolean).default(false),
-  frenchStitchLinkMarginPt: urlSafe(z.coerce.number()).default(72),
-  frenchStitchesAmount: urlSafe(z.coerce.number()).default(3),
-  frenchStitchesSpacingPt: urlSafe(z.coerce.number()).default(36)
+  sewingMarksEnabled: urlSafe(coercedBoolean).default(false),
+  sewingMarksMarginPt: urlSafe(z.coerce.number()).default(72),
+  sewingMarksAmount: urlSafe(z.coerce.number()).default(3),
+  sewingMarksTapeWidthPt: urlSafe(z.coerce.number()).default(36)
 });
 
 /** @typedef {z.infer<typeof schema>} Configuration */

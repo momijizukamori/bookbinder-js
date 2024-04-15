@@ -125,26 +125,25 @@ export function drawCropmarks(papersize, per_sheet) {
  * @param {number[]} papersize - paper dimensions
  * @param {number} amount - amount of sewing crosses.
  * @param {number} marginPt - distance from the end of sheet of paper to kettle mark
- * @param {number} spacingPt - distance between two points in a single sewwing cross.
+ * @param {number} tapeWidthPt - distance between two points in a single sewwing cross.
  * @returns {Point[]}
  */
-export function drawFrenchStichMarks(papersize, amount, marginPt, spacingPt) {
-  console.log("French marking!");
+export function drawSewingMarks(papersize, amount, marginPt, tapeWidthPt) {
   const [width, height] = papersize;
   
   const y = height * 0.5;
   const commonCircleValues = {y: y, size: 1, color: grayscale(0.0)}
 
   const workingWidth = width - 2 * marginPt;
-  const spaceBettwenPoints = workingWidth / (amount + 1);
+  const spaceBetweenPoints = workingWidth / (amount + 1);
 
   let sewingPoints = [];
   
   for (let index = 1; index <= amount ; index++) {
-    const halfOfSpaceing = spacingPt / 2;
+    const halfOfTape = tapeWidthPt / 2;
     sewingPoints.push(
-      {x: marginPt + spaceBettwenPoints * index + halfOfSpaceing, ...commonCircleValues},
-      {x: marginPt + spaceBettwenPoints * index - halfOfSpaceing, ...commonCircleValues}
+      {x: marginPt + spaceBetweenPoints * index + halfOfTape, ...commonCircleValues},
+      {x: marginPt + spaceBetweenPoints * index - halfOfTape, ...commonCircleValues}
     )
     
   }
