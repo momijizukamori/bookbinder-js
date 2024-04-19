@@ -584,7 +584,6 @@ export class Book {
         ? drawSewingMarks(
             sigDetails[i],
             positions[i],
-            papersize,
             sewingMarks.amount,
             sewingMarks.marginPt,
             sewingMarks.tapeWidthPt

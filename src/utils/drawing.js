@@ -124,13 +124,12 @@ export function drawCropmarks(papersize, per_sheet) {
 /**
  * @param {@param {import("../book.js").PageInfo}} sigDetails - information about signature where marks will be printed
  * @param {import("../book.js").Position} position - position info object
- * @param {number[]} papersize - paper dimensions
  * @param {number} amount - amount of sewing crosses.
  * @param {number} marginPt - distance from the end of sheet of paper to kettle mark
  * @param {number} tapeWidthPt - distance between two points in a single sewwing cross.
  * @returns {Point[]}
  */
-export function drawSewingMarks(sigDetails, position, papersize, amount, marginPt, tapeWidthPt) {
+export function drawSewingMarks(sigDetails, position, amount, marginPt, tapeWidthPt) {
   // Here normalize coordinates to always think in x an y like this
   // | P        |H|    P |
   // |  A       |E|   A  |
@@ -138,6 +137,9 @@ export function drawSewingMarks(sigDetails, position, papersize, amount, marginP
   // |    E     |G| E    |
   // |          |T|      |
   // |-POSITION-| |      |
+
+  // Left pages has spine position on the endge :/
+  if (position.isLeftPage) return [];
 
   var arePageRotated = Math.abs(position.rotation) === 90;
   let totalSpineHeight = 0;
@@ -153,8 +155,8 @@ export function drawSewingMarks(sigDetails, position, papersize, amount, marginP
 
   const workingWidth = totalSpineHeight - 2 * marginPt;
   const spaceBetweenPoints = workingWidth / (amount + 1);
-  
-  let sewingPoints = [];
+
+  const sewingPoints = [];
   for (let index = 1; index <= amount; index++) {
     const halfOfTape = tapeWidthPt / 2;
     sewingPoints.push(
@@ -162,20 +164,19 @@ export function drawSewingMarks(sigDetails, position, papersize, amount, marginP
       { pointHeight: marginPt + spaceBetweenPoints * index - halfOfTape }
     );
   }
-  
+
   const allPoints = [
     { pointHeight: marginPt },
     { pointHeight: totalSpineHeight - marginPt },
     ...sewingPoints,
   ];
-  
-  const commonCircleValues = {  size: 1, color: grayscale(0.0) };
+
+  const commonCircleValues = { size: 1, color: grayscale(0.0) };
   const drawablePoints = allPoints.map((point) => {
     point = { ...point, ...commonCircleValues };
     if (arePageRotated) {
       point.y = spinePosition;
       point.x = point.pointHeight + position.spineMarkBottom[0];
-
     } else {
       point.y = point.pointHeight + position.spineMarkBottom[1];
       point.x = spinePosition;
