@@ -93,7 +93,7 @@ export class Book {
       isEnabled: configuration.sewingMarksEnabled,
       amount: configuration.sewingMarksAmount,
       marginPt: configuration.sewingMarksMarginPt,
-      tapeWidthPt: configuration.sewingMarksTapeWidthPt
+      tapeWidthPt: configuration.sewingMarksTapeWidthPt,
     };
     this.pdfEdgeMarks = configuration.pdfEdgeMarks;
     this.cutmarks = configuration.cutMarks;
@@ -511,7 +511,7 @@ export class Book {
         cutmarks: this.cutmarks,
         alt: config.alt,
         side2flag: side2flag,
-        sewingMarks: this.sewingMarks
+        sewingMarks: this.sewingMarks,
       });
       block_start += offset;
       block_end += offset;
@@ -558,13 +558,13 @@ export class Book {
     const foldLines = foldmarks
       ? drawFoldlines(side2flag, this.duplexrotate, papersize, this.per_sheet)
       : [];
-      const drawLines = [...cropLines, ...foldLines];
-      const drawPoints = [ ];
-      
-      block.forEach((page, i) => {
-        if (page == 'b' || page === undefined) {
-          // blank page, move on.
-        } else if (page instanceof PDFEmbeddedPage) {
+    const drawLines = [...cropLines, ...foldLines];
+    const drawPoints = [];
+
+    block.forEach((page, i) => {
+      if (page == 'b' || page === undefined) {
+        // blank page, move on.
+      } else if (page instanceof PDFEmbeddedPage) {
         const { y, x, sx, sy, rotation } = positions[i];
         currPage.drawPage(page, {
           y,
@@ -576,22 +576,30 @@ export class Book {
       } else {
         console.error('Unexpected type for page: ', page);
       }
-      
+
       if (pdfEdgeMarks && (sigDetails[i].isSigStart || sigDetails[i].isSigEnd)) {
         drawLines.push(drawSpineMarks(sigDetails[i], positions[i]));
       }
-      const sewingMarkPoints = sewingMarks.isEnabled ? drawSewingMarks(sigDetails[i], positions[i], papersize, sewingMarks.amount, sewingMarks.marginPt, sewingMarks.tapeWidthPt) : [];
+      const sewingMarkPoints = sewingMarks.isEnabled
+        ? drawSewingMarks(
+            sigDetails[i],
+            positions[i],
+            papersize,
+            sewingMarks.amount,
+            sewingMarks.marginPt,
+            sewingMarks.tapeWidthPt
+          )
+        : [];
       drawPoints.push(...sewingMarkPoints);
     });
-    
+
     drawLines.forEach((line) => {
       currPage.drawLine(line);
     });
-    
-    console.log("drawpoints", drawPoints)
+
     drawPoints.forEach((point) => {
       currPage.drawCircle(point);
-    })
+    });
 
     if (alt) {
       side2flag = !side2flag;

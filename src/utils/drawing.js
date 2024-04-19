@@ -23,7 +23,7 @@ import { rgb, grayscale } from '@cantoo/pdf-lib';
  * @property {number} y,
  * @property {number} size,
  * @property {Grayscale|RGB|CMYK} color,
- * 
+ *
  */
 
 /**
@@ -131,10 +131,6 @@ export function drawCropmarks(papersize, per_sheet) {
  * @returns {Point[]}
  */
 export function drawSewingMarks(sigDetails, position, papersize, amount, marginPt, tapeWidthPt) {
-  console.log("sigDetails", sigDetails);
-  console.log("position", position);
-  console.log("papersize", papersize)
-
   // Here normalize coordinates to always think in x an y like this
   // | P        |H|    P |
   // |  A       |E|   A  |
@@ -149,20 +145,19 @@ export function drawSewingMarks(sigDetails, position, papersize, amount, marginP
 
   if (arePageRotated) {
     spineHeight = Math.abs(position.spineMarkTop[0] - position.spineMarkBottom[0]);
-    spinePosition = position.spineMarkTop[1]
-  }
-  else {
+    spinePosition = position.spineMarkTop[1];
+  } else {
     spineHeight = Math.abs(position.spineMarkTop[1] - position.spineMarkBottom[1]);
-    spinePosition = position.spineMarkTop[0]
+    spinePosition = position.spineMarkTop[0];
   }
 
-  console.log("spine properties", {
+  console.log('spine properties', {
     spineLength: spineHeight,
     reverseCoords: arePageRotated,
-    height: spinePosition
-  })
+    height: spinePosition,
+  });
 
-  const commonCircleValues = { /*y*/ spinePosition, size: 1, color: grayscale(0.0) }
+  const commonCircleValues = { /*y*/ spinePosition, size: 1, color: grayscale(0.0) };
 
   const workingWidth = spineHeight - 2 * marginPt;
   const spaceBetweenPoints = workingWidth / (amount + 1);
@@ -171,27 +166,23 @@ export function drawSewingMarks(sigDetails, position, papersize, amount, marginP
   for (let index = 1; index <= amount; index++) {
     const halfOfTape = tapeWidthPt / 2;
     sewingPoints.push(
-
       { pointHeight: marginPt + spaceBetweenPoints * index + halfOfTape, ...commonCircleValues },
       { pointHeight: marginPt + spaceBetweenPoints * index - halfOfTape, ...commonCircleValues }
-    )
-
+    );
   }
 
   const allPoints = [
     { pointHeight: marginPt, ...commonCircleValues },
     { pointHeight: spineHeight - marginPt, ...commonCircleValues },
-    ...sewingPoints
+    ...sewingPoints,
   ];
 
-
-  allPoints.forEach(point => {
+  allPoints.forEach((point) => {
     if (arePageRotated) {
       point.y = point.spinePosition;
-      point.x = point.pointHeight
-    }
-    else {
-      point.y = point.pointHeight
+      point.x = point.pointHeight;
+    } else {
+      point.y = point.pointHeight;
       point.x = point.spinePosition;
     }
   });
