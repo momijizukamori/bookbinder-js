@@ -140,54 +140,50 @@ export function drawSewingMarks(sigDetails, position, papersize, amount, marginP
   // |-POSITION-| |      |
 
   var arePageRotated = Math.abs(position.rotation) === 90;
-  let spineHeight = 0;
+  let totalSpineHeight = 0;
   let spinePosition = 0;
 
   if (arePageRotated) {
-    spineHeight = Math.abs(position.spineMarkTop[0] - position.spineMarkBottom[0]);
+    totalSpineHeight = Math.abs(position.spineMarkTop[0] - position.spineMarkBottom[0]);
     spinePosition = position.spineMarkTop[1];
   } else {
-    spineHeight = Math.abs(position.spineMarkTop[1] - position.spineMarkBottom[1]);
+    totalSpineHeight = Math.abs(position.spineMarkTop[1] - position.spineMarkBottom[1]);
     spinePosition = position.spineMarkTop[0];
   }
 
-  console.log('spine properties', {
-    spineLength: spineHeight,
-    reverseCoords: arePageRotated,
-    height: spinePosition,
-  });
-
-  const commonCircleValues = { /*y*/ spinePosition, size: 1, color: grayscale(0.0) };
-
-  const workingWidth = spineHeight - 2 * marginPt;
+  const workingWidth = totalSpineHeight - 2 * marginPt;
   const spaceBetweenPoints = workingWidth / (amount + 1);
-
+  
   let sewingPoints = [];
   for (let index = 1; index <= amount; index++) {
     const halfOfTape = tapeWidthPt / 2;
     sewingPoints.push(
-      { pointHeight: marginPt + spaceBetweenPoints * index + halfOfTape, ...commonCircleValues },
-      { pointHeight: marginPt + spaceBetweenPoints * index - halfOfTape, ...commonCircleValues }
+      { pointHeight: marginPt + spaceBetweenPoints * index + halfOfTape },
+      { pointHeight: marginPt + spaceBetweenPoints * index - halfOfTape }
     );
   }
-
+  
   const allPoints = [
-    { pointHeight: marginPt, ...commonCircleValues },
-    { pointHeight: spineHeight - marginPt, ...commonCircleValues },
+    { pointHeight: marginPt },
+    { pointHeight: totalSpineHeight - marginPt },
     ...sewingPoints,
   ];
-
-  allPoints.forEach((point) => {
+  
+  const commonCircleValues = {  size: 1, color: grayscale(0.0) };
+  const drawablePoints = allPoints.map((point) => {
+    point = { ...point, ...commonCircleValues };
     if (arePageRotated) {
-      point.y = point.spinePosition;
-      point.x = point.pointHeight;
+      point.y = spinePosition;
+      point.x = point.pointHeight + position.spineMarkBottom[0];
+
     } else {
-      point.y = point.pointHeight;
-      point.x = point.spinePosition;
+      point.y = point.pointHeight + position.spineMarkBottom[1];
+      point.x = spinePosition;
     }
+    return point;
   });
 
-  return allPoints;
+  return drawablePoints;
 }
 
 /**
