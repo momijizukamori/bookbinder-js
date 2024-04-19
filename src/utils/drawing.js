@@ -122,37 +122,81 @@ export function drawCropmarks(papersize, per_sheet) {
 }
 
 /**
+ * @param {@param {import("../book.js").PageInfo}} sigDetails - information about signature where marks will be printed
+ * @param {import("../book.js").Position} position - position info object
  * @param {number[]} papersize - paper dimensions
  * @param {number} amount - amount of sewing crosses.
  * @param {number} marginPt - distance from the end of sheet of paper to kettle mark
  * @param {number} tapeWidthPt - distance between two points in a single sewwing cross.
  * @returns {Point[]}
  */
-export function drawSewingMarks(papersize, amount, marginPt, tapeWidthPt) {
-  const [width, height] = papersize;
-  
-  const y = height * 0.5;
-  const commonCircleValues = {y: y, size: 1, color: grayscale(0.0)}
+export function drawSewingMarks(sigDetails, position, papersize, amount, marginPt, tapeWidthPt) {
+  console.log("sigDetails", sigDetails);
+  console.log("position", position);
+  console.log("papersize", papersize)
 
-  const workingWidth = width - 2 * marginPt;
+  // Here normalize coordinates to always think in x an y like this
+  // | P        |H|    P |
+  // |  A       |E|   A  |
+  // |   G      |I|  G   |
+  // |    E     |G| E    |
+  // |          |T|      |
+  // |-POSITION-| |      |
+
+  var arePageRotated = Math.abs(position.rotation) === 90;
+  let spineHeight = 0;
+  let spinePosition = 0;
+
+  if (arePageRotated) {
+    spineHeight = Math.abs(position.spineMarkTop[0] - position.spineMarkBottom[0]);
+    spinePosition = position.spineMarkTop[1]
+  }
+  else {
+    spineHeight = Math.abs(position.spineMarkTop[1] - position.spineMarkBottom[1]);
+    spinePosition = position.spineMarkTop[0]
+  }
+
+  console.log("spine properties", {
+    spineLength: spineHeight,
+    reverseCoords: arePageRotated,
+    height: spinePosition
+  })
+
+  const commonCircleValues = { /*y*/ spinePosition, size: 1, color: grayscale(0.0) }
+
+  const workingWidth = spineHeight - 2 * marginPt;
   const spaceBetweenPoints = workingWidth / (amount + 1);
 
   let sewingPoints = [];
-  
-  for (let index = 1; index <= amount ; index++) {
+  for (let index = 1; index <= amount; index++) {
     const halfOfTape = tapeWidthPt / 2;
     sewingPoints.push(
-      {x: marginPt + spaceBetweenPoints * index + halfOfTape, ...commonCircleValues},
-      {x: marginPt + spaceBetweenPoints * index - halfOfTape, ...commonCircleValues}
+
+      { pointHeight: marginPt + spaceBetweenPoints * index + halfOfTape, ...commonCircleValues },
+      { pointHeight: marginPt + spaceBetweenPoints * index - halfOfTape, ...commonCircleValues }
     )
-    
+
   }
 
-  return [
-    { x : marginPt,  ...commonCircleValues},
-    { x : width - marginPt, ...commonCircleValues },
+  const allPoints = [
+    { pointHeight: marginPt, ...commonCircleValues },
+    { pointHeight: spineHeight - marginPt, ...commonCircleValues },
     ...sewingPoints
   ];
+
+
+  allPoints.forEach(point => {
+    if (arePageRotated) {
+      point.y = point.spinePosition;
+      point.x = point.pointHeight
+    }
+    else {
+      point.y = point.pointHeight
+      point.x = point.spinePosition;
+    }
+  });
+
+  return allPoints;
 }
 
 /**

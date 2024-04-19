@@ -201,11 +201,11 @@ export function renderFormFromSettings(configuration) {
   // Set french link stitches settings
   document.querySelector('input[name="add_sewing_marks_checkbox"]').checked =
     configuration.sewingMarksEnabled;
-    document.querySelector('input[name="sewing_marks_margin_pt"]').value =
+  document.querySelector('input[name="sewing_marks_margin_pt"]').value =
     configuration.sewingMarksMarginPt;
-    document.querySelector('input[name="sewing_marks_amount"]').value =
+  document.querySelector('input[name="sewing_marks_amount"]').value =
     configuration.sewingMarksAmount;
-    document.querySelector('input[name="sewing_marks_tape_width_pt"]').value =
+  document.querySelector('input[name="sewing_marks_tape_width_pt"]').value =
     configuration.sewingMarksTapeWidthPt;
 
   // Set freeform inputs

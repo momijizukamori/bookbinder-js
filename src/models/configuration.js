@@ -98,7 +98,7 @@ export const schema = z.object({
   sewingMarksEnabled: urlSafe(coercedBoolean).default(false),
   sewingMarksMarginPt: urlSafe(z.coerce.number()).default(72),
   sewingMarksAmount: urlSafe(z.coerce.number()).default(3),
-  sewingMarksTapeWidthPt: urlSafe(z.coerce.number()).default(36)
+  sewingMarksTapeWidthPt: urlSafe(z.coerce.number()).default(36),
 
   paperSizeCustomWidth: urlSafe(z.coerce.number()).default(0),
   paperSizeCustomHeight: urlSafe(z.coerce.number()).default(0),

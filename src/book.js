@@ -93,7 +93,7 @@ export class Book {
       isEnabled: configuration.sewingMarksEnabled,
       amount: configuration.sewingMarksAmount,
       marginPt: configuration.sewingMarksMarginPt,
-      spacingPt: configuration.sewingMarksTapeWidthPt
+      tapeWidthPt: configuration.sewingMarksTapeWidthPt
     };
     this.pdfEdgeMarks = configuration.pdfEdgeMarks;
     this.cutmarks = configuration.cutMarks;
@@ -554,18 +554,17 @@ export class Book {
 
     const block = config.embeddedPages.slice(block_start, block_end);
     const currPage = outPDF.addPage(papersize);
-    const sewingMarkPoints = sewingMarks.isEnabled ? drawSewingMarks(papersize, sewingMarks.amount, sewingMarks.marginPt, sewingMarks.tapeWidthPt) : [];
     const cropLines = cutmarks ? drawCropmarks(papersize, this.per_sheet) : [];
     const foldLines = foldmarks
       ? drawFoldlines(side2flag, this.duplexrotate, papersize, this.per_sheet)
       : [];
-    const drawLines = [...cropLines, ...foldLines];
-    const drawPoints = [ ...sewingMarkPoints];
-
-    block.forEach((page, i) => {
-      if (page == 'b' || page === undefined) {
-        // blank page, move on.
-      } else if (page instanceof PDFEmbeddedPage) {
+      const drawLines = [...cropLines, ...foldLines];
+      const drawPoints = [ ];
+      
+      block.forEach((page, i) => {
+        if (page == 'b' || page === undefined) {
+          // blank page, move on.
+        } else if (page instanceof PDFEmbeddedPage) {
         const { y, x, sx, sy, rotation } = positions[i];
         currPage.drawPage(page, {
           y,
@@ -577,16 +576,19 @@ export class Book {
       } else {
         console.error('Unexpected type for page: ', page);
       }
-
+      
       if (pdfEdgeMarks && (sigDetails[i].isSigStart || sigDetails[i].isSigEnd)) {
         drawLines.push(drawSpineMarks(sigDetails[i], positions[i]));
       }
+      const sewingMarkPoints = sewingMarks.isEnabled ? drawSewingMarks(sigDetails[i], positions[i], papersize, sewingMarks.amount, sewingMarks.marginPt, sewingMarks.tapeWidthPt) : [];
+      drawPoints.push(...sewingMarkPoints);
     });
-
+    
     drawLines.forEach((line) => {
       currPage.drawLine(line);
     });
-
+    
+    console.log("drawpoints", drawPoints)
     drawPoints.forEach((point) => {
       currPage.drawCircle(point);
     })
