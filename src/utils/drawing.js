@@ -138,7 +138,7 @@ export function drawSewingMarks(sigDetails, position, amount, marginPt, tapeWidt
   // |          |T|      |
   // |-POSITION-| |      |
 
-  // Left pages has spine position on the endge :/
+  // Left pages have spine position on the edge :/
   if (position.isLeftPage) return [];
 
   var arePageRotated = Math.abs(position.rotation) === 90;
