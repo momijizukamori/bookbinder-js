@@ -10,7 +10,7 @@ import { PAGE_LAYOUTS, PAGE_SIZES } from './constants.js';
 import { updatePageLayoutInfo } from './utils/renderUtils.js';
 import JSZip from 'jszip';
 import { loadConfiguration } from './utils/formUtils.js';
-import { drawFoldlines, drawCropmarks, drawSpineMarks, drawSigOrderMark, drawSewingMarks } from './utils/drawing.js';
+import { drawFoldlines, drawCropmarks, drawSpineMark, drawSigOrderMark, drawSewingMarks } from './utils/drawing.js';
 import { calculateDimensions, calculateLayout } from './utils/layout.js';
 import { interleavePages, embedPagesInNewPdf } from './utils/pdf.js';
 

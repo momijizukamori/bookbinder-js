@@ -121,7 +121,7 @@ export function drawCropmarks(papersize, per_sheet) {
   return lines;
 }
 
-/*
+/**
  * @param {@param {import("../book.js").PageInfo}} sigDetails - information about signature where marks will be printed
  * @param {import("../book.js").Position} position - position info object
  * @param {number} amount - amount of sewing crosses.
