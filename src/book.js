@@ -10,7 +10,7 @@ import { PAGE_LAYOUTS, PAGE_SIZES } from './constants.js';
 import { updatePageLayoutInfo } from './utils/renderUtils.js';
 import JSZip from 'jszip';
 import { loadConfiguration } from './utils/formUtils.js';
-import { drawFoldlines, drawCropmarks, drawSpineMark, drawSigOrderMark } from './utils/drawing.js';
+import { drawFoldlines, drawCropmarks, drawSpineMarks, drawSigOrderMark, drawSewingMarks } from './utils/drawing.js';
 import { calculateDimensions, calculateLayout } from './utils/layout.js';
 import { interleavePages, embedPagesInNewPdf } from './utils/pdf.js';
 
@@ -35,6 +35,15 @@ import { interleavePages, embedPagesInNewPdf } from './utils/pdf.js';
  * @property {number[]} [spineMarkTop]: spineMarkTop,
  * @property {number[]} [spineMarkBottom]: spineMarkBottom,
  * @property {boolean} [isLeftPage]: isLeftPage,
+ */
+
+/**
+ * @typedef SewingMarks
+ * @type {object}
+ * @property {boolean} isEnabled - specifies if marks should be drawed,
+ * @property {number} amount - amount of places to saw.
+ * @property {number} marginPt - distance from the end of page to a kettle point,
+ * @property {number} tapeWidthPt - distance between two seing points
  */
 
 export class Book {
@@ -81,6 +90,12 @@ export class Book {
     this.page_positioning = configuration.pagePositioning;
     this.flyleafs = configuration.flyleafs;
     this.cropmarks = configuration.cropMarks;
+    this.sewingMarks = {
+      isEnabled: configuration.sewingMarksEnabled,
+      amount: configuration.sewingMarksAmount,
+      marginPt: configuration.sewingMarksMarginPt,
+      tapeWidthPt: configuration.sewingMarksTapeWidthPt,
+    };
     this.pdfEdgeMarks = configuration.pdfEdgeMarks;
     this.sigOrderMarks = configuration.sigOrderMarks;
     this.cutmarks = configuration.cutMarks;
@@ -509,6 +524,7 @@ export class Book {
         alt: config.alt,
         side2flag: side2flag,
         maxSigCount: maxSigCount,
+        sewingMarks: this.sewingMarks,
       });
       block_start += offset;
       block_end += offset;
@@ -533,6 +549,7 @@ export class Book {
    * @param {Position[]} config.positions: list of page positions
    * @param {PDFDocument} [config.outPDF]: PDF to write to, in addition to PDF created w/ `outname` (or null)
    * @param {(PDFEmbeddedPage|string)[]} [config.embeddedPages] : pages already embedded in the `destPdf` to assemble in addition (or null)
+   * @param {SewingMarks} config.sewingMarks: config for drawing FrenchMarks
    */
 
   draw_block_onto_page(config) {
@@ -549,6 +566,7 @@ export class Book {
     const alt = config.alt;
     const maxSigCount = config.maxSigCount;
     let side2flag = config.side2flag;
+    const sewingMarks = config.sewingMarks;
 
     const block = config.embeddedPages.slice(block_start, block_end);
     const currPage = outPDF.addPage(papersize);
@@ -558,6 +576,7 @@ export class Book {
       : [];
     const drawLines = [...cropLines, ...foldLines];
     const drawRects = [];
+    const drawPoints = [];
 
     block.forEach((page, i) => {
       if (page == 'b' || page === undefined) {
@@ -587,6 +606,16 @@ export class Book {
           drawLines.push(drawSpineMark(false, positions[i], 5));
         }
       }
+      const sewingMarkPoints = sewingMarks.isEnabled
+        ? drawSewingMarks(
+            sigDetails[i],
+            positions[i],
+            sewingMarks.amount,
+            sewingMarks.marginPt,
+            sewingMarks.tapeWidthPt
+          )
+        : [];
+      drawPoints.push(...sewingMarkPoints);
     });
 
     drawLines.forEach((line) => {
@@ -594,6 +623,10 @@ export class Book {
     });
     drawRects.forEach((rect) => {
       currPage.drawRectangle(rect);
+    });
+
+    drawPoints.forEach((point) => {
+      currPage.drawCircle(point);
     });
 
     if (alt) {
