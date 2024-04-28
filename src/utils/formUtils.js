@@ -40,6 +40,11 @@ const fromFormToConfiguration = (form) =>
     flyleafs: form.get('flyleafs'),
     paperSizeCustomWidth: form.get('paper_size_custom_width'),
     paperSizeCustomHeight: form.get('paper_size_custom_height'),
+
+    sewingMarksEnabled: form.get('add_sewing_marks_checkbox'),
+    sewingMarksMarginPt: form.get('sewing_marks_margin_pt'),
+    sewingMarksAmount: form.get('sewing_marks_amount'),
+    sewingMarksTapeWidthPt: form.get('sewing_marks_tape_width_pt'),
   });
 
 /**

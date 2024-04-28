@@ -198,6 +198,16 @@ export function renderFormFromSettings(configuration) {
     `input[name="wacky_spacing"][value="${configuration.wackySpacing}"]`
   ).checked = true;
 
+  // Set french link stitches settings
+  document.querySelector('input[name="add_sewing_marks_checkbox"]').checked =
+    configuration.sewingMarksEnabled;
+  document.querySelector('input[name="sewing_marks_margin_pt"]').value =
+    configuration.sewingMarksMarginPt;
+  document.querySelector('input[name="sewing_marks_amount"]').value =
+    configuration.sewingMarksAmount;
+  document.querySelector('input[name="sewing_marks_tape_width_pt"]').value =
+    configuration.sewingMarksTapeWidthPt;
+
   // Set freeform inputs
   document.querySelector('input[name="main_fore_edge_padding_pt"]').value =
     configuration.mainForeEdgePaddingPt;

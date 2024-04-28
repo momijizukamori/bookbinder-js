@@ -82,6 +82,45 @@
   </span>
 
   <span class="row">
+    <label>Add marks for sewing</label>
+    <input type="checkbox" id="add_sewing_marks_checkbox" name="add_sewing_marks_checkbox" />
+    <details>
+      <summary>Detailed settings for sewing</summary>
+      Look at the image below.
+      <span class="row">
+        <label>(A) Margin (distance where first point should be draw):</label>
+        <input
+          type="number"
+          id="sewing_marks_margin_pt"
+          name="sewing_marks_margin_pt"
+          class="layout_margin_user_input_field"
+        /><sub>pt</sub><br />
+
+        <label>(B) Amount of sewing points:</label>
+        <input
+          type="number"
+          id="sewing_marks_amount"
+          name="sewing_marks_amount"
+          class="layout_margin_user_input_field"
+        /><br />
+
+        <label>(C) Tape width:</label>
+        <input
+          type="number"
+          id="sewing_marks_tape_width_pt"
+          name="sewing_marks_tape_width_pt"
+          class="layout_margin_user_input_field"
+        /><sub>pt</sub><br />
+        <img
+          alt="sewing image"
+          src="/img/sewing_settings_explanation.png"
+          style="height: 100%; width: 100%; object-fit: contain"
+        />
+      </span>
+    </details>
+  </span>
+
+  <span class="row">
     <div class="layout_margin_description">
       White Space Manipulation. All values are in points, relative to original document.<br /><br />1
       point = 1/72 inch

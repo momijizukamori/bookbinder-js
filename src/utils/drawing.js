@@ -1,5 +1,5 @@
 import { LINE_LEN } from '../constants';
-import { rgb } from '@cantoo/pdf-lib';
+import { rgb, grayscale } from '@cantoo/pdf-lib';
 
 /**
  * @typedef Point
@@ -15,6 +15,15 @@ import { rgb } from '@cantoo/pdf-lib';
  * @property {Point} end - end position
  * @property {number} [opacity] - line opacity
  * @property {number[]} [dashArray] - sequence of dash and gap lengths to be repeated for a dashed line
+ */
+
+/**
+ * @typedef Point
+ * @property {number} x,
+ * @property {number} y,
+ * @property {number} size,
+ * @property {Grayscale|RGB|CMYK} color,
+ *
  */
 
 /**
@@ -110,6 +119,72 @@ export function drawCropmarks(papersize, per_sheet) {
   }
 
   return lines;
+}
+
+/**
+ * @param {@param {import("../book.js").PageInfo}} sigDetails - information about signature where marks will be printed
+ * @param {import("../book.js").Position} position - position info object
+ * @param {number} amount - amount of sewing crosses.
+ * @param {number} marginPt - distance from the end of sheet of paper to kettle mark
+ * @param {number} tapeWidthPt - distance between two points in a single sewwing cross.
+ * @returns {Point[]}
+ */
+export function drawSewingMarks(sigDetails, position, amount, marginPt, tapeWidthPt) {
+  // Here normalize coordinates to always think in x an y like this
+  // | P        |H|    P |
+  // |  A       |E|   A  |
+  // |   G      |I|  G   |
+  // |    E     |G| E    |
+  // |          |T|      |
+  // |-POSITION-| |      |
+
+  // Left pages have spine position on the edge :/
+  if (position.isLeftPage) return [];
+
+  var arePageRotated = Math.abs(position.rotation) === 90;
+  let totalSpineHeight = 0;
+  let spinePosition = 0;
+
+  if (arePageRotated) {
+    totalSpineHeight = Math.abs(position.spineMarkTop[0] - position.spineMarkBottom[0]);
+    spinePosition = position.spineMarkTop[1];
+  } else {
+    totalSpineHeight = Math.abs(position.spineMarkTop[1] - position.spineMarkBottom[1]);
+    spinePosition = position.spineMarkTop[0];
+  }
+
+  const workingWidth = totalSpineHeight - 2 * marginPt;
+  const spaceBetweenPoints = workingWidth / (amount + 1);
+
+  const sewingPoints = [];
+  for (let index = 1; index <= amount; index++) {
+    const halfOfTape = tapeWidthPt / 2;
+    sewingPoints.push(
+      { pointHeight: marginPt + spaceBetweenPoints * index + halfOfTape },
+      { pointHeight: marginPt + spaceBetweenPoints * index - halfOfTape }
+    );
+  }
+
+  const allPoints = [
+    { pointHeight: marginPt },
+    { pointHeight: totalSpineHeight - marginPt },
+    ...sewingPoints,
+  ];
+
+  const commonCircleValues = { size: 1, color: grayscale(0.0) };
+  const drawablePoints = allPoints.map((point) => {
+    point = { ...point, ...commonCircleValues };
+    if (arePageRotated) {
+      point.y = spinePosition;
+      point.x = point.pointHeight + position.spineMarkBottom[0];
+    } else {
+      point.y = point.pointHeight + position.spineMarkBottom[1];
+      point.x = spinePosition;
+    }
+    return point;
+  });
+
+  return drawablePoints;
 }
 
 /**
