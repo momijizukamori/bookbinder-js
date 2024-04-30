@@ -42,7 +42,8 @@ const fromFormToConfiguration = (form) =>
     paperSizeCustomWidth: form.get('paper_size_custom_width'),
     paperSizeCustomHeight: form.get('paper_size_custom_height'),
 
-    sewingMarksEnabled: form.get('add_sewing_marks_checkbox'),
+    sewingMarksEnabled: form.has('add_sewing_marks_checkbox'),
+    sewingMarkLocation: form.get('sewing_mark_locations'),
     sewingMarksMarginPt: form.get('sewing_marks_margin_pt'),
     sewingMarksAmount: form.get('sewing_marks_amount'),
     sewingMarksTapeWidthPt: form.get('sewing_marks_tape_width_pt'),
