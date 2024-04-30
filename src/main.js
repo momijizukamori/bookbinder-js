@@ -27,7 +27,6 @@ window.addEventListener('DOMContentLoaded', () => {
   const inputs = document.querySelectorAll('input, select');
   const sourceRotation = document.getElementById('source_rotation');
   const sewingMarks = document.getElementById('add_sewing_marks_checkbox');
-  const sewingMarksDetails = document.getElementById('sewing_marks_details');
   const sourceRotationExamples = Array.from(
     document.getElementsByClassName('source_rotation_example')
   );
@@ -57,7 +56,7 @@ window.addEventListener('DOMContentLoaded', () => {
     });
   });
   sewingMarks.addEventListener('change', (e) => {
-    const willBeEnabled = e.srcElement.checked
-    handleSewingMarksCheckboxState(willBeEnabled)
+    const willBeEnabled = e.srcElement.checked;
+    handleSewingMarksCheckboxState(willBeEnabled);
   });
 });

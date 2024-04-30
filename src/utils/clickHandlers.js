@@ -57,8 +57,8 @@ export function handleResetSettingsClick(book) {
 export function handleSewingMarksCheckboxState(sewingMarksEnabled) {
   const sewingMarkDetailsEl = document.getElementById('sewing_marks_details');
   if (sewingMarksEnabled) {
-    sewingMarkDetailsEl.setAttribute("open", 0)
+    sewingMarkDetailsEl.setAttribute('open', 0);
   } else {
-    sewingMarkDetailsEl.removeAttribute("open")
+    sewingMarkDetailsEl.removeAttribute('open');
   }
 }

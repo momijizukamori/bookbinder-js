@@ -130,7 +130,14 @@ export function drawCropmarks(papersize, per_sheet) {
  * @param {number} tapeWidthPt - distance between two points in a single sewwing cross.
  * @returns {Point[]}
  */
-export function drawSewingMarks(sigDetails, position, sewingMarkLocation, amount, marginPt, tapeWidthPt) {
+export function drawSewingMarks(
+  sigDetails,
+  position,
+  sewingMarkLocation,
+  amount,
+  marginPt,
+  tapeWidthPt
+) {
   // Here normalize coordinates to always think in x an y like this
   // | P        |H|    P |
   // |  A       |E|   A  |
@@ -140,16 +147,17 @@ export function drawSewingMarks(sigDetails, position, sewingMarkLocation, amount
   // |-POSITION-| |      |
 
   // Left pages have spine position on the edge :/
-  console.log("try to draw")
+  console.log('try to draw');
   if (position.isLeftPage) return [];
-  console.log("  on right")
+  console.log('  on right');
 
-  if (sewingMarkLocation == "only_out" && !sigDetails.isSigStart) return [];
-  console.log("  a")
-  if (sewingMarkLocation == "only_in" && !sigDetails.isSigMiddle) return [];
-  console.log("  b")
-  if (sewingMarkLocation == "in_n_out" && !(sigDetails.isSigStart || sigDetails.isSigMiddle)) return [];
-  console.log("  c")
+  if (sewingMarkLocation == 'only_out' && !sigDetails.isSigStart) return [];
+  console.log('  a');
+  if (sewingMarkLocation == 'only_in' && !sigDetails.isSigMiddle) return [];
+  console.log('  b');
+  if (sewingMarkLocation == 'in_n_out' && !(sigDetails.isSigStart || sigDetails.isSigMiddle))
+    return [];
+  console.log('  c');
 
   var arePageRotated = Math.abs(position.rotation) === 90;
   let totalSpineHeight = 0;

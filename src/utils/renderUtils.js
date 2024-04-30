@@ -3,7 +3,7 @@
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 import { PAGE_SIZES } from '../constants';
-import {handleSewingMarksCheckboxState} from './clickHandlers.js';
+import { handleSewingMarksCheckboxState } from './clickHandlers.js';
 
 export function renderPageCount(book) {
   const pageCount = document.getElementById('page_count');
@@ -204,10 +204,10 @@ export function renderFormFromSettings(configuration) {
   ).checked = true;
 
   // Set french link stitches settings
-  handleSewingMarksCheckboxState(configuration.sewingMarksEnabled)
+  handleSewingMarksCheckboxState(configuration.sewingMarksEnabled);
   document.querySelector('input[name="add_sewing_marks_checkbox"]').checked =
     configuration.sewingMarksEnabled;
-  document.querySelector('select[name="sewing_mark_locations"]').value = 
+  document.querySelector('select[name="sewing_mark_locations"]').value =
     configuration.sewingMarkLocation;
   document.querySelector('input[name="sewing_marks_margin_pt"]').value =
     configuration.sewingMarksMarginPt;

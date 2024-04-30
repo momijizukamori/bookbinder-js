@@ -148,32 +148,40 @@ export class Signatures {
 
       const block = [...front_block, ...back_block];
 
-      console.log("Looking front_config : block.length "+block.length+" : given center "+center+", front_start "+front_start+" - front_end "+front_end+", back_start "+back_start+" - back_end "+back_end+", pages.length "+pages.length)
+      console.log(
+        `Looking front_config : block.length ${block.length} : given center ${center}, front_start ${front_start} - front_end ${front_end}, back_start ${back_start} - back_end ${back_end}, pages.length ${pages.length}`
+      );
       front_config.forEach((pnum) => {
         const page = block[pnum - 1]; //page layouts are 1-indexed, not 0-index
         pagelistdetails[0].push({
           info: page,
           isSigStart: front_start == 0 && pnum == 1,
           isSigEnd: front_start == 0 && pnum == block.length,
-          isSigMiddle: front_end == back_start && block.length/2 + 1 == pnum,
+          isSigMiddle: front_end == back_start && block.length / 2 + 1 == pnum,
           signatureNum: sig_num,
         });
-        console.log("  >> "+pnum+"  :: "+page+"  :: "+(front_end == back_start && block.length/2 + 1 == pnum))
+        console.log(
+          `  >> ${pnum}  :: ${page}  :: ${front_end == back_start && block.length / 2 + 1 == pnum}`
+        );
       });
 
       const backlist = this.duplex ? 0 : 1;
 
-      console.log("Looking back_config : given center "+center+", front_start "+front_start+" - front_end "+front_end+", back_start "+back_start+" - back_end "+back_end+", pages.length "+pages.length)
+      console.log(
+        `Looking back_config : given center ${center}, front_start ${front_start} - front_end ${front_end}, back_start ${back_start} - back_end ${back_end}, pages.length ${pages.length}`
+      );
       back_config.forEach((pnum) => {
         const page = block[pnum - 1];
         pagelistdetails[backlist].push({
           info: page,
           isSigStart: front_start == 0 && pnum == 1,
           isSigEnd: front_start == 0 && pnum == block.length,
-          isSigMiddle: front_end == back_start && block.length/2 + 1 == pnum,
+          isSigMiddle: front_end == back_start && block.length / 2 + 1 == pnum,
           signatureNum: sig_num,
         });
-        console.log("  >> "+pnum+"  :: "+page+"  :: "+(front_end == back_start && block.length/2 + 1 == pnum))
+        console.log(
+          `  >> ${pnum}  :: ${page}  :: ${front_end == back_start && block.length / 2 + 1 == pnum}`
+        );
       });
 
       // Update all our counters

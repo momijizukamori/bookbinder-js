@@ -35,9 +35,9 @@ const sourceRotation = urlSafe(
   z.enum(['none', '90cw', '90ccw', 'out_binding', 'in_binding'])
 ).default('none');
 
-const sewingMarkLocation = urlSafe(
-  z.enum(['all', 'only_out', 'only_in', 'in_n_out'])
-).default('all');
+const sewingMarkLocation = urlSafe(z.enum(['all', 'only_out', 'only_in', 'in_n_out'])).default(
+  'all'
+);
 
 /** @type { keyof typeof import("../constants").PAGE_SIZES } */
 const availablePaperSizes = Object.keys(PAGE_SIZES);
