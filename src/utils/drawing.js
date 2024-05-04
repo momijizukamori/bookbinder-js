@@ -124,12 +124,20 @@ export function drawCropmarks(papersize, per_sheet) {
 /**
  * @param {@param {import("../book.js").PageInfo}} sigDetails - information about signature where marks will be printed
  * @param {import("../book.js").Position} position - position info object
+ * @param sewingMarkLocation - see ./models/configuration.js for possible values
  * @param {number} amount - amount of sewing crosses.
  * @param {number} marginPt - distance from the end of sheet of paper to kettle mark
  * @param {number} tapeWidthPt - distance between two points in a single sewwing cross.
  * @returns {Point[]}
  */
-export function drawSewingMarks(sigDetails, position, amount, marginPt, tapeWidthPt) {
+export function drawSewingMarks(
+  sigDetails,
+  position,
+  sewingMarkLocation,
+  amount,
+  marginPt,
+  tapeWidthPt
+) {
   // Here normalize coordinates to always think in x an y like this
   // | P        |H|    P |
   // |  A       |E|   A  |
@@ -139,7 +147,17 @@ export function drawSewingMarks(sigDetails, position, amount, marginPt, tapeWidt
   // |-POSITION-| |      |
 
   // Left pages have spine position on the edge :/
+  console.log('try to draw');
   if (position.isLeftPage) return [];
+  console.log('  on right');
+
+  if (sewingMarkLocation == 'only_out' && !sigDetails.isSigStart) return [];
+  console.log('  a');
+  if (sewingMarkLocation == 'only_in' && !sigDetails.isSigMiddle) return [];
+  console.log('  b');
+  if (sewingMarkLocation == 'in_n_out' && !(sigDetails.isSigStart || sigDetails.isSigMiddle))
+    return [];
+  console.log('  c');
 
   var arePageRotated = Math.abs(position.rotation) === 90;
   let totalSpineHeight = 0;

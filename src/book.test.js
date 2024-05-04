@@ -45,6 +45,7 @@ describe('Book model', () => {
       top: 0,
     },
     sewingMarks: {
+      sewingMarkLocation: 'all',
       amount: 3,
       isEnabled: false,
       marginPt: 72,

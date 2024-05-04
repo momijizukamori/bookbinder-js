@@ -27,6 +27,7 @@ import { interleavePages, embedPagesInNewPdf } from './utils/pdf.js';
  * @property {string|number} info - page # or 'b'
  * @property {boolean} isSigStart
  * @property {boolean} isSigEnd
+ * @property {boolean} isSigMiddle
  * @property {number} signatureNum - which signature is this page in. 0 based
  */
 
@@ -97,6 +98,7 @@ export class Book {
     this.flyleafs = configuration.flyleafs;
     this.cropmarks = configuration.cropMarks;
     this.sewingMarks = {
+      sewingMarkLocation: configuration.sewingMarkLocation,
       isEnabled: configuration.sewingMarksEnabled,
       amount: configuration.sewingMarksAmount,
       marginPt: configuration.sewingMarksMarginPt,
@@ -236,13 +238,6 @@ export class Book {
       page.embed();
       this.cropbox = newPage.getCropBox();
     }
-
-    console.log(
-      'The updatedDoc doc has : ',
-      this.managedDoc.getPages(),
-      ' vs --- ',
-      this.managedDoc.getPageCount()
-    );
 
     switch (this.format) {
       case 'perfect':
@@ -616,6 +611,7 @@ export class Book {
         ? drawSewingMarks(
             sigDetails[i],
             positions[i],
+            sewingMarks.sewingMarkLocation,
             sewingMarks.amount,
             sewingMarks.marginPt,
             sewingMarks.tapeWidthPt
