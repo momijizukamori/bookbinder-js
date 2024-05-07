@@ -10,7 +10,13 @@ import { PAGE_LAYOUTS, PAGE_SIZES } from './constants.js';
 import { updatePageLayoutInfo } from './utils/renderUtils.js';
 import JSZip from 'jszip';
 import { loadConfiguration } from './utils/formUtils.js';
-import { drawFoldlines, drawCropmarks, drawSpineMarks, drawSewingMarks } from './utils/drawing.js';
+import {
+  drawFoldlines,
+  drawCropmarks,
+  drawSpineMark,
+  drawSigOrderMark,
+  drawSewingMarks,
+} from './utils/drawing.js';
 import { calculateDimensions, calculateLayout } from './utils/layout.js';
 import { interleavePages, embedPagesInNewPdf } from './utils/pdf.js';
 
@@ -21,6 +27,8 @@ import { interleavePages, embedPagesInNewPdf } from './utils/pdf.js';
  * @property {string|number} info - page # or 'b'
  * @property {boolean} isSigStart
  * @property {boolean} isSigEnd
+ * @property {boolean} isSigMiddle
+ * @property {number} signatureNum - which signature is this page in. 0 based
  */
 
 /**
@@ -90,12 +98,14 @@ export class Book {
     this.flyleafs = configuration.flyleafs;
     this.cropmarks = configuration.cropMarks;
     this.sewingMarks = {
+      sewingMarkLocation: configuration.sewingMarkLocation,
       isEnabled: configuration.sewingMarksEnabled,
       amount: configuration.sewingMarksAmount,
       marginPt: configuration.sewingMarksMarginPt,
       tapeWidthPt: configuration.sewingMarksTapeWidthPt,
     };
     this.pdfEdgeMarks = configuration.pdfEdgeMarks;
+    this.sigOrderMarks = configuration.sigOrderMarks;
     this.cutmarks = configuration.cutMarks;
     this.format = configuration.sigFormat;
     if (configuration.sigFormat === 'standardsig') {
@@ -229,13 +239,6 @@ export class Book {
       this.cropbox = newPage.getCropBox();
     }
 
-    console.log(
-      'The updatedDoc doc has : ',
-      this.managedDoc.getPages(),
-      ' vs --- ',
-      this.managedDoc.getPageCount()
-    );
-
     switch (this.format) {
       case 'perfect':
       case 'booklet':
@@ -303,6 +306,8 @@ export class Book {
    *      generate preview content AND a downloadable zip
    */
   async createoutputfiles(isPreview) {
+    // set this to `true` to enable full-book previews (placeholder till it's in the UI)
+    const fullPreviewDevHack = false;
     const previewFrame = document.getElementById('pdf');
     let previewPdf = null;
 
@@ -323,14 +328,16 @@ export class Book {
       this.format == 'customsig'
     ) {
       // Only generate the first signature for preview
-      const pagesArr = isPreview ? this.rearrangedpages.slice(0, 1) : this.rearrangedpages;
+      const pagesArr =
+        isPreview && !fullPreviewDevHack ? this.rearrangedpages.slice(0, 1) : this.rearrangedpages;
       const signatures = [{}];
       const makeSignatures = async () => {
         const tasks = pagesArr.map(async (pages, i) => {
           console.log(pages);
           signatures[i] = { name: `${this.filename}_signature${i}` };
-          [signatures[i].front, signatures[i].back] = await this.createSignatures({
+          [signatures[i].front, signatures[i].back] = await this.createSignature({
             pageIndexDetails: pages,
+            maxSigCount: pagesArr.length,
           });
         });
         await Promise.all(tasks);
@@ -350,7 +357,7 @@ export class Book {
         previewPdf = signatures[0].duplex;
       }
 
-      if (this.print_file != 'aggregated' && !isPreview) {
+      if (this.print_file != 'aggregated' && (!isPreview || fullPreviewDevHack)) {
         const saveSignatures = async () => {
           const tasks = signatures.map(async (sig) => {
             await sig.front?.save().then((pdfBytes) => {
@@ -368,7 +375,7 @@ export class Book {
         await saveSignatures();
       }
 
-      if (this.print_file != 'signatures' && !isPreview) {
+      if (this.print_file != 'signatures' && (!isPreview || fullPreviewDevHack)) {
         const saveAggregate = async () => {
           const aggregate = {
             front: !this.duplex ? await PDFDocument.create() : null,
@@ -414,7 +421,9 @@ export class Book {
               this.zip.file(`${this.filename}_typeset.pdf`, pdfBytes);
             });
           }
+          previewPdf = aggregate.duplex;
         };
+
         await saveAggregate();
       }
 
@@ -461,18 +470,20 @@ export class Book {
   }
 
   /**
-   * Part of the Classic (non-Wacky) flow. Called by [createsignatures].
+   * Part of the Classic (non-Wacky) flow. Called by [createsignature].
    *   (conditionally) populates the destPdf and (conditionally) generates the outname PDF
    *
    * @param {Object} config - object /w the following parameters:
-   * @param {PageInfo[]} config.pageList : objects that contain 3 values: { isSigStart: boolean, isSigEnd: boolean, info: either the page number or 'b'}
+   * @param {PageInfo[]} config.pageList : see documentation at top of file
    * @param {boolean} config.back : is 'back' of page  (boolean)
    * @param {boolean} config.alt : alternate pages (boolean)
+   * @param {number} config.maxSigCount
    * @return reference to the new PDF created
    */
   async writepages(config) {
     const pagelist = config.pageList;
     const back = config.back;
+    const maxSigCount = config.maxSigCount;
     const filteredList = [];
     const blankIndices = [];
     pagelist.forEach((pageInfo, i) => {
@@ -482,6 +493,7 @@ export class Book {
         blankIndices.push(i);
       }
     });
+
     const [outPDF, embeddedPages] = await embedPagesInNewPdf(this.managedDoc, filteredList);
 
     blankIndices.forEach((i) => embeddedPages.splice(i, 0, 'b'));
@@ -497,7 +509,7 @@ export class Book {
     let side2flag = back;
 
     while (block_end <= pagelist.length) {
-      const sigDetails = config.pageList.slice(block_start, block_end);
+      const sigDetails = pagelist.slice(block_start, block_end);
       side2flag = this.draw_block_onto_page({
         outPDF: outPDF,
         embeddedPages: embeddedPages,
@@ -507,10 +519,12 @@ export class Book {
         papersize: this.papersize,
         positions: positions,
         cropmarks: this.cropmarks,
+        sigOrderMarks: this.sigOrderMarks,
         pdfEdgeMarks: this.pdfEdgeMarks,
         cutmarks: this.cutmarks,
         alt: config.alt,
         side2flag: side2flag,
+        maxSigCount: maxSigCount,
         sewingMarks: this.sewingMarks,
       });
       block_start += offset;
@@ -523,7 +537,8 @@ export class Book {
    *
    * @param {Object} config - object /w the following parameters:
    * @param {string|null} config.outname : name of pdf added to ongoing zip file. Ex: 'signature1duplex.pdf' (or null if no signature file needed)
-   * @param {PageInfo[]} config.sigDetails : objects that contain 3 values: { isSigStart: boolean, isSigEnd: boolean, info: either the page number or 'b'}
+   * @param {PageInfo[]} config.sigDetails : see documentation at top of file
+   * @param {number} config.maxSigCount: Total number of signatures
    * @param {boolean} config.side2flag : is 'back' of page  (boolean)
    * @param {[number, number]} config.papersize : paper size (as [number, number])
    * @param {number} config.block_start: Starting page index
@@ -546,9 +561,11 @@ export class Book {
     const outPDF = config.outPDF;
     const positions = config.positions;
     const foldmarks = config.cropmarks;
+    const sigOrderMarks = config.sigOrderMarks;
     const pdfEdgeMarks = config.pdfEdgeMarks;
     const cutmarks = config.cutmarks;
     const alt = config.alt;
+    const maxSigCount = config.maxSigCount;
     let side2flag = config.side2flag;
     const sewingMarks = config.sewingMarks;
 
@@ -559,6 +576,7 @@ export class Book {
       ? drawFoldlines(side2flag, this.duplexrotate, papersize, this.per_sheet)
       : [];
     const drawLines = [...cropLines, ...foldLines];
+    const drawRects = [];
     const drawPoints = [];
 
     block.forEach((page, i) => {
@@ -577,13 +595,23 @@ export class Book {
         console.error('Unexpected type for page: ', page);
       }
 
-      if (pdfEdgeMarks && (sigDetails[i].isSigStart || sigDetails[i].isSigEnd)) {
-        drawLines.push(drawSpineMarks(sigDetails[i], positions[i]));
+      if (sigDetails[i].isSigStart) {
+        if (pdfEdgeMarks) {
+          drawLines.push(drawSpineMark(true, positions[i], 5));
+        }
+        if (sigOrderMarks) {
+          drawRects.push(drawSigOrderMark(sigDetails[i], positions[i], maxSigCount, 5, 20));
+        }
+      } else if (sigDetails[i].isSigEnd) {
+        if (pdfEdgeMarks) {
+          drawLines.push(drawSpineMark(false, positions[i], 5));
+        }
       }
       const sewingMarkPoints = sewingMarks.isEnabled
         ? drawSewingMarks(
             sigDetails[i],
             positions[i],
+            sewingMarks.sewingMarkLocation,
             sewingMarks.amount,
             sewingMarks.marginPt,
             sewingMarks.tapeWidthPt
@@ -594,6 +622,9 @@ export class Book {
 
     drawLines.forEach((line) => {
       currPage.drawLine(line);
+    });
+    drawRects.forEach((rect) => {
+      currPage.drawRectangle(rect);
     });
 
     drawPoints.forEach((point) => {
@@ -608,22 +639,27 @@ export class Book {
 
   /**
    * PDF builder base function for Classic (non-Wacky) layouts. Called by [createoutputfiles]
+   * Generates a single signature  (or is it just a single sheet? -- comments left long after coding)
+   * TODO : re-examine this logic and clean up this comment. What is going on??
    *
    * @param {Object} config
+   * @param {number} config.maxSigCount
    * @param {PageInfo[][]} config.pageIndexDetails : a nested list of objects.
    */
-  async createSignatures(config) {
+  async createSignature(config) {
     const pages = config.pageIndexDetails;
     const tasks = [
       this.writepages({
         pageList: pages[0],
         back: false,
         alt: false,
+        maxSigCount: config.maxSigCount,
       }),
       this.writepages({
         pageList: pages[1],
         back: true,
         alt: false,
+        maxSigCount: config.maxSigCount,
       }),
     ];
     const [pdfFront, pdfBack] = await Promise.all(tasks);

@@ -45,6 +45,7 @@ describe('Book model', () => {
       top: 0,
     },
     sewingMarks: {
+      sewingMarkLocation: 'all',
       amount: 3,
       isEnabled: false,
       marginPt: 72,
@@ -57,6 +58,7 @@ describe('Book model', () => {
     source_rotation: 'none',
     print_file: 'both',
     signatureconfig: [],
+    sigOrderMarks: false,
   };
 
   it('returns a new Book', () => {

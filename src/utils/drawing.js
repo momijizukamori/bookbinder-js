@@ -124,12 +124,20 @@ export function drawCropmarks(papersize, per_sheet) {
 /**
  * @param {@param {import("../book.js").PageInfo}} sigDetails - information about signature where marks will be printed
  * @param {import("../book.js").Position} position - position info object
+ * @param sewingMarkLocation - see ./models/configuration.js for possible values
  * @param {number} amount - amount of sewing crosses.
  * @param {number} marginPt - distance from the end of sheet of paper to kettle mark
  * @param {number} tapeWidthPt - distance between two points in a single sewwing cross.
  * @returns {Point[]}
  */
-export function drawSewingMarks(sigDetails, position, amount, marginPt, tapeWidthPt) {
+export function drawSewingMarks(
+  sigDetails,
+  position,
+  sewingMarkLocation,
+  amount,
+  marginPt,
+  tapeWidthPt
+) {
   // Here normalize coordinates to always think in x an y like this
   // | P        |H|    P |
   // |  A       |E|   A  |
@@ -139,7 +147,17 @@ export function drawSewingMarks(sigDetails, position, amount, marginPt, tapeWidt
   // |-POSITION-| |      |
 
   // Left pages have spine position on the edge :/
+  console.log('try to draw');
   if (position.isLeftPage) return [];
+  console.log('  on right');
+
+  if (sewingMarkLocation == 'only_out' && !sigDetails.isSigStart) return [];
+  console.log('  a');
+  if (sewingMarkLocation == 'only_in' && !sigDetails.isSigMiddle) return [];
+  console.log('  b');
+  if (sewingMarkLocation == 'in_n_out' && !(sigDetails.isSigStart || sigDetails.isSigMiddle))
+    return [];
+  console.log('  c');
 
   var arePageRotated = Math.abs(position.rotation) === 90;
   let totalSpineHeight = 0;
@@ -188,14 +206,14 @@ export function drawSewingMarks(sigDetails, position, amount, marginPt, tapeWidt
 }
 
 /**
- * @param {import("../book.js").PageInfo} sigDetails - page info object
+ * @param {boolean} draw_top_mark - true to draw mark at top of PDF, false for bottom of PDF
  * @param {import("../book.js").Position} position - position info object
+ * @param {number} w - width of the line in pts
  * @returns {Line}
  */
-export function drawSpineMarks(sigDetails, position) {
-  const w = 5;
+export function drawSpineMark(draw_top_mark, position, w) {
   let startX, startY, endX, endY;
-  if (sigDetails.isSigStart) {
+  if (draw_top_mark) {
     [startX, startY] = position.spineMarkTop;
     [endX, endY] = position.spineMarkTop;
   } else {
@@ -223,6 +241,48 @@ export function drawSpineMarks(sigDetails, position) {
   return drawLineArgs;
 }
 
+/**
+ * TODO : these params should probably be pushed into a config... maybe next time/next pass
+ *
+ * @param {import("../book.js").PageInfo} sigDetails - page info object
+ * @param {import("../book.js").Position} position - position info object
+ * @param {number} maxSigCount - number of total signatures
+ * @param {number} w - width of the mark in pts
+ * @param {number} suggested_h - suggested height of the mark in pts (can be scaled down to fit all marks between PDF top/bottom)
+ * @returns {Line}
+ */
+export function drawSigOrderMark(sigDetails, position, maxSigCount, w, suggested_h) {
+  const top = drawSpineMark(true, position, w);
+  const bottom = drawSpineMark(false, position, w);
+
+  let x = top.start.x;
+  let y = top.start.y;
+
+  const dist = position.rotation == 0 ? top.start.y - bottom.start.y : top.start.x - bottom.start.x;
+  let h = Math.min(suggested_h, dist / maxSigCount);
+  const offset = h * sigDetails.signatureNum;
+  // console.log("Looking at signature ",sigDetails.signatureNum," of ",maxSigCount," PDF top/bottom distance ",dist," results in ",h," (",suggested_h," vs ",(dist/maxSigCount),") order mark height w/ offset ",offset," (width ",w,")");
+
+  if (position.rotation == 0) {
+    h = h * -1;
+    y -= offset;
+  } else {
+    const temp = h;
+    h = w;
+    w = temp * -1;
+    x -= offset;
+  }
+
+  return {
+    x: x,
+    y: y,
+    width: w,
+    height: h,
+    borderWidth: 0,
+    color: rgb(0, 0, 0),
+    opacity: 0.5,
+  };
+}
 /**
  * @param {number} x
  * @param {number} ystart

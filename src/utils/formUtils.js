@@ -22,6 +22,7 @@ const fromFormToConfiguration = (form) =>
     paperRotation90: form.has('paper_rotation_90'),
     pageLayout: form.get('pagelayout'),
     cropMarks: form.has('cropmarks'),
+    sigOrderMarks: form.has('sig_order_marks'),
     pdfEdgeMarks: form.has('pdf_edge_marks'),
     cutMarks: form.has('cutmarks'),
     pageScaling: form.get('page_scaling'),
@@ -41,7 +42,8 @@ const fromFormToConfiguration = (form) =>
     paperSizeCustomWidth: form.get('paper_size_custom_width'),
     paperSizeCustomHeight: form.get('paper_size_custom_height'),
 
-    sewingMarksEnabled: form.get('add_sewing_marks_checkbox'),
+    sewingMarksEnabled: form.has('add_sewing_marks_checkbox'),
+    sewingMarkLocation: form.get('sewing_mark_locations'),
     sewingMarksMarginPt: form.get('sewing_marks_margin_pt'),
     sewingMarksAmount: form.get('sewing_marks_amount'),
     sewingMarksTapeWidthPt: form.get('sewing_marks_tape_width_pt'),
