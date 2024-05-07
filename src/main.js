@@ -9,6 +9,7 @@ import {
   handleGenerateClick,
   handlePreviewClick,
   handleResetSettingsClick,
+  handleSewingMarksCheckboxState,
 } from './utils/clickHandlers.js';
 import { renderPaperSelectOptions } from './utils/renderUtils.js';
 
@@ -25,6 +26,7 @@ window.addEventListener('DOMContentLoaded', () => {
   const fileInput = document.getElementById('input_file');
   const inputs = document.querySelectorAll('input, select');
   const sourceRotation = document.getElementById('source_rotation');
+  const sewingMarks = document.getElementById('add_sewing_marks_checkbox');
   const sourceRotationExamples = Array.from(
     document.getElementsByClassName('source_rotation_example')
   );
@@ -52,5 +54,9 @@ window.addEventListener('DOMContentLoaded', () => {
     sourceRotationExamples.forEach((example) => {
       example.style.display = example.id === selectedValue ? 'block' : 'none';
     });
+  });
+  sewingMarks.addEventListener('change', (e) => {
+    const willBeEnabled = e.srcElement.checked;
+    handleSewingMarksCheckboxState(willBeEnabled);
   });
 });

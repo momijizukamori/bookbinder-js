@@ -131,7 +131,7 @@ export function calculateDimensions(book) {
     top: padding_pt.top * sy,
   };
 
-  // page_positioning has 2 options: centered, binding_alinged
+  // page_positioning has 2 options: centered, binding_aligned
   const positioning = page_positioning;
 
   const xForeEdgeShiftFunc = function () {

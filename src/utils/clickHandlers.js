@@ -53,3 +53,12 @@ export function handleResetSettingsClick(book) {
   updateAddOrRemoveCustomPaperOption();
   updatePaperSelectOptionsUnits();
 }
+
+export function handleSewingMarksCheckboxState(sewingMarksEnabled) {
+  const sewingMarkDetailsEl = document.getElementById('sewing_marks_details');
+  if (sewingMarksEnabled) {
+    sewingMarkDetailsEl.setAttribute('open', 0);
+  } else {
+    sewingMarkDetailsEl.removeAttribute('open');
+  }
+}

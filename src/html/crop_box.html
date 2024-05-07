@@ -1,0 +1,99 @@
+<div class="section">
+  <h2>PDF Markup</h2>
+  <i>(does not currently work with Wacky Small Layouts -- soon!)</i><br />
+  <span class="row">
+    <label
+      >Add Foldlines
+      <span
+        data-balloon-length="medium"
+        aria-label="Adds folding guidelines (ordered thickest to thinnest)"
+        data-balloon-pos="up"
+      >
+        <input type="checkbox" name="cropmarks" />
+      </span>
+    </label>
+  </span>
+
+  <span class="row">
+    <label
+      >Add Cutlines
+      <span data-balloon-length="medium" aria-label="Adds cutting guidelines" data-balloon-pos="up">
+        <input type="checkbox" name="cutmarks"
+      /></span>
+    </label>
+  </span>
+  <span class="row">
+    <label
+      >Add PDF bounds indicators (spine)
+      <span
+        data-balloon-length="medium"
+        aria-label="Puts small marks on the outermost folio of the signatures indicating the top and bottom of the PDF"
+        data-balloon-pos="up"
+      >
+        <input type="checkbox" name="pdf_edge_marks"
+      /></span>
+    </label>
+  </span>
+  <span class="row">
+    <label
+      >Add signature order marks (spine)
+      <span
+        data-balloon-length="medium"
+        aria-label="Puts staggered lines down the different signature spines to indicate order"
+        data-balloon-pos="up"
+      >
+        <input type="checkbox" name="sig_order_marks"
+      /></span>
+    </label>
+  </span>
+  <span class="row">
+    <label>Add marks for sewing</label>
+    <input type="checkbox" id="add_sewing_marks_checkbox" name="add_sewing_marks_checkbox" />
+    <details id="sewing_marks_details">
+      <summary>Detailed settings for sewing</summary>
+      <span class="row">
+        <label
+          >Draw marks on :
+          <select name="sewing_mark_locations" id="sewing_mark_locations">
+            <option value="all" selected="selected">center of every folio</option>
+            <option value="only_out">only on spine</option>
+            <option value="only_in">only in center of signature</option>
+            <option value="in_n_out">both spine and center of signature</option>
+          </select> </label
+        ><br />
+        Look at the image below.<br />
+        <label
+          >(A) Margin (distance where first point should be draw):
+          <input
+            type="number"
+            id="sewing_marks_margin_pt"
+            name="sewing_marks_margin_pt"
+            class="layout_margin_user_input_field" /><sub>pt</sub><br
+        /></label>
+
+        <label
+          >(B) Amount of sewing points:
+          <input
+            type="number"
+            id="sewing_marks_amount"
+            name="sewing_marks_amount"
+            class="layout_margin_user_input_field" /><br
+        /></label>
+
+        <label
+          >(C) Tape width:
+          <input
+            type="number"
+            id="sewing_marks_tape_width_pt"
+            name="sewing_marks_tape_width_pt"
+            class="layout_margin_user_input_field" /><sub>pt</sub><br
+        /></label>
+        <img
+          alt="sewing image - use tape width of 0pt to make a single dot (overlapping marks)"
+          src="/img/sewing_settings_explanation.png"
+          style="height: 100%; width: 100%; object-fit: contain"
+        />
+      </span>
+    </details>
+  </span>
+</div>
