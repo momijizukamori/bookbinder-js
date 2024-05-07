@@ -307,7 +307,7 @@ export class Book {
    */
   async createoutputfiles(isPreview) {
     // set this to `true` to enable full-book previews (placeholder till it's in the UI)
-    const fullPreviewDevHack = true;
+    const fullPreviewDevHack = false;
     const previewFrame = document.getElementById('pdf');
     let previewPdf = null;
 
