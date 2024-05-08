@@ -492,7 +492,7 @@ export class Book {
   }
 
   /**
-   * Part of the Classic (non-Wacky) flow. Called by [createsignature].
+   * Part of the Classic (non-Wacky) flow. Called by [createsignatures].
    *   (conditionally) populates the destPdf and (conditionally) generates the outname PDF
    *
    * @param {Object} config - object /w the following parameters:
@@ -668,7 +668,7 @@ export class Book {
    * @param {number} config.maxSigCount
    * @param {PageInfo[][]} config.pageIndexDetails : a nested list of objects.
    */
-  async createSignature(config) {
+  async createSignatures(config) {
     const pages = config.pageIndexDetails;
     const tasks = [
       this.writepages({
