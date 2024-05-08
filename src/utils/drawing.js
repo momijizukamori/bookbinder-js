@@ -221,7 +221,7 @@ export function drawSpineMark(draw_top_mark, position, w) {
     [endX, endY] = position.spineMarkBottom;
   }
 
-  if (position.rotation == 0) {
+  if (position.rotation == 0 || position.rotation == 180) {
     startX -= w / 2;
     endX += w / 2;
   } else {
