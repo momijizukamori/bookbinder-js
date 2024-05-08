@@ -7,7 +7,6 @@ import { saveAs } from 'file-saver';
 import { Signatures } from './signatures.js';
 import { WackyImposition } from './wacky_imposition.js';
 import { PAGE_LAYOUTS, PAGE_SIZES } from './constants.js';
-import { updatePageLayoutInfo } from './utils/renderUtils.js';
 import JSZip from 'jszip';
 import { loadConfiguration } from './utils/formUtils.js';
 import {
@@ -294,7 +293,7 @@ export class Book {
     const dimensions = calculateDimensions(this);
     const positions = calculateLayout(this);
 
-    updatePageLayoutInfo({
+    return {
       dimensions,
       book: this.book,
       perSheet: this.per_sheet,
@@ -302,7 +301,7 @@ export class Book {
       cropbox: this.cropbox,
       managedDoc: this.managedDoc,
       positions,
-    });
+    };
   }
 
   /**

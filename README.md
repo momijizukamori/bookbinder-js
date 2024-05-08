@@ -22,6 +22,8 @@ npm run dev          # Starts the development server (auto-refreshes changes) on
 npm run build        # Builds output files into the /dist folder, to be copied and served elsewhere
 npm run preview      # Builds output files into the /dist folder and serves locally on http://localhost:4173/bookbinder-js/
 npm run test         # Runs vitest, and auto-retests if you make changes to test files
+npm run test:unit    # Runs the unit tests (fast) with vitest, and auto-retests if you make changes to test files
+npm run test:pdf     # Runs the pdf check tests (slow), and auto-retests if you make changes to test files
 npm run lint         # Runs ESLint to check for coding style violations
 npm run lint:fix     # Runs ESLint to check for coding style violations, and attempts to fix all easily-fixed ones
 npm run prettier     # Runs Prettier to check for file formatting violations
