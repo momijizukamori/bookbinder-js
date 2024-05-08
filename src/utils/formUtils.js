@@ -3,8 +3,14 @@
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 import { schema } from '../models/configuration';
-import { clearLocalSettings, getLocalSettings, setLocalSettings,  } from './localStorageUtils';
-import { renderFormFromSettings, renderInfoBox, renderPageCount, renderWacky, updatePageLayoutInfo } from './renderUtils';
+import { clearLocalSettings, getLocalSettings, setLocalSettings } from './localStorageUtils';
+import {
+  renderFormFromSettings,
+  renderInfoBox,
+  renderPageCount,
+  renderWacky,
+  updatePageLayoutInfo,
+} from './renderUtils';
 import { clearUrlParams, setUrlParams, toUrlParams, updateWindowLocation } from './uri';
 
 /**
