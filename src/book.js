@@ -373,8 +373,9 @@ export class Book {
       const tasks = pagesArr.map(async (pages, i) => {
         console.log(pages);
         signatures[i] = { name: `${this.filename}_signature${i}` };
-        [signatures[i].front, signatures[i].back] = await this.createSignatures({
+        [signatures[i].front, signatures[i].back] = await this.createSignature({
           pageIndexDetails: pages,
+          maxSigCount: pagesArr.length,
         });
       });
       await Promise.all(tasks);
@@ -491,7 +492,7 @@ export class Book {
   }
 
   /**
-   * Part of the Classic (non-Wacky) flow. Called by [createsignatures].
+   * Part of the Classic (non-Wacky) flow. Called by [createsignature].
    *   (conditionally) populates the destPdf and (conditionally) generates the outname PDF
    *
    * @param {Object} config - object /w the following parameters:
@@ -667,7 +668,7 @@ export class Book {
    * @param {number} config.maxSigCount
    * @param {PageInfo[][]} config.pageIndexDetails : a nested list of objects.
    */
-  async createSignatures(config) {
+  async createSignature(config) {
     const pages = config.pageIndexDetails;
     const tasks = [
       this.writepages({
