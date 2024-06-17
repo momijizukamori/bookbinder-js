@@ -4,7 +4,13 @@
 
 import { schema } from '../models/configuration';
 import { clearLocalSettings, getLocalSettings, setLocalSettings } from './localStorageUtils';
-import { renderFormFromSettings, renderInfoBox, renderPageCount, renderWacky } from './renderUtils';
+import {
+  renderFormFromSettings,
+  renderInfoBox,
+  renderPageCount,
+  renderWacky,
+  updatePageLayoutInfo,
+} from './renderUtils';
 import { clearUrlParams, setUrlParams, toUrlParams, updateWindowLocation } from './uri';
 
 /**
@@ -77,7 +83,8 @@ export const loadConfiguration = () => {
  * @param { import("../book").Book } book The book to update the form from
  */
 export function updateRenderedForm(book) {
-  book.createpages().then(() => {
+  book.createpages().then((info) => {
+    updatePageLayoutInfo(info);
     console.log('... pages created');
     renderPageCount(book);
     renderInfoBox(book);

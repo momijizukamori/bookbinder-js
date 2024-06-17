@@ -33,3 +33,12 @@ If you require more detailed instructions on any of these steps, please see the 
    - make sure tests are passing with `npm run test`
    - open a pull request against the parent repository, as described in the link at the start of this section. Choose the parent repository's main branch as the 'base' and your fork's feature branch as the 'head'. Describe the changes you've made and review the changed files to make sure it's what you intended. See the following screenshot for an example:
      ![pull request example](/docs/PR-example.png)
+
+## Adding PDF Tests
+
+We use [pdf-visual-diff](https://github.com/moshensky/pdf-visual-diff) to compare results for full workflow runs. To add a new baseline file to compare against:
+
+1. Pick a file under /docs to use. Run it through the app, and save the output zip file. **Important**: if you're adding a test for for a 'classic' layout configuration, set the output to include signatures and to be duplexed.
+2. Put the output file (wacky) or first signature (classic) in /pdf-test/files, and give it a descriptive name.
+3. Open up /pdf-test/pdfTestCases.js and add a new entry to the `testCases` object. The key should be the same as the name you gave the file (without the .pdf extension), and the object should have two keys: `input`, which is the filename of the file you used, and `config`, which should have the contents of the object from the settings.txt file included in the output zip.
+4. Generate new snapshots by running `npm run generate-snapshots` - this will clear existing snapshots and generate new ones for all files.
