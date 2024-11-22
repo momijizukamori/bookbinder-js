@@ -1,120 +1,129 @@
-<div class="section" id="book_size">
-  <h2>Page Layout</h2>
-  <label for="pagelayout">Style</label>
-  <select name="pagelayout" id="pagelayout">
-    <option id="folio" value="folio">Folio - two pages per side of sheet</option>
-    <option id="quarto" value="quarto" selected>Quarto - four pages per side of sheet</option>
-    <option id="octavo" value="octavo">Octavo - eight pages per side of sheet</option>
-    <option id="sextodecimo" value="sextodecimo">
-      Sextodecimo - sixteen pages per side of sheet
-    </option>
-  </select>
-  <span class="row">
-    <details>
-      <summary>Folding instructions for quarto/octavo</summary>
-      <p>
-        Folding these two layouts is slightly more complex than the simple single-fold folio. Both
-        of these have been designed so that the first fold is parallel to the short edge of the
-        paper - eg, if you hold the page in portrait orientation, you will be folding the top edge
-        to the bottom. One side of the page will have consecutive numbers across this fold (ie, 3
-        and 30 on the top row, 2 and 31). Fold inward across this line (so that 3 has been folded to
-        lay against 2, and 30 against 31). The next fold is along the other paper axis (parallel to
-        the original long edge). For quarto, you want to find the side with the numbers closest
-        together, and fold inwards to match them (this will be consecutive on the innermost sheet).
-        For octavo, look at the bottom-most row and find the consecutive pair, then fold inward.
-        Octavo has one last fold, for which you want to find the pair remaning that are closest, and
-        fold them together.
-      </p>
-      <p>
-        Or, if you want to just memorize the order, once you find the first fold side, the order
-        is:<br />
-        <b>quarto</b> - top to bottom, fold points away from you, left to right, fold points towards
-        you.<br />
-        <b>octavo</b> - top to bottom, fold points away from you, left to right, fold points away
-        from you, top to bottom, fold points towards you.
-      </p>
-    </details></span
-  >
+<section class="section" id="book_size">
+  <header><h2>Page Layout</h2></header>
+  <label for="pagelayout" class="mb-1"
+    >Style:
+    <select name="pagelayout" id="pagelayout" class="inline">
+      <option id="folio" value="folio">Folio - two pages per side of sheet</option>
+      <option id="quarto" value="quarto" selected>Quarto - four pages per side of sheet</option>
+      <option id="octavo" value="octavo">Octavo - eight pages per side of sheet</option>
+      <option id="sextodecimo" value="sextodecimo">
+        Sextodecimo - sixteen pages per side of sheet
+      </option>
+    </select>
+  </label>
+  <details>
+    <summary>Folding instructions for quarto/octavo</summary>
+    <p>
+      Folding these two layouts is slightly more complex than the simple single-fold folio. Both of
+      these have been designed so that the first fold is parallel to the short edge of the paper -
+      eg, if you hold the page in portrait orientation, you will be folding the top edge to the
+      bottom. One side of the page will have consecutive numbers across this fold (ie, 3 and 30 on
+      the top row, 2 and 31). Fold inward across this line (so that 3 has been folded to lay against
+      2, and 30 against 31). The next fold is along the other paper axis (parallel to the original
+      long edge). For quarto, you want to find the side with the numbers closest together, and fold
+      inwards to match them (this will be consecutive on the innermost sheet). For octavo, look at
+      the bottom-most row and find the consecutive pair, then fold inward. Octavo has one last fold,
+      for which you want to find the pair remaning that are closest, and fold them together.
+    </p>
+    <p>
+      Or, if you want to just memorize the order, once you find the first fold side, the order
+      is:<br />
+      <b>quarto</b> - top to bottom, fold points away from you, left to right, fold points towards
+      you.<br />
+      <b>octavo</b> - top to bottom, fold points away from you, left to right, fold points away from
+      you, top to bottom, fold points towards you.
+    </p>
+  </details>
 
-  <span class="row">
-    <label for="page_scaling">Page scaling</label>
-    <select name="page_scaling" id="page_scaling">
+  <label for="page_scaling"
+    >Page scaling:
+    <select name="page_scaling" id="page_scaling" class="inline">
       <option value="centered">Original</option>
       <option value="lockratio" selected>Keep proportional</option>
       <option value="stretch">Stretch to fit</option>
     </select>
-  </span>
+  </label>
 
-  <span class="row">
-    <label for="page_positioning">Page Positioning</label>
-    <select name="page_positioning" id="page_positioning">
+  <label for="page_positioning"
+    >Page Positioning:
+    <select name="page_positioning" id="page_positioning" class="inline">
       <option value="centered" selected>Centered</option>
       <option value="binding_aligned">Snug against binding edge</option>
     </select>
-  </span>
-  <span class="row">
-    <div class="layout_margin_description">
+  </label>
+
+  <span class="flex space-evenly align-center layout_margin_user_input">
+    <div class="input-group ml-2 mt-1">
+      <label>
+        Fore-Edge Margin:
+        <input
+          type="number"
+          id="main_fore_edge_padding_pt"
+          name="main_fore_edge_padding_pt"
+          class="layout_margin_user_input_field inline"
+        />pt</label
+      >
+      <label
+        >Binding Margin:
+        <input
+          type="number"
+          id="binding_edge_padding_pt"
+          name="binding_edge_padding_pt"
+          class="layout_margin_user_input_field inline"
+        />pt</label
+      >
+      <label
+        >Top Margin:
+        <input
+          type="number"
+          id="top_edge_padding_pt"
+          name="top_edge_padding_pt"
+          class="layout_margin_user_input_field inline"
+        />pt</label
+      >
+      <label
+        >Bottom Margin:
+        <input
+          type="number"
+          id="bottom_edge_padding_pt"
+          name="bottom_edge_padding_pt"
+          class="layout_margin_user_input_field inline"
+        />pt</label
+      >
+    </div>
+    <div class="small shrink" style="max-width: 15em">
       White Space Manipulation. All values are in points, relative to original document.<br /><br />1
       point = 1/72 inch
     </div>
-    <div class="layout_margin_user_input">
-      Fore-Edge Margin:
-      <input
-        type="number"
-        id="main_fore_edge_padding_pt"
-        name="main_fore_edge_padding_pt"
-        class="layout_margin_user_input_field"
-      /><sub>pt</sub><br />
-      Binding Margin:
-      <input
-        type="number"
-        id="binding_edge_padding_pt"
-        name="binding_edge_padding_pt"
-        class="layout_margin_user_input_field"
-      /><sub>pt</sub><br />
-      Top Margin:
-      <input
-        type="number"
-        id="top_edge_padding_pt"
-        name="top_edge_padding_pt"
-        class="layout_margin_user_input_field"
-      /><sub>pt</sub><br />
-      Bottom Margin:
-      <input
-        type="number"
-        id="bottom_edge_padding_pt"
-        name="bottom_edge_padding_pt"
-        class="layout_margin_user_input_field"
-      /><sub>pt</sub><br />
-    </div>
   </span>
 
-  <span class="row" id="show_layout_info">
-    <div class="layout_spine_label">spine</div>
-    <div class="layout_margin_info" id="layout_margin_info">
+  <span class="flex center mt-2 small" id="show_layout_info">
+    <div>
+      <div class="layout_spine_label">spine</div>
+      <div class="stripes_paper" id="grid_layout_preview">
+        <div class="stripes_pdf" id="pdf_on_page_layout_preview"></div>
+      </div>
+    </div>
+    <div class="layout_margin_info ml-4" id="layout_margin_info">
       <div class="stripes_paper stripes_sample_box"></div>
       <b>Paper/Layout Dimensions</b>
-      layout: <span id="page_grid_layout"></span><br />
-      max page size:
+      Layout: <span id="page_grid_layout"></span><br />
+      Max page size:
       <span id="page_grid_dimensions"></span><br />
       <br />
       <div class="stripes_pdf stripes_sample_box"></div>
       <b>PDF Dimensions</b><br />
-      source: <span id="pdf_source_dimensions"></span><br />
-      on page: <span id="pdf_page_dimensions"></span><br />
-      scaling: <span id="pdf_scale_dimensions"></span><br />
-      offset:
-      <div style="display: inline">
-        <div id="pdf_offset_dimensions" class="pdf_offset_dimensions_box"></div>
+      Source: <span id="pdf_source_dimensions"></span><br />
+      On page: <span id="pdf_page_dimensions"></span><br />
+      Scaling: <span id="pdf_scale_dimensions"></span><br />
+      Offset:
+      <div class="inline">
+        <div id="pdf_offset_dimensions"></div>
       </div>
       <br />
-      rotated: <span id="pdf_page_rotation_info"></span><br />
+      Rotated: <span id="pdf_page_rotation_info"></span><br />
       <br />
-      (<i>all dimensions are in Points</i>)
-    </div>
-
-    <div class="grid_layout_page stripes_paper" id="grid_layout_preview">
-      <div class="pdf_layout_page stripes_pdf" id="pdf_on_page_layout_preview"></div>
+      (<i>All dimensions are in Points</i>)
     </div>
   </span>
-</div>
+</section>

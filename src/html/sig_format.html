@@ -1,32 +1,30 @@
-<div class="section" id="sig_format">
-  <h2>Signature Format</h2>
+<section class="section" id="sig_format">
+  <header><h2>Signature Format</h2></header>
 
-  <span class="row">
+  <label>
     <input type="radio" id="booklet" name="sig_format" value="booklet" />
-    <label for="booklet">Booklet</label></span
+    Booklet</label
   >
-  <span class="row">
+
+  <label for="perfect">
     <input type="radio" id="perfect" name="sig_format" value="perfect" />
-    <label for="perfect">Perfectbound</label></span
+    Perfectbound</label
   >
-  <span class="row">
-    <input type="radio" id="standardsig" name="sig_format" value="standardsig" checked />
-    <label for="standardsig">Standard signatures</label> - length<input
-      type="number"
-      value="8"
-      name="sig_length"
-    />
+
+  <label for="standardsig"
+    ><input type="radio" id="standardsig" name="sig_format" value="standardsig" checked /> Standard
+    signatures - length <input type="number" value="8" name="sig_length" class="inline" />
     <span
       data-balloon-length="medium"
       aria-label="Number of sheets per signature"
       data-balloon-pos="up"
       >ℹ️</span
-    ></span
+    ></label
   >
-  <span class="row">
-    <input type="radio" id="customsig" name="sig_format" value="customsig" />
-    <label for="customsig">Custom signatures</label>
-    <input type="text" name="custom_sig" />
+
+  <label for="customsig" class="mb-1">
+    <input type="radio" id="customsig" name="sig_format" value="customsig" />Custom signatures
+    <input type="text" name="custom_sig" class="inline" />
 
     <span
       data-balloon-length="medium"
@@ -34,211 +32,194 @@
       data-balloon-pos="up"
       >ℹ️</span
     >
-  </span>
-  <span class="row">
-    <details>
-      <summary>A note on calculating signature lengths</summary>
-      <p>
-        In this code, the length of a signature is the number of full-sized sheets of paper per
-        signature. For a folio book, this means that the number of folds you punch through when
-        sewing together a signature is the same as the number of sheets in the signature, as each
-        sheet has one fold. For quarto, this will be two folds for each sheet - octavo, four;
-        sextodecimo, eight. Calculate your signature lengths accordingly (in particular, you almost
-        certainly don't want more than one sheet for sextodecimo).
-      </p>
-    </details></span
+  </label>
+  <details>
+    <summary>A note on calculating signature lengths</summary>
+    <p>
+      In this code, the length of a signature is the number of full-sized sheets of paper per
+      signature. For a folio book, this means that the number of folds you punch through when sewing
+      together a signature is the same as the number of sheets in the signature, as each sheet has
+      one fold. For quarto, this will be two folds for each sheet - octavo, four; sextodecimo,
+      eight. Calculate your signature lengths accordingly (in particular, you almost certainly don't
+      want more than one sheet for sextodecimo).
+    </p>
+  </details>
+  <h3>Wacky Small Layouts</h3>
+  <p class="flash variant">
+    These layouts contain one or more signature per printed page. They use only the "File Info" and
+    "Printer" settings. The names are arbitrary and hold no standardized meaning.
+  </p>
+  <div class="flex space-evenly">
+    <label class="centered"
+      >Fore-Edge Padding: <br /><input
+        type="number"
+        id="fore_edge_padding_pt"
+        name="fore_edge_padding_pt"
+        class="inline"
+      />pt</label
+    >
+    <div>
+      <label for="wacky_pack"
+        ><input
+          type="radio"
+          id="wacky_pack"
+          name="wacky_spacing"
+          value="wacky_pack"
+          checked
+        />Packed page layout</label
+      >
+      <label for="wacky_gap"
+        ><input type="radio" id="wacky_gap" name="wacky_spacing" value="wacky_gap" />Distributed
+        space page layout</label
+      >
+    </div>
+  </div>
+
+  <label for="1_3rd">
+    <input type="radio" id="1_3rd" name="sig_format" value="1_3rd" />6 per side
+    <small>(3 folio signature)</small></label
   >
 
-  <h3>Wacky Small Layouts</h3>
-  <span class="row" style="margin-bottom: 15px"
-    ><i
-      >These layouts contain one or more signature per printed page. They use only the "File Info"
-      and "Printer" settings. The names are arbitrary and hold no standardized meaning.</i
-    ></span
+  <details class="ml-2">
+    <summary>Instructions</summary>
+    <p>
+      Cut along the lines <i>or</i> cut just extra bit off the top (along exposed "top" of page) and
+      then fold up along the dotted lines (if trimming, you can just trim off the cruft at the
+      bottom-- tops need to be even for leveling purposes however). Outer margins intentionally
+      under-marked so you can trim wherever feels right after folding & assembly.
+    </p>
+    <p>
+      Not the most paper efficient of layouts, but it's optimized for organization (if a signature
+      is just one page, harder to botch the ordering) and many, smaller signatures make for rounder
+      backs and large swell in my [six's] opinion (which helps w/ nice shoulders, if you're into
+      that sort of thing)
+    </p>
+  </details>
+
+  <label for="A7_2_16s"
+    ><input type="radio" id="A7_2_16s" name="sig_format" value="A7_2_16s" /> Petite - 16 per side
+    <small>(4 folio signature x 2)</small></label
   >
-  <span class="row" style="text-align: left; float: left"
-    >Fore-Edge Padding: <br /><input
-      type="number"
-      id="fore_edge_padding_pt"
-      name="fore_edge_padding_pt"
-      style="width: 5em; margin-left: 15px"
-    />
-    pt</span
+
+  <details class="ml-2">
+    <summary>Instructions</summary>
+    <p>
+      <center>
+        <img src="/img/2_sig_4x4_diagram.png" />
+      </center>
+      Cut the vertical center line. You can also cut the horizontal lines if you like, or just fold
+      it up as detailed above.
+    </p>
+  </details>
+
+  <label for="8_zine">
+    <input type="radio" id="8_zine" name="sig_format" value="8_zine" /> Single Sheet Zine - 8 per
+    side <small>(one sided printed page foldup)</small></label
   >
-  <span class="row" style="text-align: right; float: right" id="wacky_spacing">
-    <input type="radio" id="wacky_pack" name="wacky_spacing" value="wacky_pack" checked />
-    <label for="wacky_pack">Packed page layout</label>
-    <br />
-    <input type="radio" id="wacky_gap" name="wacky_spacing" value="wacky_gap" />
-    <label for="wacky_gap">Distributed space page layout</label>
-  </span>
-  <span class="row" style="clear: both; padding-top: 15px">
-    <input type="radio" id="1_3rd" name="sig_format" value="1_3rd" />
-    <label for="1_3rd">6 per side <sub>(3 folio signature)</sub></label>
-  </span>
-  <span class="row instruction-indent">
-    <details>
-      <summary>Instructions</summary>
-      <p>
-        Cut along the lines <i>or</i> cut just extra bit off the top (along exposed "top" of page)
-        and then fold up along the dotted lines (if trimming, you can just trim off the cruft at the
-        bottom-- tops need to be even for leveling purposes however). Outer margins intentionally
-        under-marked so you can trim wherever feels right after folding & assembly.
-      </p>
-      <p>
-        Not the most paper efficient of layouts, but it's optimized for organization (if a signature
-        is just one page, harder to botch the ordering) and many, smaller signatures make for
-        rounder backs and large swell in my [six's] opinion (which helps w/ nice shoulders, if
-        you're into that sort of thing)
-      </p>
-    </details>
-  </span>
-  <span class="row">
-    <input type="radio" id="A7_2_16s" name="sig_format" value="A7_2_16s" />
-    <label for="A7_2_16s">Petite - 16 per side <sub>(4 folio signature x 2)</sub></label>
-  </span>
-  <span class="row instruction-indent">
-    <details>
-      <summary>Instructions</summary>
-      <p>
-        <center>
-          <img
-            src="/img/2_sig_4x4_diagram.png"
-            style="height: 100%; width: 100%; object-fit: contain"
-          />
-        </center>
-        Cut the vertical center line. You can also cut the horizontal lines if you like, or just
-        fold it up as detailed above.
-      </p>
-    </details>
-  </span>
-  <span class="row">
-    <input type="radio" id="8_zine" name="sig_format" value="8_zine" />
-    <label for="8_zine"
-      >Single Sheet Zine - 8 per side <sub>(one sided printed page foldup)</sub></label
-    >
-  </span>
-  <span class="row instruction-indent">
-    <details>
-      <summary>Instructions</summary>
-      <p>
-        The classic no-cut, single page zine! Just fold it up right and you've got yourself a mutant
-        non-standard folio making an 8 page little fellow-- all extra pages beyond 8 are discarded.
-        For better folding instructions than I could possibly write, see:
-        <a href="https://www.quarantinepubliclibrary.com/tutorial"
-          >https://www.quarantinepubliclibrary.com/tutorial</a
-        >
-      </p>
-    </details>
-  </span>
-  <span class="row">
-    <input type="radio" id="a_3_6s" name="sig_format" value="a_3_6s" />
-    <label for="a_3_6s">Small - 18 per side <sub>(3 folio signature per row x 3)</sub></label>
-  </span>
-  <span class="row instruction-indent">
-    <details>
-      <summary>Instructions</summary>
-      <p>
-        <b>
-          THIS IS A LANDSCAPE LAYOUT. IT MUST BE PRINTED AND "flipped on the short side" (the
-          non-typical flipping)</b
-        >
-        <br />
-        Remember to do a single-sheet test print if it's your first time to make sure
-        duplex/mirroring is correct!
-      </p>
-      <p>
-        Cut out the rows. Fold up the folios like a zig-zag (two per face). Then fold the center of
-        the text (smoosh the two matching page numbers together).
-      </p>
-      <p>
-        Note that when folding, it's important for the
-        <b>center of the folios to line up</b>. That's what I measure against (less so fretting
-        about folding exactly at the edge). Remember! Printer skew is a real thing!
-      </p>
-    </details>
-  </span>
-  <span class="row">
-    <input type="radio" id="a9_3_3_4" name="sig_format" value="a9_3_3_4" />
-    <label for="a9_3_3_4"
-      >Little - 20 per side <sub>(3 folio / 3 folio / 4 folio signatures)</sub></label
-    >
-  </span>
-  <span class="row instruction-indent">
-    <details>
-      <summary>Instructions</summary>
-      <p>
-        <center>
-          <img
-            src="/img/3_3_4_diagram.png"
-            style="height: 100%; width: 100%; object-fit: contain"
-          />
-        </center>
-        Cut along the cut lines. Fold up the 3 folio signatures, then the 4 folio.
-      </p>
-    </details></span
+  <details class="ml-2">
+    <summary>Instructions</summary>
+    <p>
+      The classic no-cut, single page zine! Just fold it up right and you've got yourself a mutant
+      non-standard folio making an 8 page little fellow-- all extra pages beyond 8 are discarded.
+      For better folding instructions than I could possibly write, see:
+      <a href="https://www.quarantinepubliclibrary.com/tutorial"
+        >https://www.quarantinepubliclibrary.com/tutorial</a
+      >
+    </p>
+  </details>
+  <label for="a_3_6s"
+    ><input type="radio" id="a_3_6s" name="sig_format" value="a_3_6s" />Small - 18 per side
+    <small>(3 folio signature per row x 3)</small></label
   >
-  <span class="row">
-    <input type="radio" id="a_4_8s" name="sig_format" value="a_4_8s" />
-    <label for="a_4_8s">Tiny - 32 per side <sub>(4 folio signature per row x 4)</sub></label>
-  </span>
-  <span class="row instruction-indent">
-    <details>
-      <summary>Instructions</summary>
-      <p>
-        <b>
-          THIS IS A LANDSCAPE LAYOUT. IT MUST BE PRINTED AND "flipped on the short side" (the
-          non-typical flipping)</b
-        >
-        <br />
-        Remember to do a single-sheet test print if it's your first time to make sure
-        duplex/mirroring is correct!
-      </p>
-      <p>
-        Cut out the rows. Fold up the folios like a zig-zag (two per face). Then fold the center of
-        the text (smoosh the two matching page numbers together).
-      </p>
-      <p>
-        Note that when folding, it's important for the
-        <b>center of the folios to line up</b>. That's what I measure against (less so fretting
-        about folding exactly at the edge). Remember! Printer skew is a real thing!
-      </p>
-    </details>
-  </span>
-  <span class="row">
-    <input type="radio" id="a10_6_10s" name="sig_format" value="a10_6_10s" />
-    <label for="a10_6_10s"
-      >Mini - 60 per side <sub>(2 folio / 3 folio signatures per row x 6)</sub></label
-    ></span
+  <details class="ml-2">
+    <summary>Instructions</summary>
+    <p class="flash attention">
+      THIS IS A LANDSCAPE LAYOUT. IT MUST BE PRINTED AND "flipped on the short side" (the
+      non-typical flipping)
+    </p>
+
+    <p>
+      Remember to do a single-sheet test print if it's your first time to make sure duplex/mirroring
+      is correct!
+    </p>
+    <p>
+      Cut out the rows. Fold up the folios like a zig-zag (two per face). Then fold the center of
+      the text (smoosh the two matching page numbers together).
+    </p>
+    <p>
+      Note that when folding, it's important for the
+      <b>center of the folios to line up</b>. That's what I measure against (less so fretting about
+      folding exactly at the edge). Remember! Printer skew is a real thing!
+    </p>
+  </details>
+
+  <label for="a9_3_3_4">
+    <input type="radio" id="a9_3_3_4" name="sig_format" value="a9_3_3_4" />Little - 20 per side
+    <small>(3 folio / 3 folio / 4 folio signatures)</small></label
   >
-  <span class="row instruction-indent">
-    <details>
-      <summary>Instructions</summary>
-      <p>
-        <b>
-          THIS IS A LANDSCAPE LAYOUT. IT MUST BE PRINTED AND "flipped on the short side" (the
-          non-typical flipping)</b
-        >
-        <br />
-        Thankfully most small layouts fit on one page-- easy enough to do a test print and make sure
-        you're duplexing correctly (if that's your route)
-      </p>
-      <p>
-        <center>
-          <img
-            src="/img/6_10s_diagram.png"
-            style="height: 100%; width: 100%; object-fit: contain"
-          />
-        </center>
-        Cut out the rows. Fold up the folios like a big zig-zag (two per face). Then fold the first
-        2 folios into a signature and the last 3 folios into a signature. I often cut them apart
-        only when I'm stitching things together.
-      </p>
-      <p>
-        Note that when folding, it's important for the
-        <b>center of the folios to line up</b>. That's what I measure against (less so fretting
-        about folding exactly at the edge). Remember! Printer skew is a real thing!
-      </p>
-    </details></span
+
+  <details class="ml-2">
+    <summary>Instructions</summary>
+    <p>
+      <center>
+        <img src="/img/3_3_4_diagram.png" />
+      </center>
+      Cut along the cut lines. Fold up the 3 folio signatures, then the 4 folio.
+    </p>
+  </details>
+
+  <label for="a_4_8s"
+    ><input type="radio" id="a_4_8s" name="sig_format" value="a_4_8s" />Tiny - 32 per side
+    <small>(4 folio signature per row x 4)</small></label
   >
-</div>
+
+  <details class="ml-2">
+    <summary>Instructions</summary>
+    <p class="flash attention">
+      THIS IS A LANDSCAPE LAYOUT. IT MUST BE PRINTED AND "flipped on the short side" (the
+      non-typical flipping)
+    </p>
+    <p>
+      Remember to do a single-sheet test print if it's your first time to make sure duplex/mirroring
+      is correct!
+    </p>
+    <p>
+      Cut out the rows. Fold up the folios like a zig-zag (two per face). Then fold the center of
+      the text (smoosh the two matching page numbers together).
+    </p>
+    <p>
+      Note that when folding, it's important for the
+      <b>center of the folios to line up</b>. That's what I measure against (less so fretting about
+      folding exactly at the edge). Remember! Printer skew is a real thing!
+    </p>
+  </details>
+
+  <label for="a10_6_10s"
+    ><input type="radio" id="a10_6_10s" name="sig_format" value="a10_6_10s" />Mini - 60 per side
+    <small>(2 folio / 3 folio signatures per row x 6)</small></label
+  >
+  <details class="ml-2">
+    <summary>Instructions</summary>
+    <p class="flash attention">
+      THIS IS A LANDSCAPE LAYOUT. IT MUST BE PRINTED AND "flipped on the short side" (the
+      non-typical flipping)
+    </p>
+    <p>
+      Thankfully most small layouts fit on one page-- easy enough to do a test print and make sure
+      you're duplexing correctly (if that's your route)
+    </p>
+    <p>
+      <center>
+        <img src="/img/6_10s_diagram.png" />
+      </center>
+      Cut out the rows. Fold up the folios like a big zig-zag (two per face). Then fold the first 2
+      folios into a signature and the last 3 folios into a signature. I often cut them apart only
+      when I'm stitching things together.
+    </p>
+    <p>
+      Note that when folding, it's important for the
+      <b>center of the folios to line up</b>. That's what I measure against (less so fretting about
+      folding exactly at the edge). Remember! Printer skew is a real thing!
+    </p>
+  </details>
+</section>
