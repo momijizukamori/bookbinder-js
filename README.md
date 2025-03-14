@@ -30,7 +30,7 @@ npm run prettier     # Runs Prettier to check for file formatting violations
 npm run prettier:fix # Runs ESLint to check for file formatting violations, and attempts reformat any bad files
 ```
 
-To close out of any of the commands that don't automatically exist (`dev`, `preview`, and `test`), type `q` and then hit Enter.
+To close out of any of the commands that don't automatically exit (`dev`, `preview`, and `test`), type `q` and then hit Enter.
 
 ## Running Locally
 
