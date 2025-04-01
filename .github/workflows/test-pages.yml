@@ -27,6 +27,7 @@ jobs:
   # Single deploy job since we're just deploying
   deploy-preview:
     runs-on: ubuntu-latest
+    if: github.repository == 'momijizukamori/bookbinder-js'
     steps:
       - name: Checkout
         uses: actions/checkout@v4
