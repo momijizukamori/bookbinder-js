@@ -42,6 +42,7 @@ jobs:
         run: npm run build -- --base=https://momijizukamori.github.io/bookbinder-js/pr-preview/pr-${{ github.event.pull_request.number }}
         if: github.event.action != 'closed'
       - uses: rossjrw/pr-preview-action@v1.6.0
+        continue-on-error: true
         with:
           source-dir: dist
           umbrella-dir: pr-preview
