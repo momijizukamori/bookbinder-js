@@ -51,3 +51,33 @@ In the [`/docs`](/docs) directory:
 
 Snapshot of layout proof summary as of 2022-08-14
 ![Snapshot of layout proof summary 2022-08-14](/docs/examples_summary_snapshot_2022_08_14.png)
+
+## Containerization
+
+### Production
+
+We added an easy compose.yaml for building and hosting this applications' files using nginx.
+
+This nginx does not open any ports, expects to be proxied by some other external web server and may be omitted if not needed.
+
+If you require this nginx to open a port, feel free to add your own (docker-)compose.override.yaml, where you would open ports as needed, like so
+
+```yaml
+services:
+  bookbinder-nginx:
+    ports:
+      - '80:80'
+```
+
+### Development
+
+If you need to run bookbinder-js in development mode, feel free to create your compose.override.yaml and overwrite the startup command - `npm run build` by default - and create the container with host network mode, which would look like this
+
+```yaml
+services:
+  bookbinder-app:
+    # environment:
+    #   BASE: "http://localhost" <-- can be adjusted to your environment
+    network_mode: 'host'
+    command: bash -c "cd /app && npm install && npm run dev"
+```
