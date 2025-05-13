@@ -34,7 +34,7 @@ export function renderInfoBox(book) {
  *
  */
 export function updatePageLayoutInfo(info) {
-  document.getElementById('show_layout_info').style.display = 'block';
+  document.getElementById('show_layout_info').style.display = 'flex';
   console.log('So much info from updatePageLayoutInfo: ', info);
   const needsRotation =
     info.dimensions.layout.rotations[0] == -90 ||
@@ -266,7 +266,7 @@ export function renderFormFromSettings(configuration) {
   );
   const selectedValue = `${configuration.sourceRotation}_example`;
   sourceRotationExamples.forEach((example) => {
-    example.style.display = example.id === selectedValue ? 'block' : 'none';
+    example.style.display = example.id === selectedValue ? 'flex' : 'none';
   });
 }
 

@@ -52,7 +52,7 @@ window.addEventListener('DOMContentLoaded', () => {
   sourceRotation.addEventListener('change', (e) => {
     const selectedValue = `${e.target.value}_example`;
     sourceRotationExamples.forEach((example) => {
-      example.style.display = example.id === selectedValue ? 'block' : 'none';
+      example.style.display = example.id === selectedValue ? 'flex' : 'none';
     });
   });
   sewingMarks.addEventListener('change', (e) => {

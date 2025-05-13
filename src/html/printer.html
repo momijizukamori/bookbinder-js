@@ -1,44 +1,46 @@
-<div class="section" id="printer_info">
-  <h2>Printer</h2>
-  <span class="row"
-    ><label for="paper_size">Paper size</label>
-    <select name="paper_size" id="paper_size"></select
-  ></span>
-  <span class="row" style="padding-left: 20pt; font-style: italic">
-    <label for="paper_size_unit">display unit for paper selection </label>
-    <select name="paper_size_unit" id="paper_size_unit">
-      <option label="Points" value="pt" />
-      <option label="Inches" value="in" />
-      <option label="Centimeters" value="cm" />
-    </select>
-  </span>
-  <span class="row" style="padding-left: 20pt; font-style: italic">
-    <label for="paper_size_unit">dimensions for CUSTOM: </label>
-    <input
-      type="number"
-      id="paper_size_custom_width"
-      name="paper_size_custom_width"
-      style="width: 4em"
-    />
-    x
-    <input
-      type="number"
-      id="paper_size_custom_height"
-      name="paper_size_custom_height"
-      style="width: 4em"
-    />
-    (in Points)
-    <span
-      data-balloon-length="medium"
-      aria-label="The CUSTOM option in drop down will only appear if valid dimensions are provided. Points are the unit the system/code works in. Luckily Google can help you convert cm or inches into Points quite easily!"
-      data-balloon-pos="up"
-      >ℹ️</span
-    >
-  </span>
+<section class="section" id="printer_info">
+  <header><h2>Printer</h2></header>
+  <label for="paper_size"
+    >Paper size:
+    <select name="paper_size" id="paper_size" class="inline"></select
+  ></label>
+  <div class="ml-2 input-group">
+    <label for="paper_size_unit"
+      >Display unit for paper selection:
+      <select name="paper_size_unit" id="paper_size_unit" class="inline">
+        <option label="Points" value="pt" />
+        <option label="Inches" value="in" />
+        <option label="Centimeters" value="cm" />
+      </select>
+    </label>
+    <label for="paper_size_unit" class="mb-1"
+      >Dimensions for CUSTOM:
+      <input
+        type="number"
+        id="paper_size_custom_width"
+        name="paper_size_custom_width"
+        class="inline"
+      />
+      x
+      <input
+        type="number"
+        id="paper_size_custom_height"
+        name="paper_size_custom_height"
+        class="inline"
+      />
+      (in Points)
+      <span
+        data-balloon-length="medium"
+        aria-label="The CUSTOM option in drop down will only appear if valid dimensions are provided. Points are the unit the system/code works in. Luckily Google can help you convert cm or inches into Points quite easily!"
+        data-balloon-pos="up"
+        >ℹ️</span
+      >
+    </label>
+  </div>
 
-  <span class="row"
-    ><label for="printer_type">Printer type</label>
-    <select name="printer_type" id="printer_type">
+  <label for="printer_type"
+    >Printer type:
+    <select name="printer_type" id="printer_type" class="inline">
       <option value="single" selected>Single-Sided</option>
       <option value="duplex">Duplex</option>
     </select>
@@ -47,28 +49,24 @@
       aria-label="Duplex will alternate front and backs of sheets in a single file; Single-sided will split fronts and backs into seperate files."
       data-balloon-pos="up"
       >ℹ️</span
-    >
-  </span>
-  <span class="row">
-    <label for="paper_rotation_90"
-      >Rotate Paper 90° <input type="checkbox" name="paper_rotation_90" id="paper_rotation_90"
-    /></label>
+    ></label
+  >
+  <label for="paper_rotation_90"
+    >Rotate Paper 90°: <input type="checkbox" name="paper_rotation_90" id="paper_rotation_90" />
     <span
       data-balloon-length="medium"
       aria-label="This puts your paper in 'landscape' -- layout still happens the same, but the porportions of things will be different"
       data-balloon-pos="up"
       >ℹ️</span
-    >
-  </span>
-
-  <span class="row">
-    <label
-      >Alternate Page Rotation (AKA Flip on Long Side)<input type="checkbox" name="rotate_page"
-    /></label>
-    <span id="folio_warning"
-      ><b>NOTE:</b> Not currently working for folios, sorry! Use the
-      <a href="%BASE_URL%old/index.html">old version</a>
-      for now.</span
-    ></span
+    ></label
   >
-</div>
+
+  <label class="mb-1"
+    >Alternate Page Rotation (AKA Flip on Long Side):<input type="checkbox" name="rotate_page"
+  /></label>
+  <p class="flash attention" id="folio_warning">
+    <b>NOTE:</b> Not currently working for folios, sorry! Use the
+    <a href="%BASE_URL%old/index.html">old version</a>
+    for now.
+  </p>
+</section>
