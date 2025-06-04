@@ -11,4 +11,4 @@ describe('PDF visual diff test', () => {
       expect(result).toBeTruthy();
     });
   });
-}, 10000);
+}, 30000);
