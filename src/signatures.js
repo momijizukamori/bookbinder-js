@@ -213,46 +213,6 @@ export class Signatures {
     const pagesPerBand = 4; // 2x2 per side
     const totalSheets = Math.floor(pages.length / per_sheet);
 
-    // Compact, generic per-layer index maps (alternates by layer parity)
-    // For each layer j, build each side from inner and outer bands using fixed indices.
-    // Index meaning per chunk position is [TL, TR, BL, BR] in sheet-side reading order.
-    // Bands are 0-indexed arrays of length 4 (left-to-right for top/bottom rows).
-    // even layer (j % 2 === 0): inner-most, odd layer: next one out, etc.
-    // The specific indices were derived to satisfy:
-    //   - consecutive numbers at the first fold
-    //   - covers on the outer sheet
-    //   - whole-stack foldability with face-down duplex output
-    const QUARTO_MAP = {
-      even: {
-        front: [
-          ['innerBack', 3],
-          ['innerFront', 0],
-          ['outerBack', 0],
-          ['outerFront', 3],
-        ],
-        back: [
-          ['outerBack', 1],
-          ['outerFront', 2],
-          ['innerBack', 2],
-          ['innerFront', 1],
-        ],
-      },
-      odd: {
-        front: [
-          ['outerBack', 1],
-          ['outerFront', 2],
-          ['innerBack', 2],
-          ['innerFront', 1],
-        ],
-        back: [
-          ['innerBack', 3],
-          ['innerFront', 0],
-          ['outerBack', 0],
-          ['outerFront', 3],
-        ],
-      },
-    };
-
     // Helper to push a 4-page chunk with signature flags.
     // We put start/end marks on the back side of the outermost sheet
     // and `isSigMiddle` on the first back position for sewing marks.
@@ -268,11 +228,11 @@ export class Signatures {
       }
     };
 
-    // Build sheet sides from inner → outer; pushing preserves inner-first order.
-    for (let j = 0; j < totalSheets; j++) {
-      const isOuterMost = j === totalSheets - 1;
-      const isEven = j % 2 === 0;
-      const map = isEven ? QUARTO_MAP.even : QUARTO_MAP.odd;
+    // Build sheet sides from inner → outer; for each inner/outer layer pair,
+    // emit two 4-page blocks per side in fixed order so the stack folds correctly.
+    const layerPairs = Math.floor(totalSheets / 2);
+    for (let j = layerPairs - 1; j >= 0; j--) {
+      const isOuterMost = j === 0;
 
       // Inner bands adjacent to the fold
       const innerFront = pages.slice(center - (j + 1) * pagesPerBand, center - j * pagesPerBand);
@@ -285,14 +245,19 @@ export class Signatures {
         pages.length - j * pagesPerBand
       );
 
-      const bands = { innerFront, innerBack, outerFront, outerBack };
-
-      const frontChunk = map.front.map(([which, idx]) => bands[which][idx]);
-      const backChunk = map.back.map(([which, idx]) => bands[which][idx]);
+      // Rows per side within a sheet (TL,TR,BL,BR), fixed index patterns:
+      // Front rows (two blocks per layer)
+      const frontRowA = [innerBack[3], innerFront[0], outerBack[0], outerFront[3]];
+      const frontRowB = [innerBack[1], innerFront[2], outerBack[2], outerFront[1]];
+      // Back rows (two blocks per layer)
+      const backRowA = [outerBack[1], outerFront[2], innerBack[2], innerFront[1]];
+      const backRowB = [outerBack[3], outerFront[0], innerBack[0], innerFront[3]];
 
       const backIndex = this.duplex ? 0 : 1;
-      pushWithFlags(pagelistdetails[0], frontChunk, false, isOuterMost);
-      pushWithFlags(pagelistdetails[backIndex], backChunk, true, isOuterMost);
+      pushWithFlags(pagelistdetails[0], frontRowA, false, isOuterMost);
+      pushWithFlags(pagelistdetails[0], frontRowB, false, isOuterMost);
+      pushWithFlags(pagelistdetails[backIndex], backRowA, true, isOuterMost);
+      pushWithFlags(pagelistdetails[backIndex], backRowB, true, isOuterMost);
     }
 
     return pagelistdetails;

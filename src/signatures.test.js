@@ -114,15 +114,6 @@ describe('Signatures model', () => {
 
         const infos = extractPageInfos(signatures.pagelistdetails);
 
-        // Current behavior. Test passes, but it's wrong
-        // expect(infos).toEqual([
-        //   [
-        //     [19, 12, 28, 3, 25, 6, 22, 9, 27, 4, 20, 11, 17, 14, 30, 1],
-        //     [29, 2, 18, 13, 23, 8, 24, 7, 21, 10, 26, 5, 31, 0, 16, 15],
-        //   ],
-        // ]);
-
-        // Desired behavior. Test is failing right now.
         expect(infos).toEqual([
           [
             [23, 8, 24, 7, 21, 10, 26, 5, 19, 12, 28, 3, 17, 14, 30, 1],
