@@ -43,11 +43,11 @@ describe('Signatures model', () => {
         const infos = extractPageInfos(signatures.pagelistdetails);
 
         expect(infos).toEqual([
-          [
+          [ // start of a signature
             [4, 3, 6, 1, 8, 'b'],
             [2, 5, 0, 7, 'b', 9],
           ],
-          [
+          [ // start of a signature
             [14, 13, 'b', 11],
             [12, 15, 10, 'b'],
           ],
@@ -66,9 +66,44 @@ describe('Signatures model', () => {
         const infos = extractPageInfos(signatures.pagelistdetails);
 
         expect(infos).toEqual([
+          [ // start of a signature
+            [8, 7, 10, 5, 12, 3, 14, 1], // front sides of the paper
+            [6, 9, 4, 11, 2, 13, 0, 15], // back sides of the paper
+          ],
+        ]);
+      });
+    });
+  });
+
+  describe('quarto layout', () => {
+    const per_sheet = 8;
+    const duplexrotate = false;
+
+    describe('a 16 page PDF, with signature length = 2 and flyleafs = 0', () => {
+      const pages = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
+      const sigsize = 2;
+
+      it('computes pagelistdetails correctly', () => {
+        const signatures = new Signatures(pages, sigsize, per_sheet, duplexrotate);
+        signatures.createsigconfig();
+
+        const infos = extractPageInfos(signatures.pagelistdetails);
+
+        //TODO this is wrong, see https://github.com/momijizukamori/bookbinder-js/issues/129
+
+        // Current (buggy) output
+        // expect(infos).toEqual([
+        //   [
+        //     [9, 6, 10, 5, 13, 2, 14, 1],
+        //     [11, 4, 8, 7, 15, 0, 12, 3],
+        //   ],
+        // ]);
+
+        // Correct behavior (need to implement)
+        expect(infos).toEqual([
           [
-            [8, 7, 10, 5, 12, 3, 14, 1],
-            [6, 9, 4, 11, 2, 13, 0, 15],
+            [11, 4, 12, 3, 9, 6, 14, 1],
+            [13, 2, 10, 5, 15, 0, 8, 7],
           ],
         ]);
       });
