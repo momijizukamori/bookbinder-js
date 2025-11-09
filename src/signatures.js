@@ -126,6 +126,81 @@ export class Signatures {
    * @param {number} sig_num - signature number (0 indexed)
    */
   booklet(pages, duplex, per_sheet, duplexrotate, sig_num) {
+    // Special handling for quarto (8-up): rows on a physical side come from both
+    // the innermost and outermost page bands so the entire printed stack can be
+    // folded at once without reordering sheets.
+    if (per_sheet === 8) {
+      const pagelistdetails = duplex ? [[]] : [[], []];
+      const center = pages.length / 2;
+      const pagesPerBand = 4; // 2x2 per side
+      const totalSheets = Math.floor(pages.length / per_sheet);
+
+      // Build sheet sides from inner → outer so that with face-down printers the
+      // last printed (top of stack) is the outermost sheet.
+      for (let layerIndex = 0; layerIndex < totalSheets; layerIndex++) {
+        const j = layerIndex; // 0 = innermost
+        const parity = j % 2;
+
+        // Inner bands adjacent to the fold
+        const innerFront = pages.slice(
+          center - (j + 1) * pagesPerBand,
+          center - j * pagesPerBand
+        );
+        const innerBack = pages.slice(
+          center + j * pagesPerBand,
+          center + (j + 1) * pagesPerBand
+        );
+
+        // Outer bands at the edges
+        const outerFront = pages.slice(j * pagesPerBand, (j + 1) * pagesPerBand);
+        const outerBack = pages.slice(
+          pages.length - (j + 1) * pagesPerBand,
+          pages.length - j * pagesPerBand
+        );
+
+        // Index selector toggles every layer; matches observed correct folding
+        // j even -> [3,0,0,3]; j odd -> [1,2,2,1]
+        const a = parity === 0 ? 3 : 1;
+        const b = parity === 0 ? 0 : 2;
+
+        // Front side (TL, TR, BL, BR)
+        const frontChunk = [innerBack[a], innerFront[b], outerBack[b], outerFront[a]];
+        // Back side (TL, TR, BL, BR)
+        const backChunk = [outerBack[a], outerFront[b], innerBack[b], innerFront[a]];
+
+        // Flags: spine/edge marks on the outermost sheet (j == totalSheets - 1).
+        const isOuterMost = j === totalSheets - 1;
+        const pushWithFlags = (targetList, chunk, isBackSide) => {
+          for (let i = 0; i < chunk.length; i++) {
+            targetList.push({
+              info: chunk[i],
+              isSigStart: isOuterMost && isBackSide && i === 0,
+              isSigEnd: isOuterMost && isBackSide && i === chunk.length - 1,
+              // Mark middle fold on first entry of back side for sewing marks
+              isSigMiddle: isBackSide && i === 0,
+              signatureNum: sig_num,
+            });
+          }
+        };
+
+        // Choose one chunk per sheet per side (not both), and append inner→outer so
+        // the outermost sheet is printed last (face-down stack = outermost on top):
+        //  - Front side: inner uses frontChunk; outer uses backChunk
+        //  - Back side:  inner uses backChunk;  outer uses frontChunk
+        const backIndex = this.duplex ? 0 : 1;
+        const frontSideChunk = j === 0 ? frontChunk : backChunk;
+        const backSideChunk = j === 0 ? backChunk : frontChunk;
+        // Front: append in traversal order
+        pushWithFlags(pagelistdetails[0], frontSideChunk, false);
+        // Back: unshift each layer so inner ends up before outer in the final list
+        const backLayer = [];
+        pushWithFlags(backLayer, backSideChunk, true);
+        pagelistdetails[backIndex].unshift(...backLayer);
+      }
+
+      return pagelistdetails;
+    }
+
     const pagelistdetails = duplex ? [[]] : [[], []];
     const { front, rotate, back } = BOOKLET_LAYOUTS[per_sheet];
 
