@@ -43,11 +43,13 @@ describe('Signatures model', () => {
         const infos = extractPageInfos(signatures.pagelistdetails);
 
         expect(infos).toEqual([
-          [ // start of a signature
+          // start of a signature
+          [
             [4, 3, 6, 1, 8, 'b'],
             [2, 5, 0, 7, 'b', 9],
           ],
-          [ // start of a signature
+          // start of a signature
+          [
             [14, 13, 'b', 11],
             [12, 15, 10, 'b'],
           ],
@@ -66,7 +68,8 @@ describe('Signatures model', () => {
         const infos = extractPageInfos(signatures.pagelistdetails);
 
         expect(infos).toEqual([
-          [ // start of a signature
+          [
+            // start of a signature
             [8, 7, 10, 5, 12, 3, 14, 1], // front sides of the paper
             [6, 9, 4, 11, 2, 13, 0, 15], // back sides of the paper
           ],
@@ -89,17 +92,6 @@ describe('Signatures model', () => {
 
         const infos = extractPageInfos(signatures.pagelistdetails);
 
-        //TODO this is wrong, see https://github.com/momijizukamori/bookbinder-js/issues/129
-
-        // Current (buggy) output
-        // expect(infos).toEqual([
-        //   [
-        //     [9, 6, 10, 5, 13, 2, 14, 1],
-        //     [11, 4, 8, 7, 15, 0, 12, 3],
-        //   ],
-        // ]);
-
-        // Correct behavior (need to implement)
         expect(infos).toEqual([
           [
             [11, 4, 12, 3, 9, 6, 14, 1],
@@ -120,4 +112,3 @@ function extractPageInfos(pagelistdetails) {
     });
   });
 }
-

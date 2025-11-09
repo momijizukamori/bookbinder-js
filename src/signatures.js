@@ -76,15 +76,12 @@ export class Signatures {
 
     const newsigs = [];
 
-    //      Use the booklet class for each signature
+    // Use the appropriate imposition per signature
     this.signaturepagelists.forEach((pagerange, i) => {
-      const pagelistdetails = this.booklet(
-        pagerange,
-        this.duplex,
-        this.per_sheet,
-        this.duplexrotate,
-        i
-      );
+      const pagelistdetails =
+        this.per_sheet === 8
+          ? this.quarto_booklet(pagerange, this.duplex, this.per_sheet, this.duplexrotate, i)
+          : this.booklet(pagerange, this.duplex, this.per_sheet, this.duplexrotate, i);
       newsigs.push(pagelistdetails);
     });
 
@@ -126,96 +123,6 @@ export class Signatures {
    * @param {number} sig_num - signature number (0 indexed)
    */
   booklet(pages, duplex, per_sheet, duplexrotate, sig_num) {
-    // Special handling for quarto (8-up): rows on a physical side come from both
-    // the innermost and outermost page bands so the entire printed stack can be
-    // folded at once without reordering sheets.
-    if (per_sheet === 8) {
-      const pagelistdetails = duplex ? [[]] : [[], []];
-      const center = pages.length / 2;
-      const pagesPerBand = 4; // 2x2 per side
-      const totalSheets = Math.floor(pages.length / per_sheet);
-
-      // Compact, generic per-layer index maps (alternates by layer parity)
-      // For each layer j, build each side from inner and outer bands using fixed indices.
-      const QUARTO_MAP = {
-        even: {
-          front: [
-            ['innerBack', 3],
-            ['innerFront', 0],
-            ['outerBack', 0],
-            ['outerFront', 3],
-          ],
-          back: [
-            ['outerBack', 1],
-            ['outerFront', 2],
-            ['innerBack', 2],
-            ['innerFront', 1],
-          ],
-        },
-        odd: {
-          front: [
-            ['outerBack', 1],
-            ['outerFront', 2],
-            ['innerBack', 2],
-            ['innerFront', 1],
-          ],
-          back: [
-            ['innerBack', 3],
-            ['innerFront', 0],
-            ['outerBack', 0],
-            ['outerFront', 3],
-          ],
-        },
-      };
-
-      const pushWithFlags = (targetList, chunk, isBackSide, isOuterMost) => {
-        for (let i = 0; i < chunk.length; i++) {
-          targetList.push({
-            info: chunk[i],
-            isSigStart: isOuterMost && isBackSide && i === 0,
-            isSigEnd: isOuterMost && isBackSide && i === chunk.length - 1,
-            isSigMiddle: isBackSide && i === 0,
-            signatureNum: sig_num,
-          });
-        }
-      };
-
-      // Build sheet sides from inner → outer; pushing preserves inner-first order.
-      for (let j = 0; j < totalSheets; j++) {
-        const isOuterMost = j === totalSheets - 1;
-        const isEven = j % 2 === 0;
-        const map = isEven ? QUARTO_MAP.even : QUARTO_MAP.odd;
-
-        // Inner bands adjacent to the fold
-        const innerFront = pages.slice(
-          center - (j + 1) * pagesPerBand,
-          center - j * pagesPerBand
-        );
-        const innerBack = pages.slice(
-          center + j * pagesPerBand,
-          center + (j + 1) * pagesPerBand
-        );
-
-        // Outer bands at the edges
-        const outerFront = pages.slice(j * pagesPerBand, (j + 1) * pagesPerBand);
-        const outerBack = pages.slice(
-          pages.length - (j + 1) * pagesPerBand,
-          pages.length - j * pagesPerBand
-        );
-
-        const bands = { innerFront, innerBack, outerFront, outerBack };
-
-        const frontChunk = map.front.map(([which, idx]) => bands[which][idx]);
-        const backChunk = map.back.map(([which, idx]) => bands[which][idx]);
-
-        const backIndex = this.duplex ? 0 : 1;
-        pushWithFlags(pagelistdetails[0], frontChunk, false, isOuterMost);
-        pushWithFlags(pagelistdetails[backIndex], backChunk, true, isOuterMost);
-      }
-
-      return pagelistdetails;
-    }
-
     const pagelistdetails = duplex ? [[]] : [[], []];
     const { front, rotate, back } = BOOKLET_LAYOUTS[per_sheet];
 
@@ -279,6 +186,113 @@ export class Signatures {
       front_end -= pageblock;
       back_start += pageblock;
       back_end += pageblock;
+    }
+
+    return pagelistdetails;
+  }
+
+  /**
+   * Quarto (8-up) imposition that allows folding the whole printed stack at once.
+   * Because quarto pages are folded over the top, each sheet contains pages from both
+   * the inner and outer "bands". This is very different from booklet/folio page arrangement,
+   * which essentially only has a single "band" at a time.
+   */
+  quarto_booklet(pages, duplex, per_sheet, duplexrotate, sig_num) {
+    // Quarto (8-up) special case:
+    // - We need the printed stack (duplex, face-down) to fold as a whole into correct order.
+    // - We treat each "layer" j (0 = innermost, increasing outward) and build one physical sheet per layer.
+    // - For each layer we slice four 4-page "bands":
+    //     innerFront:  pages just before the fold (top half, near center)
+    //     innerBack:   pages just after the fold  (bottom half, near center)
+    //     outerFront:  pages at the front edge    (top half, near edges)
+    //     outerBack:   pages at the back edge     (bottom half, near edges)
+    // - Then we choose TL/TR/BL/BR per side via a tiny index map that alternates by layer parity.
+    // - We append layers in inner→outer order so the outermost sheet prints last and ends up on top (face-down).
+    const pagelistdetails = duplex ? [[]] : [[], []];
+    const center = pages.length / 2;
+    const pagesPerBand = 4; // 2x2 per side
+    const totalSheets = Math.floor(pages.length / per_sheet);
+
+    // Compact, generic per-layer index maps (alternates by layer parity)
+    // For each layer j, build each side from inner and outer bands using fixed indices.
+    // Index meaning per chunk position is [TL, TR, BL, BR] in sheet-side reading order.
+    // Bands are 0-indexed arrays of length 4 (left-to-right for top/bottom rows).
+    // even layer (j % 2 === 0): inner-most, odd layer: next one out, etc.
+    // The specific indices were derived to satisfy:
+    //   - consecutive numbers at the first fold
+    //   - covers on the outer sheet
+    //   - whole-stack foldability with face-down duplex output
+    const QUARTO_MAP = {
+      even: {
+        front: [
+          ['innerBack', 3],
+          ['innerFront', 0],
+          ['outerBack', 0],
+          ['outerFront', 3],
+        ],
+        back: [
+          ['outerBack', 1],
+          ['outerFront', 2],
+          ['innerBack', 2],
+          ['innerFront', 1],
+        ],
+      },
+      odd: {
+        front: [
+          ['outerBack', 1],
+          ['outerFront', 2],
+          ['innerBack', 2],
+          ['innerFront', 1],
+        ],
+        back: [
+          ['innerBack', 3],
+          ['innerFront', 0],
+          ['outerBack', 0],
+          ['outerFront', 3],
+        ],
+      },
+    };
+
+    // Helper to push a 4-page chunk with signature flags.
+    // We put start/end marks on the back side of the outermost sheet
+    // and `isSigMiddle` on the first back position for sewing marks.
+    const pushWithFlags = (targetList, chunk, isBackSide, isOuterMost) => {
+      for (let i = 0; i < chunk.length; i++) {
+        targetList.push({
+          info: chunk[i],
+          isSigStart: isOuterMost && isBackSide && i === 0,
+          isSigEnd: isOuterMost && isBackSide && i === chunk.length - 1,
+          isSigMiddle: isBackSide && i === 0,
+          signatureNum: sig_num,
+        });
+      }
+    };
+
+    // Build sheet sides from inner → outer; pushing preserves inner-first order.
+    for (let j = 0; j < totalSheets; j++) {
+      const isOuterMost = j === totalSheets - 1;
+      const isEven = j % 2 === 0;
+      const map = isEven ? QUARTO_MAP.even : QUARTO_MAP.odd;
+
+      // Inner bands adjacent to the fold
+      const innerFront = pages.slice(center - (j + 1) * pagesPerBand, center - j * pagesPerBand);
+      const innerBack = pages.slice(center + j * pagesPerBand, center + (j + 1) * pagesPerBand);
+
+      // Outer bands at the edges
+      const outerFront = pages.slice(j * pagesPerBand, (j + 1) * pagesPerBand);
+      const outerBack = pages.slice(
+        pages.length - (j + 1) * pagesPerBand,
+        pages.length - j * pagesPerBand
+      );
+
+      const bands = { innerFront, innerBack, outerFront, outerBack };
+
+      const frontChunk = map.front.map(([which, idx]) => bands[which][idx]);
+      const backChunk = map.back.map(([which, idx]) => bands[which][idx]);
+
+      const backIndex = this.duplex ? 0 : 1;
+      pushWithFlags(pagelistdetails[0], frontChunk, false, isOuterMost);
+      pushWithFlags(pagelistdetails[backIndex], backChunk, true, isOuterMost);
     }
 
     return pagelistdetails;
