@@ -27,4 +27,62 @@ describe('Signatures model', () => {
     expect(actual).toEqual(expected);
   });
   // TODO add tests with actual pages
+
+  describe('folio layout', () => {
+    const per_sheet = 4;
+    const duplexrotate = false;
+
+    describe('a 16 page PDF, with signature length = 4 and flyleafs = 1', () => {
+      const pages = ['b', 'b', 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 'b', 'b'];
+      const sigsize = 4;
+
+      it('computes pagelistdetails correctly', () => {
+        const signatures = new Signatures(pages, sigsize, per_sheet, duplexrotate);
+
+        signatures.createsigconfig();
+        const infos = extractPageInfos(signatures.pagelistdetails);
+
+        expect(infos).toEqual([
+          [
+            [4, 3, 6, 1, 8, 'b'],
+            [2, 5, 0, 7, 'b', 9],
+          ],
+          [
+            [14, 13, 'b', 11],
+            [12, 15, 10, 'b'],
+          ],
+        ]);
+      });
+    });
+
+    describe('a 16 page PDF, with signature length = 4 and flyleafs = 0', () => {
+      const pages = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
+      const sigsize = 4;
+
+      it('computes pagelistdetails correctly', () => {
+        const signatures = new Signatures(pages, sigsize, per_sheet, duplexrotate);
+        signatures.createsigconfig();
+
+        const infos = extractPageInfos(signatures.pagelistdetails);
+
+        expect(infos).toEqual([
+          [
+            [8, 7, 10, 5, 12, 3, 14, 1],
+            [6, 9, 4, 11, 2, 13, 0, 15],
+          ],
+        ]);
+      });
+    });
+  });
 });
+
+function extractPageInfos(pagelistdetails) {
+  return pagelistdetails.map((currentSig) => {
+    return currentSig.map((side) => {
+      return side.map((page) => {
+        return page.info;
+      });
+    });
+  });
+}
+
