@@ -135,11 +135,56 @@ export class Signatures {
       const pagesPerBand = 4; // 2x2 per side
       const totalSheets = Math.floor(pages.length / per_sheet);
 
-      // Build sheet sides from inner → outer so that with face-down printers the
-      // last printed (top of stack) is the outermost sheet.
-      for (let layerIndex = 0; layerIndex < totalSheets; layerIndex++) {
-        const j = layerIndex; // 0 = innermost
-        const parity = j % 2;
+      // Compact, generic per-layer index maps (alternates by layer parity)
+      // For each layer j, build each side from inner and outer bands using fixed indices.
+      const QUARTO_MAP = {
+        even: {
+          front: [
+            ['innerBack', 3],
+            ['innerFront', 0],
+            ['outerBack', 0],
+            ['outerFront', 3],
+          ],
+          back: [
+            ['outerBack', 1],
+            ['outerFront', 2],
+            ['innerBack', 2],
+            ['innerFront', 1],
+          ],
+        },
+        odd: {
+          front: [
+            ['outerBack', 1],
+            ['outerFront', 2],
+            ['innerBack', 2],
+            ['innerFront', 1],
+          ],
+          back: [
+            ['innerBack', 3],
+            ['innerFront', 0],
+            ['outerBack', 0],
+            ['outerFront', 3],
+          ],
+        },
+      };
+
+      const pushWithFlags = (targetList, chunk, isBackSide, isOuterMost) => {
+        for (let i = 0; i < chunk.length; i++) {
+          targetList.push({
+            info: chunk[i],
+            isSigStart: isOuterMost && isBackSide && i === 0,
+            isSigEnd: isOuterMost && isBackSide && i === chunk.length - 1,
+            isSigMiddle: isBackSide && i === 0,
+            signatureNum: sig_num,
+          });
+        }
+      };
+
+      // Build sheet sides from inner → outer; pushing preserves inner-first order.
+      for (let j = 0; j < totalSheets; j++) {
+        const isOuterMost = j === totalSheets - 1;
+        const isEven = j % 2 === 0;
+        const map = isEven ? QUARTO_MAP.even : QUARTO_MAP.odd;
 
         // Inner bands adjacent to the fold
         const innerFront = pages.slice(
@@ -158,44 +203,14 @@ export class Signatures {
           pages.length - j * pagesPerBand
         );
 
-        // Index selector toggles every layer; matches observed correct folding
-        // j even -> [3,0,0,3]; j odd -> [1,2,2,1]
-        const a = parity === 0 ? 3 : 1;
-        const b = parity === 0 ? 0 : 2;
+        const bands = { innerFront, innerBack, outerFront, outerBack };
 
-        // Front side (TL, TR, BL, BR)
-        const frontChunk = [innerBack[a], innerFront[b], outerBack[b], outerFront[a]];
-        // Back side (TL, TR, BL, BR)
-        const backChunk = [outerBack[a], outerFront[b], innerBack[b], innerFront[a]];
+        const frontChunk = map.front.map(([which, idx]) => bands[which][idx]);
+        const backChunk = map.back.map(([which, idx]) => bands[which][idx]);
 
-        // Flags: spine/edge marks on the outermost sheet (j == totalSheets - 1).
-        const isOuterMost = j === totalSheets - 1;
-        const pushWithFlags = (targetList, chunk, isBackSide) => {
-          for (let i = 0; i < chunk.length; i++) {
-            targetList.push({
-              info: chunk[i],
-              isSigStart: isOuterMost && isBackSide && i === 0,
-              isSigEnd: isOuterMost && isBackSide && i === chunk.length - 1,
-              // Mark middle fold on first entry of back side for sewing marks
-              isSigMiddle: isBackSide && i === 0,
-              signatureNum: sig_num,
-            });
-          }
-        };
-
-        // Choose one chunk per sheet per side (not both), and append inner→outer so
-        // the outermost sheet is printed last (face-down stack = outermost on top):
-        //  - Front side: inner uses frontChunk; outer uses backChunk
-        //  - Back side:  inner uses backChunk;  outer uses frontChunk
         const backIndex = this.duplex ? 0 : 1;
-        const frontSideChunk = j === 0 ? frontChunk : backChunk;
-        const backSideChunk = j === 0 ? backChunk : frontChunk;
-        // Front: append in traversal order
-        pushWithFlags(pagelistdetails[0], frontSideChunk, false);
-        // Back: unshift each layer so inner ends up before outer in the final list
-        const backLayer = [];
-        pushWithFlags(backLayer, backSideChunk, true);
-        pagelistdetails[backIndex].unshift(...backLayer);
+        pushWithFlags(pagelistdetails[0], frontChunk, false, isOuterMost);
+        pushWithFlags(pagelistdetails[backIndex], backChunk, true, isOuterMost);
       }
 
       return pagelistdetails;
