@@ -152,55 +152,58 @@ export class WackyImposition {
       return sheets;
     }
     
-    // Always compute indices against a full 12*sheetCount page space so auditForBlanks
-    // can correctly zero out-of-range pages for incomplete final sheets.
+    // Booklet behavior (single signature across multiple sheets):
+    // We compute page "pairs" across the entire booklet, then assign them to rows on each sheet.
+    // Pair k corresponds to pages [low=k, high=fullPages-1-k].
+    // We always compute against a full 12*sheetCount page space so auditForBlanks can mark
+    // any out-of-range pages as blanks for inputs not a multiple of 12.
     const fullPages = sheetCount * 12;
-    const pairCount = fullPages / 2;
     console.log(
       `Building the 1/3rd page layout. Given ${pageCount} page count, there will be ${sheetCount} sheets...`
     );
-    // Helper to map a pair index k (0..pairCount-1) to [low, high] page nums
-    const pairToPages = (k) => {
-      const low = k;
-      const high = fullPages - 1 - k;
-      return [low, high];
+    // Helper to build one printable row from a pair index:
+    // - Front rows place [high, low], back rows place [low, high]
+    // - Middle row is printed upside-down (vFlip=true), so we use flipPage()
+    const makeRowFromPair = (pairIndex, isFront, isMiddle) => {
+      const low = pairIndex;
+      const high = fullPages - 1 - pairIndex;
+      const pageMaker = isMiddle ? f : p;
+      return isFront
+        ? this.auditForBlanks([pageMaker(high), pageMaker(low)], pageCount)
+        : this.auditForBlanks([pageMaker(low), pageMaker(high)], pageCount);
     };
-    // Base indices per row group, derived from global booklet pairing across S sheets
-    const baseFrontTop = pairCount - 2 * sheetCount;
-    const baseFrontMid = pairCount - (2 * sheetCount + 1);
-    const baseFrontBot = 0;
-    const baseBackTop = pairCount - (2 * sheetCount - 1);
-    const baseBackMid = pairCount - (2 * sheetCount + 2);
-    const baseBackBot = 1;
-    for (let sheet = 0; sheet < sheetCount; ++sheet) {
-      // Compute the pair indices for this sheet according to multi-sheet booklet stacking logic
-      // Top/bottom rows keep sheet order; middle row (the flipped strip stack) reverses sheet order.
-      const kFrontTop = baseFrontTop + 2 * sheet;
-      const kFrontMid = baseFrontMid - 2 * sheet;
-      const kFrontBot = baseFrontBot + 2 * sheet;
-      const kBackTop = baseBackTop + 2 * sheet;
-      const kBackMid = baseBackMid - 2 * sheet;
-      const kBackBot = baseBackBot + 2 * sheet;
-
-      // Build rows using the same vFlip conventions as the single-sheet mapping:
-      // - front/back middle rows are flipped (vFlip = true)
-      // - on front rows, order is [high, low]; on back rows, [low, high]
-      const [ftLow, ftHigh] = pairToPages(kFrontTop);
-      const [fmLow, fmHigh] = pairToPages(kFrontMid);
-      const [fbLow, fbHigh] = pairToPages(kFrontBot);
-      const [btLow, btHigh] = pairToPages(kBackTop);
-      const [bmLow, bmHigh] = pairToPages(kBackMid);
-      const [bbLow, bbHigh] = pairToPages(kBackBot);
-
+    // Derive sequences by physical ranges:
+    // There are 6 pairs per sheet (12 pages per sheet). With S sheets:
+    // - Bottom rows pull from the first 2S pairs (0..2S-1), advancing forward (even to front, odd to back).
+    // - Middle rows pull from the middle 2S pairs (2S..4S-1), advancing backward because the middle strip stack
+    //   is flipped during assembly (odd to front, even to back).
+    // - Top rows pull from the last 2S pairs (4S..6S-1), advancing forward (even to front, odd to back).
+    const S = sheetCount;
+    const range = (start, endInclusive, step = 1) => {
+      const out = [];
+      for (let v = start; v <= endInclusive; v += step) out.push(v);
+      return out;
+    };
+    const bottomAll = range(0, 2 * S - 1, 1); // e.g., S=3 → 0..5
+    const bottomEvenAsc = bottomAll.filter((k) => k % 2 === 0); // e.g., [0, 2, 4]
+    const bottomOddAsc = bottomAll.filter((k) => k % 2 === 1); // e.g., [1, 3, 5]
+    const middleAll = range(2 * S, 4 * S - 1, 1); // e.g., S=3 → 6..11
+    const middleOddDesc = middleAll.filter((k) => k % 2 === 1).reverse(); // e.g., [11, 9, 7]
+    const middleEvenDesc = middleAll.filter((k) => k % 2 === 0).reverse(); // e.g., [10, 8, 6]
+    const topAll = range(4 * S, 6 * S - 1, 1); // e.g., S=3 → 12..17
+    const topEvenAsc = topAll.filter((k) => k % 2 === 0); // e.g., [12, 14, 16]
+    const topOddAsc = topAll.filter((k) => k % 2 === 1); // e.g., [13, 15, 17]
+    // Assemble sheets in order using the precomputed sequences.
+    for (let s = 0; s < sheetCount; ++s) {
       const front = [
-        this.auditForBlanks([p(ftHigh), p(ftLow)], pageCount),
-        this.auditForBlanks([f(fmHigh), f(fmLow)], pageCount),
-        this.auditForBlanks([p(fbHigh), p(fbLow)], pageCount),
+        makeRowFromPair(topEvenAsc[s], true, false),
+        makeRowFromPair(middleOddDesc[s], true, true),
+        makeRowFromPair(bottomEvenAsc[s], true, false),
       ];
       const back = [
-        this.auditForBlanks([p(btLow), p(btHigh)], pageCount),
-        this.auditForBlanks([f(bmLow), f(bmHigh)], pageCount),
-        this.auditForBlanks([p(bbLow), p(bbHigh)], pageCount),
+        makeRowFromPair(topOddAsc[s], false, false),
+        makeRowFromPair(middleEvenDesc[s], false, true),
+        makeRowFromPair(bottomOddAsc[s], false, false),
       ];
       sheets.push(front);
       sheets.push(back);
