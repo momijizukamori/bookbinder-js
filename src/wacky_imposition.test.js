@@ -31,43 +31,31 @@ describe('WackyImposition model', () => {
     describe('a simple 12 page input file', () => {
 
       it('generates 2 sheets with the correct pages', async () => {
-        const expected = [
-          [
-            [
-              { "num": 7, "isBlank": false, "vFlip": false },
-              { "num": 4, "isBlank": false, "vFlip": false }
-            ],
-            [
-              { "num": 8, "isBlank": false, "vFlip": true },
-              { "num": 3, "isBlank": false, "vFlip": true }
-            ],
-            [
-              { "num": 11, "isBlank": false, "vFlip": false },
-              { "num": 0, "isBlank": false, "vFlip": false }
-            ]
-          ],
-          [
-            [
-              { "num": 5, "isBlank": false, "vFlip": false },
-              { "num": 6, "isBlank": false, "vFlip": false }
-            ],
-            [
-              { "num": 2, "isBlank": false, "vFlip": true },
-              { "num": 9, "isBlank": false, "vFlip": true }
-            ],
-            [
-              { "num": 1, "isBlank": false, "vFlip": false },
-              { "num": 10, "isBlank": false, "vFlip": false }
-            ]
-          ]
-        ];
-
         const actual = new WackyImposition(testPages, duplex, testFormat).build_1_3rd_sheetList(12);
 
-        expect(actual).toEqual(expected);
+        expect(extractField(actual, page => page.num)).toEqual([
+          [ [7, 4], [8, 3], [11, 0] ],
+          [ [5, 6], [2, 9], [1, 10] ],
+        ]);
+
+        expect(extractField(actual, page => page.isBlank)).toEqual([
+          [ [false, false], [false, false], [false, false] ],
+          [ [false, false], [false, false], [false, false] ],
+        ]);
+
+        expect(extractField(actual, page => page.vFlip)).toEqual([
+          [ [false, false], [true, true], [false, false] ],
+          [ [false, false], [true, true], [false, false] ],
+        ]);
       });
     });
-
-
   });
 });
+
+const extractField = (sheets, extractor) => {
+  return sheets.map((sheet) => {
+    return sheet.map((side) => {
+      return side.map(extractor);
+    });
+  });
+};
