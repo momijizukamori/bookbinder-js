@@ -74,6 +74,8 @@ const wackySpacing = urlSafe(z.enum(['wacky_pack', 'wacky_gap'])).default('wacky
 
 const printFile = urlSafe(z.enum(['aggregated', 'signatures', 'both'])).default('both');
 
+const wackyOneThirdMode = urlSafe(z.enum(['per_sheet', 'booklet'])).default('per_sheet');
+
 export const schema = z.object({
   printFile,
   sourceRotation,
@@ -98,6 +100,7 @@ export const schema = z.object({
   customSigLength: urlSafe(commaSeparatedNumberList).default(null), // Specific to custom.
   foreEdgePaddingPt: urlSafe(z.coerce.number()).default(0), // specific to wacky small
   wackySpacing, // specific to wacky small
+  wackyOneThirdMode,
   flyleafs: urlSafe(z.coerce.number()).default(1),
 
   sewingMarksEnabled: urlSafe(coercedBoolean).default(false),

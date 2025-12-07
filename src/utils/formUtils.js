@@ -42,6 +42,7 @@ const fromFormToConfiguration = (form) =>
     customSigLength: form.get('custom_sig'),
     foreEdgePaddingPt: form.get('fore_edge_padding_pt'),
     wackySpacing: form.get('wacky_spacing'),
+    wackyOneThirdMode: form.get('wacky_one_third_mode'),
     fileDownload: form.get('file_download'),
     printFile: form.get('print_file'),
     flyleafs: form.get('flyleafs'),

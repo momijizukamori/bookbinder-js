@@ -8,11 +8,12 @@
  * The builder functions are the entry points to the different layouts.
  */
 export class WackyImposition {
-  constructor(pages, duplex, format, isPacked) {
+  constructor(pages, duplex, format, isPacked, wackyOneThirdMode) {
     this.duplex = duplex;
     this.sigconfig = []; // sig_count looks at the length of this array, sig_arrange joins them together with a ,;
     this.pagelistdetails = [[]];
     this.isPacked = isPacked;
+    this.wackyOneThirdMode = wackyOneThirdMode || 'per_sheet';
     console.log(`Constructor sees ${pages}`);
     // for UI estimates
     this.sheets = Math.ceil(pages.length / 20.0);
@@ -132,6 +133,25 @@ export class WackyImposition {
     const f = this.flipPage;
     const sheets = [];
     const sheetCount = Math.ceil(pageCount / 12.0);
+    if (this.wackyOneThirdMode === 'per_sheet') {
+      for (let sheet = 0; sheet < sheetCount; ++sheet) {
+        const i = sheet * 12 - 1;
+        const front = [
+          this.auditForBlanks([p(i + 8), p(i + 5)], pageCount),
+          this.auditForBlanks([f(i + 9), f(i + 4)], pageCount),
+          this.auditForBlanks([p(i + 12), p(i + 1)], pageCount),
+        ];
+        const back = [
+          this.auditForBlanks([p(i + 6), p(i + 7)], pageCount),
+          this.auditForBlanks([f(i + 3), f(i + 10)], pageCount),
+          this.auditForBlanks([p(i + 2), p(i + 11)], pageCount),
+        ];
+        sheets.push(front);
+        sheets.push(back);
+      }
+      return sheets;
+    }
+    
     // Always compute indices against a full 12*sheetCount page space so auditForBlanks
     // can correctly zero out-of-range pages for incomplete final sheets.
     const fullPages = sheetCount * 12;

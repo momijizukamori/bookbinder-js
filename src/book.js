@@ -121,6 +121,7 @@ export class Book {
     this.per_sheet = pageLayout.per_sheet;
     this.pack_pages = configuration.wackySpacing === 'wacky_pack';
     this.fore_edge_padding_pt = configuration.foreEdgePaddingPt;
+    this.wacky_one_third_mode = configuration.wackyOneThirdMode;
 
     this.padding_pt = {
       top: configuration.topEdgePaddingPt,
@@ -284,7 +285,8 @@ export class Book {
           this.orderedpages,
           this.duplex,
           this.format,
-          this.pack_pages
+          this.pack_pages,
+          this.wacky_one_third_mode
         );
         break;
     }

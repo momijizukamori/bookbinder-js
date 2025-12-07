@@ -84,3 +84,7 @@ section label {
   display: inline-block;
   vertical-align: top;
 }
+
+#wacky_one_third_mode_radio_group {
+  padding-left: 32px;
+}

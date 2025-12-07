@@ -202,6 +202,9 @@ export function renderFormFromSettings(configuration) {
   document.querySelector(
     `input[name="wacky_spacing"][value="${configuration.wackySpacing}"]`
   ).checked = true;
+  document.querySelector(
+    `input[name="wacky_one_third_mode"][value="${configuration.wackyOneThirdMode}"]`
+  ).checked = true;
 
   // Set french link stitches settings
   handleSewingMarksCheckboxState(configuration.sewingMarksEnabled);
