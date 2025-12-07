@@ -59,6 +59,7 @@ describe('Book model', () => {
     print_file: 'both',
     signatureconfig: [],
     sigOrderMarks: false,
+    wacky_one_third_mode: "per_sheet",
   };
 
   it('returns a new Book', () => {
