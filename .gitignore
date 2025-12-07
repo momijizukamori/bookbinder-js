@@ -113,3 +113,6 @@ docs/*.aux
 
 # Firefox debug storage
 tmp
+
+# Rubymine/Jetbrains IDE project files
+.idea/
