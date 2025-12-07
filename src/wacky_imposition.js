@@ -132,20 +132,52 @@ export class WackyImposition {
     const f = this.flipPage;
     const sheets = [];
     const sheetCount = Math.ceil(pageCount / 12.0);
+    const pairCount = Math.ceil(pageCount / 2);
     console.log(
       `Building the 1/3rd page layout. Given ${pageCount} page count, there will be ${sheetCount} sheets...`
     );
+    // Helper to map a pair index k (0..pairCount-1) to [low, high] page nums
+    const pairToPages = (k) => {
+      const low = k;
+      const high = pageCount - 1 - k;
+      return [low, high];
+    };
+    // Base indices per row group, derived from global booklet pairing across S sheets
+    const base_front_top = pairCount - 2 * sheetCount;
+    const base_front_mid = pairCount - (2 * sheetCount + 1);
+    const base_front_bot = 0;
+    const base_back_top = pairCount - (2 * sheetCount - 1);
+    const base_back_mid = pairCount - (2 * sheetCount + 2);
+    const base_back_bot = 1;
     for (let sheet = 0; sheet < sheetCount; ++sheet) {
-      const i = sheet * 12 - 1;
+      // Compute the pair indices for this sheet according to multi-sheet booklet stacking logic
+      // Top/bottom rows keep sheet order; middle row (the flipped strip stack) reverses sheet order.
+      const k_front_top = base_front_top + 2 * sheet;
+      const k_front_mid = base_front_mid - 2 * sheet;
+      const k_front_bot = base_front_bot + 2 * sheet;
+      const k_back_top = base_back_top + 2 * sheet;
+      const k_back_mid = base_back_mid - 2 * sheet;
+      const k_back_bot = base_back_bot + 2 * sheet;
+
+      // Build rows using the same vFlip conventions as the single-sheet mapping:
+      // - front/back middle rows are flipped (vFlip = true)
+      // - on front rows, order is [high, low]; on back rows, [low, high]
+      const [ft_low, ft_high] = pairToPages(k_front_top);
+      const [fm_low, fm_high] = pairToPages(k_front_mid);
+      const [fb_low, fb_high] = pairToPages(k_front_bot);
+      const [bt_low, bt_high] = pairToPages(k_back_top);
+      const [bm_low, bm_high] = pairToPages(k_back_mid);
+      const [bb_low, bb_high] = pairToPages(k_back_bot);
+
       const front = [
-        this.auditForBlanks([p(i + 8), p(i + 5)], pageCount),
-        this.auditForBlanks([f(i + 9), f(i + 4)], pageCount),
-        this.auditForBlanks([p(i + 12), p(i + 1)], pageCount),
+        this.auditForBlanks([p(ft_high), p(ft_low)], pageCount),
+        this.auditForBlanks([f(fm_high), f(fm_low)], pageCount),
+        this.auditForBlanks([p(fb_high), p(fb_low)], pageCount),
       ];
       const back = [
-        this.auditForBlanks([p(i + 6), p(i + 7)], pageCount),
-        this.auditForBlanks([f(i + 3), f(i + 10)], pageCount),
-        this.auditForBlanks([p(i + 2), p(i + 11)], pageCount),
+        this.auditForBlanks([p(bt_low), p(bt_high)], pageCount),
+        this.auditForBlanks([f(bm_low), f(bm_high)], pageCount),
+        this.auditForBlanks([p(bb_low), p(bb_high)], pageCount),
       ];
       sheets.push(front);
       sheets.push(back);
