@@ -50,6 +50,27 @@ describe('WackyImposition model', () => {
       });
     });
 
+    describe('a 9 page input file', () => {
+      it('generates the correct blank pages', async () => {
+        const actual = new WackyImposition(testPages, duplex, testFormat).build_1_3rd_sheetList(9);
+
+        expect(extractField(actual, page => page.num)).toEqual([
+          [[7, 4], [8, 3], [0, 0]],
+          [[5, 6], [2, 0], [1, 0]],
+        ]);
+
+        expect(extractField(actual, page => page.isBlank)).toEqual([
+          [[false, false], [false, false], [true, false]],
+          [[false, false], [false, true], [false, true]],
+        ]);
+
+        expect(extractField(actual, page => page.vFlip)).toEqual([
+          [[false, false], [true, true], [false, false]],
+          [[false, false], [true, true], [false, false]],
+        ]);
+      });
+    });
+
     describe('a simple 24 page input file', () => {
 
       it('generates 4 sheets with the correct pages', async () => {
