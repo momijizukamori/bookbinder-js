@@ -21,7 +21,7 @@ describe('WackyImposition model', () => {
     console.log(actual);
     expect(actual).toEqual(expected);
   });
-  // TODO add tests with actual pages
+  // TODO add tests with actual pages for other formats
 
   describe('build_1_3rd_sheetList', () => {
     const testPages = [];
@@ -55,20 +55,42 @@ describe('WackyImposition model', () => {
       it('generates 4 sheets with the correct pages', async () => {
         const actual = new WackyImposition(testPages, duplex, testFormat).build_1_3rd_sheetList(24);
 
-        // Current behavior. This is wrong
-        // expect(extractField(actual, page => page.num)).toEqual([
-        //   [ [ 7,  4], [ 8,  3], [11,  0] ],
-        //   [ [ 5,  6], [ 2,  9], [ 1, 10] ],
-        //   [ [19, 16], [20, 15], [23, 12] ],
-        //   [ [17, 18], [14, 21], [13, 22] ],
-        // ]);
-
-        // Correct behavior (need to implement)
         expect(extractField(actual, page => page.num)).toEqual([
-          [ [15,  8], [16,  7], [23,  0] ],
-          [ [ 9, 14], [ 6, 17], [ 1, 22] ],
-          [ [13, 10], [18,  5], [21,  2] ],
-          [ [11, 12], [ 4, 19], [ 3, 20] ],
+          [ [15, 8], [16, 7], [23, 0] ],
+          [ [9, 14], [6, 17], [1, 22] ],
+          [ [13, 10], [18, 5], [21, 2] ],
+          [ [11, 12], [4, 19], [3, 20] ],
+        ]);
+
+        expect(extractField(actual, page => page.vFlip)).toEqual([
+          [[false,false],[true,true],[false,false]],
+          [[false,false],[true,true],[false,false]],
+          [[false,false],[true,true],[false,false]],
+          [[false,false],[true,true],[false,false]]
+        ]);
+      });
+    });
+
+    describe('a simple 36 page input file', () => {
+      it('generates 6 sheets with the correct pages', async () => {
+        const actual = new WackyImposition(testPages, duplex, testFormat).build_1_3rd_sheetList(36);
+
+        expect(extractField(actual, page => page.num)).toEqual([
+          [ [23, 12], [24, 11], [35, 0] ],
+          [ [13, 22], [10, 25], [1, 34] ],
+          [ [21, 14], [26, 9], [33, 2] ],
+          [ [15, 20], [8, 27], [3, 32] ],
+          [ [19, 16], [28, 7], [31, 4] ],
+          [ [17, 18], [6, 29], [5, 30] ],
+        ]);
+
+        expect(extractField(actual, page => page.vFlip)).toEqual([
+          [[false,false],[true,true],[false,false]],
+          [[false,false],[true,true],[false,false]],
+          [[false,false],[true,true],[false,false]],
+          [[false,false],[true,true],[false,false]],
+          [[false,false],[true,true],[false,false]],
+          [[false,false],[true,true],[false,false]]
         ]);
       });
     });
