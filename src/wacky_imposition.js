@@ -132,14 +132,17 @@ export class WackyImposition {
     const f = this.flipPage;
     const sheets = [];
     const sheetCount = Math.ceil(pageCount / 12.0);
-    const pairCount = Math.ceil(pageCount / 2);
+    // Always compute indices against a full 12*sheetCount page space so auditForBlanks
+    // can correctly zero out-of-range pages for incomplete final sheets.
+    const fullPages = sheetCount * 12;
+    const pairCount = fullPages / 2;
     console.log(
       `Building the 1/3rd page layout. Given ${pageCount} page count, there will be ${sheetCount} sheets...`
     );
     // Helper to map a pair index k (0..pairCount-1) to [low, high] page nums
     const pairToPages = (k) => {
       const low = k;
-      const high = pageCount - 1 - k;
+      const high = fullPages - 1 - k;
       return [low, high];
     };
     // Base indices per row group, derived from global booklet pairing across S sheets
