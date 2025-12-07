@@ -34,8 +34,8 @@ describe('WackyImposition model', () => {
         const actual = new WackyImposition(testPages, duplex, testFormat).build_1_3rd_sheetList(12);
 
         expect(extractField(actual, page => page.num)).toEqual([
-          [ [7, 4], [8, 3], [11, 0] ],
-          [ [5, 6], [2, 9], [1, 10] ],
+          [ [7, 4], [8, 3], [11, 0] ], // front
+          [ [5, 6], [2, 9], [1, 10] ], // back
         ]);
 
         expect(extractField(actual, page => page.isBlank)).toEqual([
@@ -46,6 +46,29 @@ describe('WackyImposition model', () => {
         expect(extractField(actual, page => page.vFlip)).toEqual([
           [ [false, false], [true, true], [false, false] ],
           [ [false, false], [true, true], [false, false] ],
+        ]);
+      });
+    });
+
+    describe('a simple 24 page input file', () => {
+
+      it('generates 4 sheets with the correct pages', async () => {
+        const actual = new WackyImposition(testPages, duplex, testFormat).build_1_3rd_sheetList(24);
+
+        // Current behavior. This is wrong
+        // expect(extractField(actual, page => page.num)).toEqual([
+        //   [ [ 7,  4], [ 8,  3], [11,  0] ],
+        //   [ [ 5,  6], [ 2,  9], [ 1, 10] ],
+        //   [ [19, 16], [20, 15], [23, 12] ],
+        //   [ [17, 18], [14, 21], [13, 22] ],
+        // ]);
+
+        // Correct behavior (need to implement)
+        expect(extractField(actual, page => page.num)).toEqual([
+          [ [15,  8], [16,  7], [23,  0] ],
+          [ [ 9, 14], [ 6, 17], [ 1, 22] ],
+          [ [13, 10], [18,  5], [21,  2] ],
+          [ [11, 12], [ 4, 19], [ 3, 20] ],
         ]);
       });
     });
