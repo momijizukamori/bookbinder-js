@@ -77,12 +77,13 @@ export class Signatures {
     const newsigs = [];
 
     //      Use the booklet class for each signature
-    this.signaturepagelists.forEach((pagerange) => {
+    this.signaturepagelists.forEach((pagerange, i) => {
       const pagelistdetails = this.booklet(
         pagerange,
         this.duplex,
         this.per_sheet,
-        this.duplexrotate
+        this.duplexrotate,
+        i
       );
       newsigs.push(pagelistdetails);
     });
@@ -122,8 +123,9 @@ export class Signatures {
    * @param {boolean} duplex - Whether both front and back sides go in the same file or not.
    * @param {number} per_sheet - number of pages per sheet (front and back combined)
    * @param {boolean} duplexrotate - whether to rotate alternating sheets or not.
+   * @param {number} sig_num - signature number (0 indexed)
    */
-  booklet(pages, duplex, per_sheet, duplexrotate) {
+  booklet(pages, duplex, per_sheet, duplexrotate, sig_num) {
     const pagelistdetails = duplex ? [[]] : [[], []];
     const { front, rotate, back } = BOOKLET_LAYOUTS[per_sheet];
 
@@ -146,24 +148,40 @@ export class Signatures {
 
       const block = [...front_block, ...back_block];
 
+      console.log(
+        `Looking front_config : block.length ${block.length} : given center ${center}, front_start ${front_start} - front_end ${front_end}, back_start ${back_start} - back_end ${back_end}, pages.length ${pages.length}`
+      );
       front_config.forEach((pnum) => {
         const page = block[pnum - 1]; //page layouts are 1-indexed, not 0-index
         pagelistdetails[0].push({
           info: page,
           isSigStart: front_start == 0 && pnum == 1,
           isSigEnd: front_start == 0 && pnum == block.length,
+          isSigMiddle: front_end == back_start && block.length / 2 + 1 == pnum,
+          signatureNum: sig_num,
         });
+        console.log(
+          `  >> ${pnum}  :: ${page}  :: ${front_end == back_start && block.length / 2 + 1 == pnum}`
+        );
       });
 
       const backlist = this.duplex ? 0 : 1;
 
+      console.log(
+        `Looking back_config : given center ${center}, front_start ${front_start} - front_end ${front_end}, back_start ${back_start} - back_end ${back_end}, pages.length ${pages.length}`
+      );
       back_config.forEach((pnum) => {
         const page = block[pnum - 1];
         pagelistdetails[backlist].push({
           info: page,
           isSigStart: front_start == 0 && pnum == 1,
           isSigEnd: front_start == 0 && pnum == block.length,
+          isSigMiddle: front_end == back_start && block.length / 2 + 1 == pnum,
+          signatureNum: sig_num,
         });
+        console.log(
+          `  >> ${pnum}  :: ${page}  :: ${front_end == back_start && block.length / 2 + 1 == pnum}`
+        );
       });
 
       // Update all our counters

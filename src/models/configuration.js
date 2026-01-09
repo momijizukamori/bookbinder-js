@@ -35,6 +35,10 @@ const sourceRotation = urlSafe(
   z.enum(['none', '90cw', '90ccw', 'out_binding', 'in_binding'])
 ).default('none');
 
+const sewingMarkLocation = urlSafe(z.enum(['all', 'only_out', 'only_in', 'in_n_out'])).default(
+  'all'
+);
+
 /** @type { keyof typeof import("../constants").PAGE_SIZES } */
 const availablePaperSizes = Object.keys(PAGE_SIZES);
 
@@ -82,6 +86,7 @@ export const schema = z.object({
   cropMarks: urlSafe(coercedBoolean).default(false),
   cutMarks: urlSafe(coercedBoolean).default(false),
   pdfEdgeMarks: urlSafe(coercedBoolean).default(false),
+  sigOrderMarks: urlSafe(coercedBoolean).default(false),
   pageScaling,
   pagePositioning,
   mainForeEdgePaddingPt: urlSafe(z.coerce.number()).default(0),
@@ -90,12 +95,21 @@ export const schema = z.object({
   bottomEdgePaddingPt: urlSafe(z.coerce.number()).default(0),
   sigFormat,
   sigLength: urlSafe(z.coerce.number()).default(4), // Specific to standard
-  customSigLength: urlSafe(commaSeparatedNumberList).default([]), // Specific to custom.
+  customSigLength: urlSafe(commaSeparatedNumberList).default(null), // Specific to custom.
   foreEdgePaddingPt: urlSafe(z.coerce.number()).default(0), // specific to wacky small
   wackySpacing, // specific to wacky small
   flyleafs: urlSafe(z.coerce.number()).default(1),
-  paperSizeCustomWidth: urlSafe(z.coerce.number()),
-  paperSizeCustomHeight: urlSafe(z.coerce.number()),
+
+  sewingMarksEnabled: urlSafe(coercedBoolean).default(false),
+  sewingMarkLocation,
+  sewingMarksMarginPt: urlSafe(z.coerce.number()).default(72),
+  sewingMarksAmount: urlSafe(z.coerce.number()).default(3),
+  sewingMarksTapeWidthPt: urlSafe(z.coerce.number()).default(36),
+
+  paperSizeCustomWidth: urlSafe(z.coerce.number()).default(0),
+  paperSizeCustomHeight: urlSafe(z.coerce.number()).default(0),
 });
 
 /** @typedef {z.infer<typeof schema>} Configuration */
+
+export const defaultConfig = schema.parse({});

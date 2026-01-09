@@ -4,7 +4,13 @@
 
 import { schema } from '../models/configuration';
 import { clearLocalSettings, getLocalSettings, setLocalSettings } from './localStorageUtils';
-import { renderFormFromSettings, renderInfoBox, renderPageCount, renderWacky } from './renderUtils';
+import {
+  renderFormFromSettings,
+  renderInfoBox,
+  renderPageCount,
+  renderWacky,
+  updatePageLayoutInfo,
+} from './renderUtils';
 import { clearUrlParams, setUrlParams, toUrlParams, updateWindowLocation } from './uri';
 
 /**
@@ -22,6 +28,7 @@ const fromFormToConfiguration = (form) =>
     paperRotation90: form.has('paper_rotation_90'),
     pageLayout: form.get('pagelayout'),
     cropMarks: form.has('cropmarks'),
+    sigOrderMarks: form.has('sig_order_marks'),
     pdfEdgeMarks: form.has('pdf_edge_marks'),
     cutMarks: form.has('cutmarks'),
     pageScaling: form.get('page_scaling'),
@@ -40,6 +47,12 @@ const fromFormToConfiguration = (form) =>
     flyleafs: form.get('flyleafs'),
     paperSizeCustomWidth: form.get('paper_size_custom_width'),
     paperSizeCustomHeight: form.get('paper_size_custom_height'),
+
+    sewingMarksEnabled: form.has('add_sewing_marks_checkbox'),
+    sewingMarkLocation: form.get('sewing_mark_locations'),
+    sewingMarksMarginPt: form.get('sewing_marks_margin_pt'),
+    sewingMarksAmount: form.get('sewing_marks_amount'),
+    sewingMarksTapeWidthPt: form.get('sewing_marks_tape_width_pt'),
   });
 
 /**
@@ -70,7 +83,8 @@ export const loadConfiguration = () => {
  * @param { import("../book").Book } book The book to update the form from
  */
 export function updateRenderedForm(book) {
-  book.createpages().then(() => {
+  book.createpages().then((info) => {
+    updatePageLayoutInfo(info);
     console.log('... pages created');
     renderPageCount(book);
     renderInfoBox(book);

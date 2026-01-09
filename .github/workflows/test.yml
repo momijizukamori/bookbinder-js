@@ -1,11 +1,19 @@
 name: Run tests
 on: push
 jobs:
-  test:
+  test-unit:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
       - name: Install modules
         run: npm install
-      - name: Run tests
-        run: npm run test
+      - name: Run Unit tests
+        run: npm run test:unit
+  test-pdf:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install modules
+        run: npm install
+      - name: Run PDF tests
+        run: npm run test:pdf

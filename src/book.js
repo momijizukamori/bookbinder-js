@@ -7,10 +7,15 @@ import { saveAs } from 'file-saver';
 import { Signatures } from './signatures.js';
 import { WackyImposition } from './wacky_imposition.js';
 import { PAGE_LAYOUTS, PAGE_SIZES } from './constants.js';
-import { updatePageLayoutInfo } from './utils/renderUtils.js';
 import JSZip from 'jszip';
 import { loadConfiguration } from './utils/formUtils.js';
-import { drawFoldlines, drawCropmarks, drawSpineMarks } from './utils/drawing.js';
+import {
+  drawFoldlines,
+  drawCropmarks,
+  drawSpineMark,
+  drawSigOrderMark,
+  drawSewingMarks,
+} from './utils/drawing.js';
 import { calculateDimensions, calculateLayout } from './utils/layout.js';
 import { interleavePages, embedPagesInNewPdf } from './utils/pdf.js';
 
@@ -21,6 +26,8 @@ import { interleavePages, embedPagesInNewPdf } from './utils/pdf.js';
  * @property {string|number} info - page # or 'b'
  * @property {boolean} isSigStart
  * @property {boolean} isSigEnd
+ * @property {boolean} isSigMiddle
+ * @property {number} signatureNum - which signature is this page in. 0 based
  */
 
 /**
@@ -34,6 +41,15 @@ import { interleavePages, embedPagesInNewPdf } from './utils/pdf.js';
  * @property {number[]} [spineMarkTop]: spineMarkTop,
  * @property {number[]} [spineMarkBottom]: spineMarkBottom,
  * @property {boolean} [isLeftPage]: isLeftPage,
+ */
+
+/**
+ * @typedef SewingMarks
+ * @type {object}
+ * @property {boolean} isEnabled - specifies if marks should be drawed,
+ * @property {number} amount - amount of places to saw.
+ * @property {number} marginPt - distance from the end of page to a kettle point,
+ * @property {number} tapeWidthPt - distance between two seing points
  */
 
 export class Book {
@@ -80,7 +96,15 @@ export class Book {
     this.page_positioning = configuration.pagePositioning;
     this.flyleafs = configuration.flyleafs;
     this.cropmarks = configuration.cropMarks;
+    this.sewingMarks = {
+      sewingMarkLocation: configuration.sewingMarkLocation,
+      isEnabled: configuration.sewingMarksEnabled,
+      amount: configuration.sewingMarksAmount,
+      marginPt: configuration.sewingMarksMarginPt,
+      tapeWidthPt: configuration.sewingMarksTapeWidthPt,
+    };
     this.pdfEdgeMarks = configuration.pdfEdgeMarks;
+    this.sigOrderMarks = configuration.sigOrderMarks;
     this.cutmarks = configuration.cutMarks;
     this.format = configuration.sigFormat;
     if (configuration.sigFormat === 'standardsig') {
@@ -119,11 +143,17 @@ export class Book {
     this.inputpdf = file.name;
     this.input = await file.arrayBuffer(); //fs.readFileSync(filepath);
     this.currentdoc = await PDFDocument.load(this.input);
-    //TODO: handle pw-protected PDFs
+    this.fixBlankPages();
+  }
+
+  /**
+   * Modifies pages with no content to have an invisible line on them.
+   * Dumb hack because you can't embed blank pdf pages without errors.
+   */
+  fixBlankPages() {
     const pages = this.currentdoc.getPages();
     this.cropbox = null;
 
-    //FIXME: dumb hack because you can't embed blank pdf pages without errors.
     pages.forEach((page) => {
       if (!page.node.Contents()) {
         page.drawLine({
@@ -219,13 +249,6 @@ export class Book {
       this.cropbox = newPage.getCropBox();
     }
 
-    console.log(
-      'The updatedDoc doc has : ',
-      this.managedDoc.getPages(),
-      ' vs --- ',
-      this.managedDoc.getPageCount()
-    );
-
     switch (this.format) {
       case 'perfect':
       case 'booklet':
@@ -275,7 +298,7 @@ export class Book {
     const dimensions = calculateDimensions(this);
     const positions = calculateLayout(this);
 
-    updatePageLayoutInfo({
+    return {
       dimensions,
       book: this.book,
       perSheet: this.per_sheet,
@@ -283,7 +306,7 @@ export class Book {
       cropbox: this.cropbox,
       managedDoc: this.managedDoc,
       positions,
-    });
+    };
   }
 
   /**
@@ -293,7 +316,6 @@ export class Book {
    *      generate preview content AND a downloadable zip
    */
   async createoutputfiles(isPreview) {
-    const previewFrame = document.getElementById('pdf');
     let previewPdf = null;
 
     //  create a directory named after the input pdf and fill it with
@@ -312,102 +334,9 @@ export class Book {
       this.format == 'standardsig' ||
       this.format == 'customsig'
     ) {
-      // Only generate the first signature for preview
-      const pagesArr = isPreview ? this.rearrangedpages.slice(0, 1) : this.rearrangedpages;
       const signatures = [{}];
-      const makeSignatures = async () => {
-        const tasks = pagesArr.map(async (pages, i) => {
-          console.log(pages);
-          signatures[i] = { name: `${this.filename}_signature${i}` };
-          [signatures[i].front, signatures[i].back] = await this.createSignatures({
-            pageIndexDetails: pages,
-          });
-        });
-        await Promise.all(tasks);
-      };
-      await makeSignatures();
-
-      // always duplex for preview
-      if (this.duplex || isPreview) {
-        const duplexSignatures = async () => {
-          const tasks = signatures.map(async (sig, i) => {
-            signatures[i].duplex = await interleavePages(sig.front, sig.back);
-            signatures[i].back = signatures[i].front = null;
-          });
-          await Promise.all(tasks);
-        };
-        await duplexSignatures();
-        previewPdf = signatures[0].duplex;
-      }
-
-      if (this.print_file != 'aggregated' && !isPreview) {
-        const saveSignatures = async () => {
-          const tasks = signatures.map(async (sig) => {
-            await sig.front?.save().then((pdfBytes) => {
-              this.zip.file(`signatures/${sig.name}_side1.pdf`, pdfBytes);
-            });
-            await sig.back?.save().then((pdfBytes) => {
-              this.zip.file(`signatures/${sig.name}_side2.pdf`, pdfBytes);
-            });
-            await sig.duplex?.save().then((pdfBytes) => {
-              this.zip.file(`signatures/${sig.name}_duplex.pdf`, pdfBytes);
-            });
-          });
-          await Promise.all(tasks);
-        };
-        await saveSignatures();
-      }
-
-      if (this.print_file != 'signatures' && !isPreview) {
-        const saveAggregate = async () => {
-          const aggregate = {
-            front: !this.duplex ? await PDFDocument.create() : null,
-            back: !this.duplex ? await PDFDocument.create() : null,
-            duplex: this.duplex ? await PDFDocument.create() : null,
-          };
-          for (const sig of signatures) {
-            // Adding pages to aggregate PDFs has to be done in order, not with promises
-            if (aggregate.front) {
-              const copiedPages = await aggregate.front.copyPages(
-                sig.front,
-                sig.front.getPageIndices()
-              );
-              copiedPages.forEach((page) => aggregate.front.addPage(page));
-            }
-            if (aggregate.back) {
-              const copiedPages = await aggregate.back.copyPages(
-                sig.back,
-                sig.back.getPageIndices()
-              );
-              copiedPages.forEach((page) => aggregate.back.addPage(page));
-            }
-            if (aggregate.duplex) {
-              const copiedPages = await aggregate.duplex.copyPages(
-                sig.duplex,
-                sig.duplex.getPageIndices()
-              );
-              copiedPages.forEach((page) => aggregate.duplex.addPage(page));
-            }
-          }
-          if (aggregate.front) {
-            await aggregate.front.save().then((pdfBytes) => {
-              this.zip.file(`${this.filename}_typeset_side1.pdf`, pdfBytes);
-            });
-          }
-          if (aggregate.back) {
-            await aggregate.back.save().then((pdfBytes) => {
-              this.zip.file(`${this.filename}_typeset_side2.pdf`, pdfBytes);
-            });
-          }
-          if (aggregate.duplex) {
-            await aggregate.duplex.save().then((pdfBytes) => {
-              this.zip.file(`${this.filename}_typeset.pdf`, pdfBytes);
-            });
-          }
-        };
-        await saveAggregate();
-      }
-
+      previewPdf = await this.generateClassicFiles(isPreview, signatures);
+      if (!isPreview) await this.saveClassicFiles(signatures);
       var rotationMetaInfo =
         (this.paper_rotation_90 ? 'paper_rotated' : '') +
         (this.source_rotation == 'none' ? '' : `_${this.source_rotation}`);
@@ -427,41 +356,160 @@ export class Book {
     } else if (this.format == '8_zine') {
       previewPdf = await this.buildSheets(this.filename, this.book.page_8_zine_builder());
     }
-    console.log('Attempting to generate preview for ', previewPdf);
 
-    if (previewPdf != null) {
-      const pdfDataUri = await previewPdf.saveAsBase64({ dataUri: true });
-      const viewerPrefs = previewPdf.catalog.getOrCreateViewerPreferences();
-      viewerPrefs.setHideToolbar(false);
-      viewerPrefs.setHideMenubar(false);
-      viewerPrefs.setHideWindowUI(false);
-      viewerPrefs.setFitWindow(true);
-      viewerPrefs.setCenterWindow(true);
-      viewerPrefs.setDisplayDocTitle(true);
-
-      previewFrame.src = pdfDataUri;
-      previewFrame.style.width = `450px`;
-      const height = (this.papersize[1] / this.papersize[0]) * 500;
-      previewFrame.style.height = `${height}px`;
-      previewFrame.style.display = '';
-    }
+    if (previewPdf != null) await this.displayPreview(previewPdf);
 
     if (!isPreview) return this.saveZip();
     else return Promise.resolve(1);
   }
 
   /**
-   * Part of the Classic (non-Wacky) flow. Called by [createsignatures].
+   * Generates the signatures for a file from the input
+   * @param {boolean} isPreview - whether we're generating files for a preview, or to save
+   * @param {Object[]} signatures - object to organize the generated signatures on
+   * @returns reference to a PDF for preview, or null, depending on isPreview
+   */
+
+  async generateClassicFiles(isPreview, signatures) {
+    // Only generate the first signature for preview
+    const pagesArr = isPreview ? this.rearrangedpages.slice(0, 1) : this.rearrangedpages;
+    let previewPdf = null;
+    const makeSignatures = async () => {
+      const tasks = pagesArr.map(async (pages, i) => {
+        console.log(pages);
+        signatures[i] = { name: `${this.filename}_signature${i}` };
+        [signatures[i].front, signatures[i].back] = await this.createSignature({
+          pageIndexDetails: pages,
+          maxSigCount: pagesArr.length,
+        });
+      });
+      await Promise.all(tasks);
+    };
+    await makeSignatures();
+
+    // always duplex for preview
+    if (this.duplex || isPreview) {
+      const duplexSignatures = async () => {
+        const tasks = signatures.map(async (sig, i) => {
+          signatures[i].duplex = await interleavePages(sig.front, sig.back);
+          signatures[i].back = signatures[i].front = null;
+        });
+        await Promise.all(tasks);
+      };
+      await duplexSignatures();
+      previewPdf = signatures[0].duplex;
+    }
+    return previewPdf;
+  }
+  /**
+   * Writes the generated files to the zip file, combining them to an aggregate file if necessary
+   * @param {Object} signatures
+   */
+  async saveClassicFiles(signatures) {
+    if (this.print_file != 'aggregated') {
+      const saveSignatures = async () => {
+        const tasks = signatures.map(async (sig) => {
+          await sig.front?.save().then((pdfBytes) => {
+            this.zip.file(`signatures/${sig.name}_side1.pdf`, pdfBytes);
+          });
+          await sig.back?.save().then((pdfBytes) => {
+            this.zip.file(`signatures/${sig.name}_side2.pdf`, pdfBytes);
+          });
+          await sig.duplex?.save().then((pdfBytes) => {
+            this.zip.file(`signatures/${sig.name}_duplex.pdf`, pdfBytes);
+          });
+        });
+        await Promise.all(tasks);
+      };
+      await saveSignatures();
+    }
+
+    if (this.print_file != 'signatures') {
+      const saveAggregate = async () => {
+        const aggregate = {
+          front: !this.duplex ? await PDFDocument.create() : null,
+          back: !this.duplex ? await PDFDocument.create() : null,
+          duplex: this.duplex ? await PDFDocument.create() : null,
+        };
+        for (const sig of signatures) {
+          // Adding pages to aggregate PDFs has to be done in order, not with promises
+          if (aggregate.front) {
+            const copiedPages = await aggregate.front.copyPages(
+              sig.front,
+              sig.front.getPageIndices()
+            );
+            copiedPages.forEach((page) => aggregate.front.addPage(page));
+          }
+          if (aggregate.back) {
+            const copiedPages = await aggregate.back.copyPages(sig.back, sig.back.getPageIndices());
+            copiedPages.forEach((page) => aggregate.back.addPage(page));
+          }
+          if (aggregate.duplex) {
+            const copiedPages = await aggregate.duplex.copyPages(
+              sig.duplex,
+              sig.duplex.getPageIndices()
+            );
+            copiedPages.forEach((page) => aggregate.duplex.addPage(page));
+          }
+        }
+        if (aggregate.front) {
+          await aggregate.front.save().then((pdfBytes) => {
+            this.zip.file(`${this.filename}_typeset_side1.pdf`, pdfBytes);
+          });
+        }
+        if (aggregate.back) {
+          await aggregate.back.save().then((pdfBytes) => {
+            this.zip.file(`${this.filename}_typeset_side2.pdf`, pdfBytes);
+          });
+        }
+        if (aggregate.duplex) {
+          await aggregate.duplex.save().then((pdfBytes) => {
+            this.zip.file(`${this.filename}_typeset.pdf`, pdfBytes);
+          });
+        }
+      };
+      await saveAggregate();
+    }
+  }
+
+  /**
+   * Functionality for displaying on on-page preview nicely.
+   * @param {PDFDocument} previewPdf - PDF to display as preview
+   */
+  async displayPreview(previewPdf) {
+    console.log('Attempting to generate preview for ', previewPdf);
+    const previewFrame = document.getElementById('pdf');
+    const pdfDataUri = await previewPdf.saveAsBase64({ dataUri: true });
+    const viewerPrefs = previewPdf.catalog.getOrCreateViewerPreferences();
+
+    viewerPrefs.setHideToolbar(false);
+    viewerPrefs.setHideMenubar(false);
+    viewerPrefs.setHideWindowUI(false);
+    viewerPrefs.setFitWindow(true);
+    viewerPrefs.setCenterWindow(true);
+    viewerPrefs.setDisplayDocTitle(true);
+
+    previewFrame.src = pdfDataUri;
+    previewFrame.style.width = `450px`;
+    const height = (this.papersize[1] / this.papersize[0]) * 500;
+    previewFrame.style.height = `${height}px`;
+    previewFrame.style.display = '';
+  }
+
+  /**
+   * Part of the Classic (non-Wacky) flow. Called by [createsignature].
    *   (conditionally) populates the destPdf and (conditionally) generates the outname PDF
    *
    * @param {Object} config - object /w the following parameters:
-   * @param {PageInfo[]} config.pageList : objects that contain 3 values: { isSigStart: boolean, isSigEnd: boolean, info: either the page number or 'b'}
+   * @param {PageInfo[]} config.pageList : see documentation at top of file
    * @param {boolean} config.back : is 'back' of page  (boolean)
+   * @param {number} config.maxSigCount
    * @return reference to the new PDF created
    */
   async writepages(config) {
     const pagelist = config.pageList;
     const back = config.back;
+    const maxSigCount = config.maxSigCount;
     const filteredList = [];
     const blankIndices = [];
     pagelist.forEach((pageInfo, i) => {
@@ -471,6 +519,7 @@ export class Book {
         blankIndices.push(i);
       }
     });
+
     const [outPDF, embeddedPages] = await embedPagesInNewPdf(this.managedDoc, filteredList);
 
     blankIndices.forEach((i) => embeddedPages.splice(i, 0, 'b'));
@@ -495,9 +544,12 @@ export class Book {
         papersize: this.papersize,
         positions: positions,
         cropmarks: this.cropmarks,
+        sigOrderMarks: this.sigOrderMarks,
         pdfEdgeMarks: this.pdfEdgeMarks,
         cutmarks: this.cutmarks,
         back: back,
+        maxSigCount: maxSigCount,
+        sewingMarks: this.sewingMarks,
       });
       block_start += offset;
       block_end += offset;
@@ -508,7 +560,8 @@ export class Book {
   /**
    *
    * @param {Object} config - object /w the following parameters:
-   * @param {PageInfo[]} config.sigDetails : objects that contain 3 values: { isSigStart: boolean, isSigEnd: boolean, info: either the page number or 'b'}
+   * @param {PageInfo[]} config.sigDetails : see documentation at top of file
+   * @param {number} config.maxSigCount: Total number of signatures
    * @param {boolean} config.back : is 'back' of page  (boolean)
    * @param {[number, number]} config.papersize : paper size (as [number, number])
    * @param {number} config.block_start: Starting page index
@@ -519,6 +572,7 @@ export class Book {
    * @param {Position[]} config.positions: list of page positions
    * @param {PDFDocument} [config.outPDF]: PDF to write to, in addition to PDF created w/ `outname` (or null)
    * @param {(PDFEmbeddedPage|string)[]} [config.embeddedPages] : pages already embedded in the `destPdf` to assemble in addition (or null)
+   * @param {SewingMarks} config.sewingMarks: config for drawing FrenchMarks
    */
 
   draw_block_onto_page(config) {
@@ -529,9 +583,12 @@ export class Book {
     const outPDF = config.outPDF;
     const positions = config.positions;
     const foldmarks = config.cropmarks;
+    const sigOrderMarks = config.sigOrderMarks;
     const pdfEdgeMarks = config.pdfEdgeMarks;
     const cutmarks = config.cutmarks;
     const back = config.back;
+    const maxSigCount = config.maxSigCount;
+    const sewingMarks = config.sewingMarks;
 
     const block = config.embeddedPages.slice(block_start, block_end);
     const currPage = outPDF.addPage(papersize);
@@ -540,6 +597,8 @@ export class Book {
       ? drawFoldlines(back, this.duplexrotate, papersize, this.per_sheet)
       : [];
     const drawLines = [...cropLines, ...foldLines];
+    const drawRects = [];
+    const drawPoints = [];
 
     block.forEach((page, i) => {
       if (page == 'b' || page === undefined) {
@@ -557,32 +616,64 @@ export class Book {
         console.error('Unexpected type for page: ', page);
       }
 
-      if (pdfEdgeMarks && (sigDetails[i].isSigStart || sigDetails[i].isSigEnd)) {
-        drawLines.push(drawSpineMarks(sigDetails[i], positions[i]));
+      if (sigDetails[i].isSigStart) {
+        if (pdfEdgeMarks) {
+          drawLines.push(drawSpineMark(true, positions[i], 5));
+        }
+        if (sigOrderMarks) {
+          drawRects.push(drawSigOrderMark(sigDetails[i], positions[i], maxSigCount, 5, 20));
+        }
+      } else if (sigDetails[i].isSigEnd) {
+        if (pdfEdgeMarks) {
+          drawLines.push(drawSpineMark(false, positions[i], 5));
+        }
       }
+      const sewingMarkPoints = sewingMarks.isEnabled
+        ? drawSewingMarks(
+            sigDetails[i],
+            positions[i],
+            sewingMarks.sewingMarkLocation,
+            sewingMarks.amount,
+            sewingMarks.marginPt,
+            sewingMarks.tapeWidthPt
+          )
+        : [];
+      drawPoints.push(...sewingMarkPoints);
     });
 
     drawLines.forEach((line) => {
       currPage.drawLine(line);
     });
+    drawRects.forEach((rect) => {
+      currPage.drawRectangle(rect);
+    });
+
+    drawPoints.forEach((point) => {
+      currPage.drawCircle(point);
+    });
   }
 
   /**
    * PDF builder base function for Classic (non-Wacky) layouts. Called by [createoutputfiles]
+   * Generates a single signature  (or is it just a single sheet? -- comments left long after coding)
+   * TODO : re-examine this logic and clean up this comment. What is going on??
    *
    * @param {Object} config
+   * @param {number} config.maxSigCount
    * @param {PageInfo[][]} config.pageIndexDetails : a nested list of objects.
    */
-  async createSignatures(config) {
+  async createSignature(config) {
     const pages = config.pageIndexDetails;
     const tasks = [
       this.writepages({
         pageList: pages[0],
         back: false,
+        maxSigCount: config.maxSigCount,
       }),
       this.writepages({
         pageList: pages[1],
         back: true,
+        maxSigCount: config.maxSigCount,
       }),
     ];
     const [pdfFront, pdfBack] = await Promise.all(tasks);

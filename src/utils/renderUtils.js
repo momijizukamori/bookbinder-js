@@ -3,6 +3,7 @@
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 import { PAGE_SIZES } from '../constants';
+import { handleSewingMarksCheckboxState } from './clickHandlers.js';
 
 export function renderPageCount(book) {
   const pageCount = document.getElementById('page_count');
@@ -33,7 +34,7 @@ export function renderInfoBox(book) {
  *
  */
 export function updatePageLayoutInfo(info) {
-  document.getElementById('show_layout_info').style.display = 'block';
+  document.getElementById('show_layout_info').style.display = 'flex';
   console.log('So much info from updatePageLayoutInfo: ', info);
   const needsRotation =
     info.dimensions.layout.rotations[0] == -90 ||
@@ -183,6 +184,10 @@ export function renderFormFromSettings(configuration) {
     document.querySelector("input[name='cropmarks']").checked = true;
   }
 
+  if (configuration.sigOrderMarks) {
+    document.querySelector("input[name='sig_order_marks']").checked = true;
+  }
+
   if (configuration.pdfEdgeMarks) {
     document.querySelector("input[name='pdf_edge_marks']").checked = true;
   }
@@ -197,6 +202,19 @@ export function renderFormFromSettings(configuration) {
   document.querySelector(
     `input[name="wacky_spacing"][value="${configuration.wackySpacing}"]`
   ).checked = true;
+
+  // Set french link stitches settings
+  handleSewingMarksCheckboxState(configuration.sewingMarksEnabled);
+  document.querySelector('input[name="add_sewing_marks_checkbox"]').checked =
+    configuration.sewingMarksEnabled;
+  document.querySelector('select[name="sewing_mark_locations"]').value =
+    configuration.sewingMarkLocation;
+  document.querySelector('input[name="sewing_marks_margin_pt"]').value =
+    configuration.sewingMarksMarginPt;
+  document.querySelector('input[name="sewing_marks_amount"]').value =
+    configuration.sewingMarksAmount;
+  document.querySelector('input[name="sewing_marks_tape_width_pt"]').value =
+    configuration.sewingMarksTapeWidthPt;
 
   // Set freeform inputs
   document.querySelector('input[name="main_fore_edge_padding_pt"]').value =
@@ -248,7 +266,7 @@ export function renderFormFromSettings(configuration) {
   );
   const selectedValue = `${configuration.sourceRotation}_example`;
   sourceRotationExamples.forEach((example) => {
-    example.style.display = example.id === selectedValue ? 'block' : 'none';
+    example.style.display = example.id === selectedValue ? 'flex' : 'none';
   });
 }
 

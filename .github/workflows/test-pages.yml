@@ -27,6 +27,7 @@ jobs:
   # Single deploy job since we're just deploying
   deploy-preview:
     runs-on: ubuntu-latest
+    if: github.repository == 'momijizukamori/bookbinder-js'
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -40,7 +41,8 @@ jobs:
       - name: Build
         run: npm run build -- --base=https://momijizukamori.github.io/bookbinder-js/pr-preview/pr-${{ github.event.pull_request.number }}
         if: github.event.action != 'closed'
-      - uses: rossjrw/pr-preview-action@v1
+      - uses: rossjrw/pr-preview-action@v1.6.0
+        continue-on-error: true
         with:
           source-dir: dist
           umbrella-dir: pr-preview
