@@ -41,7 +41,7 @@ export function calculateLayout(book) {
         // 'top' of page is on left, right side of screen
         isLeftPage = i % 2 == 0; // page is on 'left' (top side of screen)
         x = (1 + j) * cellHeight - yBottomShift;
-        y = i * cellWidth + (isLeftPage ? xForeEdgeShift : xBindingShift );
+        y = i * cellWidth + (isLeftPage ? xForeEdgeShift : xBindingShift);
         spineMarkTop = [(1 + j) * cellHeight - yBottomShift, i * cellWidth];
         spineMarkBottom = [j * cellHeight + yTopShift, i * cellWidth];
       } else if (col == -90) {
