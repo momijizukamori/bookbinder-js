@@ -20,6 +20,7 @@ import { clearUrlParams, setUrlParams, toUrlParams, updateWindowLocation } from 
  */
 const fromFormToConfiguration = (form) =>
   schema.parse({
+    pageRange: form.get('page_range'),
     sourceRotation: form.get('source_rotation'),
     paperSize: form.get('paper_size'),
     paperSizeUnit: form.get('paper_size_unit'),
