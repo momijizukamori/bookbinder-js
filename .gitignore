@@ -119,3 +119,6 @@ compose.override.yaml
 
 # Firefox debug storage
 tmp
+
+# Rubymine/Jetbrains IDE project files
+.idea/
