@@ -138,6 +138,14 @@ export class Book {
     this.inputpdf = file.name;
     this.input = await file.arrayBuffer(); //fs.readFileSync(filepath);
     this.currentdoc = await PDFDocument.load(this.input);
+
+    try {
+      const form = this.currentdoc.getForm();
+      form.flatten();
+    } catch (err) {
+      console.debug('PDF form flattening skipped or unavailable', err);
+    }
+
     this.fixBlankPages();
   }
 
