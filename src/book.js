@@ -137,7 +137,7 @@ export class Book {
   async openpdf(file) {
     this.inputpdf = file.name;
     this.input = await file.arrayBuffer(); //fs.readFileSync(filepath);
-    this.currentdoc = await PDFDocument.load(this.input);
+    this.currentdoc = await PDFDocument.load(this.input, { ignoreEncryption: true });
     this.fixBlankPages();
   }
 
