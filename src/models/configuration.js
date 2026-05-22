@@ -74,8 +74,11 @@ const wackySpacing = urlSafe(z.enum(['wacky_pack', 'wacky_gap'])).default('wacky
 
 const printFile = urlSafe(z.enum(['aggregated', 'signatures', 'both'])).default('both');
 
+const pageRange = urlSafe(z.string().trim()).default('');
+
 export const schema = z.object({
   printFile,
+  pageRange,
   sourceRotation,
   rotatePage: urlSafe(coercedBoolean).default(false),
   paperSize,
