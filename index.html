@@ -12,7 +12,7 @@
     <link rel="stylesheet" href="./matcha.css" />
     <link rel="icon" type="image/x-icon" href="https://momijizukamori.github.io/bookbinder-js/favicon.ico" />
     <meta charset="UTF-8" />
-    <script type="module" crossorigin src="https://momijizukamori.github.io/bookbinder-js/assets/index-BuzF_Zzf.js"></script>
+    <script type="module" crossorigin src="https://momijizukamori.github.io/bookbinder-js/assets/index-BFNzp9cb.js"></script>
   </head>
 
   <body>
@@ -50,6 +50,17 @@
       <option value="signatures">Signature Files Only</option>
     </select>
   </label>
+  <label
+    >Page Range:
+    <input
+      type="text"
+      name="page_range"
+      id="page_range"
+      class="inline"
+      placeholder="All pages"
+    />
+  </label>
+  <small>Optional. Examples: <code>1-8</code>, <code>1,3,5-7</code>.</small>
 </section>
 
         <section class="section" id="input">
@@ -662,7 +673,7 @@
   </center>
   <div class="space_out">
     <span>Total Pages: <span id="total_pages"></span></span>
-    <span>Original PDF Pages: <span id="page_count"></span></span>
+    <span>Processed PDF Pages: <span id="page_count"></span></span>
   </div>
   <div class="space_out">
     <span>Total Sheets: <span id="total_sheets"></span></span>
