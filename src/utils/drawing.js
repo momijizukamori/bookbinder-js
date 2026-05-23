@@ -201,7 +201,7 @@ export function drawSewingMarks(
   const commonCircleValues = { size: 1, color: grayscale(0.0) };
   const drawablePoints = allPoints.map((basePoint) => {
     /** @type {DrawPoint} */
-    const point = {x: null, y: null, ...commonCircleValues};
+    const point = { x: null, y: null, ...commonCircleValues };
     if (arePageRotated) {
       point.y = spinePosition;
       point.x = basePoint.pointHeight + position.spineMarkBottom[0];
