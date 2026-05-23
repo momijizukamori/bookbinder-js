@@ -1,5 +1,14 @@
 import { LINE_LEN } from '../constants';
-import { rgb, grayscale } from '@cantoo/pdf-lib';
+import { grayscale, rgb } from '@cantoo/pdf-lib';
+
+/**
+ * @typedef DrawPoint
+ * @type {object}
+ * @property {number} x - horizontal position
+ * @property {number} y - vertical position
+ * @property {number} size,
+ * @property {import("@cantoo/pdf-lib").Grayscale|import("@cantoo/pdf-lib").RGB} color,
+ */
 
 /**
  * @typedef Point
@@ -18,22 +27,22 @@ import { rgb, grayscale } from '@cantoo/pdf-lib';
  */
 
 /**
- * @typedef Point
- * @property {number} x,
- * @property {number} y,
- * @property {number} size,
- * @property {Grayscale|RGB|CMYK} color,
- *
+ * @typedef Rect
+ * @type {object}
+ * @property {Point} start - start position
+ * @property {Point} end - end position
+ * @property {number} [opacity] - line opacity
+ * @property {number[]} [dashArray] - sequence of dash and gap lengths to be repeated for a dashed line
  */
 
 /**
- *  @param {boolean} side2flag - whether we're on the back or not.
+ * @param {boolean} back - whether we're on the back or not.
  * @param {boolean} duplexrotate - if alternate sides are rotated or not
  * @param {number[]} papersize - paper dimensions
- * @param {number} per_sheet - pages per sheet of paper
+ * @param {number} perSheet - pages per sheet of paper
  * @returns {Line[]}
  */
-export function drawFoldlines(side2flag, duplexrotate, papersize, per_sheet) {
+export function drawFoldlines(back, duplexrotate, papersize, perSheet) {
   const lineSettings = {
     opacity: 0.4,
     dashArray: [1, 5],
@@ -43,9 +52,9 @@ export function drawFoldlines(side2flag, duplexrotate, papersize, per_sheet) {
   const [width, height] = papersize;
   const lines = [];
 
-  switch (per_sheet) {
+  switch (perSheet) {
     case 32:
-      if (side2flag) {
+      if (back) {
         lineSettings.dashArray = [1, 5];
 
         x = duplexrotate ? width * 0.75 : width * 0.25;
@@ -56,7 +65,7 @@ export function drawFoldlines(side2flag, duplexrotate, papersize, per_sheet) {
       }
     /* falls through */
     case 16:
-      if (side2flag) {
+      if (back) {
         lineSettings.dashArray = [3, 5];
 
         y = duplexrotate ? height * 0.75 : height * 0.25;
@@ -67,7 +76,7 @@ export function drawFoldlines(side2flag, duplexrotate, papersize, per_sheet) {
       }
     /* falls through */
     case 8:
-      if (side2flag) {
+      if (back) {
         lineSettings.dashArray = [5, 5];
 
         x = width * 0.5;
@@ -78,7 +87,7 @@ export function drawFoldlines(side2flag, duplexrotate, papersize, per_sheet) {
       }
     /* falls through */
     case 4:
-      if (!side2flag) {
+      if (!back) {
         lineSettings.dashArray = [10, 5];
         lines.push({ ...drawHLine(height * 0.5, 0, width), ...lineSettings });
       }
@@ -89,13 +98,13 @@ export function drawFoldlines(side2flag, duplexrotate, papersize, per_sheet) {
 
 /**
  * @param {number[]} papersize - paper dimensions
- * @param {number} per_sheet - number of pages per sheet of paper
+ * @param {number} perSheet - number of pages per sheet of paper
  * @returns {Line[]}
  */
-export function drawCropmarks(papersize, per_sheet) {
+export function drawCropmarks(papersize, perSheet) {
   let lines = [];
   const [width, height] = papersize;
-  switch (per_sheet) {
+  switch (perSheet) {
     case 32:
       lines = [
         ...lines,
@@ -122,7 +131,7 @@ export function drawCropmarks(papersize, per_sheet) {
 }
 
 /**
- * @param {@param {import("../book.js").PageInfo}} sigDetails - information about signature where marks will be printed
+ * @param {import("../book.js").PageInfo} sigDetails - information about signature where marks will be printed
  * @param {import("../book.js").Position} position - position info object
  * @param sewingMarkLocation - see ./models/configuration.js for possible values
  * @param {number} amount - amount of sewing crosses.
@@ -190,13 +199,14 @@ export function drawSewingMarks(
   ];
 
   const commonCircleValues = { size: 1, color: grayscale(0.0) };
-  const drawablePoints = allPoints.map((point) => {
-    point = { ...point, ...commonCircleValues };
+  const drawablePoints = allPoints.map((basePoint) => {
+    /** @type {DrawPoint} */
+    const point = { x: null, y: null, ...commonCircleValues };
     if (arePageRotated) {
       point.y = spinePosition;
-      point.x = point.pointHeight + position.spineMarkBottom[0];
+      point.x = basePoint.pointHeight + position.spineMarkBottom[0];
     } else {
-      point.y = point.pointHeight + position.spineMarkBottom[1];
+      point.y = basePoint.pointHeight + position.spineMarkBottom[1];
       point.x = spinePosition;
     }
     return point;
@@ -206,14 +216,14 @@ export function drawSewingMarks(
 }
 
 /**
- * @param {boolean} draw_top_mark - true to draw mark at top of PDF, false for bottom of PDF
+ * @param {boolean} drawTopMark - true to draw mark at top of PDF, false for bottom of PDF
  * @param {import("../book.js").Position} position - position info object
  * @param {number} w - width of the line in pts
  * @returns {Line}
  */
-export function drawSpineMark(draw_top_mark, position, w) {
+export function drawSpineMark(drawTopMark, position, w) {
   let startX, startY, endX, endY;
-  if (draw_top_mark) {
+  if (drawTopMark) {
     [startX, startY] = position.spineMarkTop;
     [endX, endY] = position.spineMarkTop;
   } else {
@@ -248,10 +258,10 @@ export function drawSpineMark(draw_top_mark, position, w) {
  * @param {import("../book.js").Position} position - position info object
  * @param {number} maxSigCount - number of total signatures
  * @param {number} w - width of the mark in pts
- * @param {number} suggested_h - suggested height of the mark in pts (can be scaled down to fit all marks between PDF top/bottom)
- * @returns {Line}
+ * @param {number} suggestedH - suggested height of the mark in pts (can be scaled down to fit all marks between PDF top/bottom)
+ * @returns {import("@cantoo/pdf-lib").PDFPageDrawRectangleOptions}
  */
-export function drawSigOrderMark(sigDetails, position, maxSigCount, w, suggested_h) {
+export function drawSigOrderMark(sigDetails, position, maxSigCount, w, suggestedH) {
   const top = drawSpineMark(true, position, w);
   const bottom = drawSpineMark(false, position, w);
 
@@ -259,7 +269,7 @@ export function drawSigOrderMark(sigDetails, position, maxSigCount, w, suggested
   let y = top.start.y;
 
   const dist = position.rotation == 0 ? top.start.y - bottom.start.y : top.start.x - bottom.start.x;
-  let h = Math.min(suggested_h, dist / maxSigCount);
+  let h = Math.min(suggestedH, dist / maxSigCount);
   const offset = h * sigDetails.signatureNum;
   // console.log("Looking at signature ",sigDetails.signatureNum," of ",maxSigCount," PDF top/bottom distance ",dist," results in ",h," (",suggested_h," vs ",(dist/maxSigCount),") order mark height w/ offset ",offset," (width ",w,")");
 
@@ -285,47 +295,47 @@ export function drawSigOrderMark(sigDetails, position, maxSigCount, w, suggested
 }
 /**
  * @param {number} x
- * @param {number} ystart
- * @param {number} yend
+ * @param {number} yStart
+ * @param {number} yEnd
  * @returns {Line}
  */
-function drawVLine(x, ystart, yend) {
-  return { start: { x: x, y: ystart }, end: { x: x, y: yend } };
+function drawVLine(x, yStart, yEnd) {
+  return { start: { x: x, y: yStart }, end: { x: x, y: yEnd } };
 }
 
 /**
  * @param {number} y
- * @param {number} xstart
- * @param {number} xend
+ * @param {number} xStart
+ * @param {number} xEnd
  * @returns {Line}
  */
-function drawHLine(y, xstart, xend) {
-  return { start: { x: xstart, y: y }, end: { x: xend, y: y } };
+function drawHLine(y, xStart, xEnd) {
+  return { start: { x: xStart, y: y }, end: { x: xEnd, y: y } };
 }
 
 /**
  * @param {number} x
- * @param {number} ystart
- * @param {number} yend
+ * @param {number} yStart
+ * @param {number} yEnd
  * @returns {Line[]}
  */
-function drawVCrop(x, ystart, yend) {
+function drawVCrop(x, yStart, yEnd) {
   return [
-    { start: { x: x, y: ystart }, end: { x: x, y: ystart + LINE_LEN }, opacity: 0.4 },
-    { start: { x: x, y: yend - LINE_LEN }, end: { x: x, y: yend }, opacity: 0.4 },
+    { start: { x: x, y: yStart }, end: { x: x, y: yStart + LINE_LEN }, opacity: 0.4 },
+    { start: { x: x, y: yEnd - LINE_LEN }, end: { x: x, y: yEnd }, opacity: 0.4 },
   ];
 }
 
 /**
  * @param {number} y
- * @param {number} xstart
- * @param {number} xend
+ * @param {number} xStart
+ * @param {number} xEnd
  * @returns {Line[]}
  */
-function drawHCrop(y, xstart, xend) {
+function drawHCrop(y, xStart, xEnd) {
   return [
-    { start: { x: xstart, y: y }, end: { x: xstart + LINE_LEN, y: y }, opacity: 0.4 },
-    { start: { x: xend - LINE_LEN, y: y }, end: { x: xend, y: y }, opacity: 0.4 },
+    { start: { x: xStart, y: y }, end: { x: xStart + LINE_LEN, y: y }, opacity: 0.4 },
+    { start: { x: xEnd - LINE_LEN, y: y }, end: { x: xEnd, y: y }, opacity: 0.4 },
   ];
 }
 

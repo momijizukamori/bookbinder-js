@@ -87,7 +87,7 @@ export class Book {
     this.duplex = configuration.printerType === 'duplex';
     this.duplexrotate = configuration.rotatePage;
     this.paper_rotation_90 = configuration.paperRotation90;
-    /** @type {number[]} */
+    /** @type {[number, number]} */
     this.papersize = PAGE_SIZES[configuration.paperSize];
     if (configuration.paperRotation90) {
       this.papersize = [this.papersize[1], this.papersize[0]];
@@ -122,6 +122,11 @@ export class Book {
     const pageLayout = PAGE_LAYOUTS[configuration.pageLayout];
 
     this.page_layout = pageLayout;
+    // Slightly messy hack because folio with duplex rotation is the only layout where different sides have different rotations
+    this.alt_layout =
+      configuration.rotatePage && configuration.pageLayout === 'folio'
+        ? PAGE_LAYOUTS.folio_alt
+        : null;
     this.per_sheet = pageLayout.per_sheet;
     this.pack_pages = configuration.wackySpacing === 'wacky_pack';
     this.fore_edge_padding_pt = configuration.foreEdgePaddingPt;
@@ -506,7 +511,6 @@ export class Book {
    * @param {Object} config - object /w the following parameters:
    * @param {PageInfo[]} config.pageList : see documentation at top of file
    * @param {boolean} config.back : is 'back' of page  (boolean)
-   * @param {boolean} config.alt : alternate pages (boolean)
    * @param {number} config.maxSigCount
    * @return reference to the new PDF created
    */
@@ -534,13 +538,12 @@ export class Book {
 
     // const alt_folio = this.per_sheet == 4 && back;
 
-    const positions = calculateLayout(this);
-
-    let side2flag = back;
+    const positions =
+      this.alt_layout && !back ? calculateLayout(this) : calculateLayout(this, true);
 
     while (block_end <= pagelist.length) {
-      const sigDetails = pagelist.slice(block_start, block_end);
-      side2flag = this.draw_block_onto_page({
+      const sigDetails = config.pageList.slice(block_start, block_end);
+      this.draw_block_onto_page({
         outPDF: outPDF,
         embeddedPages: embeddedPages,
         block_start: block_start,
@@ -552,8 +555,7 @@ export class Book {
         sigOrderMarks: this.sigOrderMarks,
         pdfEdgeMarks: this.pdfEdgeMarks,
         cutmarks: this.cutmarks,
-        alt: config.alt,
-        side2flag: side2flag,
+        back: back,
         maxSigCount: maxSigCount,
         sewingMarks: this.sewingMarks,
       });
@@ -566,14 +568,12 @@ export class Book {
   /**
    *
    * @param {Object} config - object /w the following parameters:
-   * @param {string|null} config.outname : name of pdf added to ongoing zip file. Ex: 'signature1duplex.pdf' (or null if no signature file needed)
    * @param {PageInfo[]} config.sigDetails : see documentation at top of file
    * @param {number} config.maxSigCount: Total number of signatures
-   * @param {boolean} config.side2flag : is 'back' of page  (boolean)
+   * @param {boolean} config.back : is 'back' of page  (boolean)
    * @param {[number, number]} config.papersize : paper size (as [number, number])
    * @param {number} config.block_start: Starting page index
    * @param {number} config.block_end: Ending page index
-   * @param {boolean} config.alt : alternate pages (boolean)
    * @param {boolean} config.cutmarks: whether to print cutmarks
    * @param {boolean} config.cropmarks: whether to print cropmarks
    * @param {boolean} config.pdfEdgeMarks: whether to print PDF edge marks
@@ -594,16 +594,15 @@ export class Book {
     const sigOrderMarks = config.sigOrderMarks;
     const pdfEdgeMarks = config.pdfEdgeMarks;
     const cutmarks = config.cutmarks;
-    const alt = config.alt;
+    const back = config.back;
     const maxSigCount = config.maxSigCount;
-    let side2flag = config.side2flag;
     const sewingMarks = config.sewingMarks;
 
     const block = config.embeddedPages.slice(block_start, block_end);
     const currPage = outPDF.addPage(papersize);
     const cropLines = cutmarks ? drawCropmarks(papersize, this.per_sheet) : [];
     const foldLines = foldmarks
-      ? drawFoldlines(side2flag, this.duplexrotate, papersize, this.per_sheet)
+      ? drawFoldlines(back, this.duplexrotate, papersize, this.per_sheet)
       : [];
     const drawLines = [...cropLines, ...foldLines];
     const drawRects = [];
@@ -660,11 +659,6 @@ export class Book {
     drawPoints.forEach((point) => {
       currPage.drawCircle(point);
     });
-
-    if (alt) {
-      side2flag = !side2flag;
-    }
-    return side2flag;
   }
 
   /**
@@ -682,13 +676,11 @@ export class Book {
       this.writepages({
         pageList: pages[0],
         back: false,
-        alt: false,
         maxSigCount: config.maxSigCount,
       }),
       this.writepages({
         pageList: pages[1],
         back: true,
-        alt: false,
         maxSigCount: config.maxSigCount,
       }),
     ];
