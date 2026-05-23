@@ -1,0 +1,14 @@
+services:
+  bookbinder-app:
+    # environment:
+    #   BASE: 'https://momijizukamori.github.io/bookbinder-js/' <-- is default in vite.config.js
+    image: node:24
+    volumes:
+      - .:/app
+    command: bash -c "cd /app && npm install && npm run build"
+
+  bookbinder-nginx:
+    image: nginx
+    restart: unless-stopped
+    volumes:
+      - ./dist:/usr/share/nginx/html

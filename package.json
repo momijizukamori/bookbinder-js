@@ -20,8 +20,8 @@
   "license": "MPL",
   "devDependencies": {
     "eslint": "^8.56.0",
-    "jsdom": "^24.0.0",
-    "pdf-visual-diff": "^0.9.0",
+    "jsdom": "^26.0.0",
+    "pdf-visual-diff": "^0.14.0",
     "prettier": "^3.2.5",
     "vite": "^5.0.10",
     "vite-plugin-package-version": "^1.1.0",

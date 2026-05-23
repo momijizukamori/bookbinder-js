@@ -17,6 +17,7 @@ import {
   drawSewingMarks,
 } from './utils/drawing.js';
 import { calculateDimensions, calculateLayout } from './utils/layout.js';
+import { parsePageRange } from './utils/pageRange.js';
 import { interleavePages, embedPagesInNewPdf } from './utils/pdf.js';
 
 // Some JSDoc typedefs we use multiple places
@@ -68,6 +69,8 @@ export class Book {
     this.input = null; //  opened pdf file
     this.currentdoc = null; //  uploaded PDF [Itext PDFReader object] untouched by source_rotation - use managedDoc for layout
     this.pagecount = null;
+    this.sourcePageCount = null;
+    this.selectedPages = [];
     this.cropbox = null;
 
     this.orderedpages = []; //  ordered list of page numbers (consecutive)
@@ -92,6 +95,7 @@ export class Book {
 
     this.source_rotation = configuration.sourceRotation;
     this.print_file = configuration.printFile;
+    this.pageRange = configuration.pageRange;
     this.page_scaling = configuration.pageScaling;
     this.page_positioning = configuration.pagePositioning;
     this.flyleafs = configuration.flyleafs;
@@ -173,8 +177,10 @@ export class Book {
    * Populates [this.orderedpages] (array [0, 1, ... this.page_sheets * # of sheets])
    */
   createpagelist() {
-    this.pagecount = this.currentdoc.getPageCount();
-    this.orderedpages = Array.from({ length: this.pagecount }, (x, i) => i);
+    this.sourcePageCount = this.currentdoc.getPageCount();
+    this.selectedPages = parsePageRange(this.pageRange, this.sourcePageCount);
+    this.orderedpages = [...this.selectedPages];
+    this.pagecount = this.selectedPages.length;
 
     for (let i = 0; i < this.flyleafs; i++) {
       this.orderedpages.unshift('b');
@@ -198,7 +204,9 @@ export class Book {
         this.orderedpages.push('b');
       }
     }
-    console.log(`Calculated pagecount [${this.pagecount}] and ordered pages: ${this.orderedpages}`);
+    console.log(
+      `Calculated pagecount [${this.pagecount}] from source pagecount [${this.sourcePageCount}] and ordered pages: ${this.orderedpages}`
+    );
   }
 
   /**
@@ -802,7 +810,9 @@ export class Book {
     );
     pagelist.forEach((row) => {
       row.forEach((page) => {
-        if (!page.isBlank) filteredList.push(page.num);
+        if (!page.isBlank) {
+          filteredList.push(this.selectedPages[page.num] ?? page.num);
+        }
       });
     });
     if (filteredList.length == 0) {
@@ -838,7 +848,8 @@ export class Book {
           ((this.fore_edge_padding_pt * (i + 1)) % 2);
         const pageInfo = pagelist[row][i];
         if (pageInfo.isBlank) continue;
-        const origPage = embeddedPages[filteredList.indexOf(pageInfo.num)];
+        const sourcePageIndex = this.selectedPages[pageInfo.num] ?? pageInfo.num;
+        const origPage = embeddedPages[filteredList.indexOf(sourcePageIndex)];
         const hOffset = this.pack_pages ? leftGap : (1 + i - (i % 2)) * leftGap;
         const vOffset = this.pack_pages ? topGap : topGap + 2 * topGap * row;
         const positioning = {

@@ -7,6 +7,11 @@ import { handleSewingMarksCheckboxState } from './clickHandlers.js';
 
 export function renderPageCount(book) {
   const pageCount = document.getElementById('page_count');
+  if (book.sourcePageCount && book.pagecount !== book.sourcePageCount) {
+    pageCount.innerText = `${book.pagecount} of ${book.sourcePageCount}`;
+    return;
+  }
+
   pageCount.innerText = book.pagecount;
 }
 
@@ -228,6 +233,7 @@ export function renderFormFromSettings(configuration) {
   document.querySelector('input[name="fore_edge_padding_pt"]').value =
     configuration.foreEdgePaddingPt;
   document.querySelector('input[name="flyleafs"]').value = configuration.flyleafs;
+  document.querySelector('input[name="page_range"]').value = configuration.pageRange;
 
   // Set select options
   document.querySelector('select[name="source_rotation"]').value = configuration.sourceRotation;

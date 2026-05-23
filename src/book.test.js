@@ -2,6 +2,7 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 import { expect, describe, it } from 'vitest';
+import { PDFDocument } from '@cantoo/pdf-lib';
 import { Book } from './book';
 import { schema } from './models/configuration';
 
@@ -20,6 +21,8 @@ describe('Book model', () => {
     input: null,
     currentdoc: null,
     pagecount: null,
+    sourcePageCount: null,
+    selectedPages: [],
     cropbox: null,
     orderedpages: [],
     rearrangedpages: [],
@@ -57,6 +60,7 @@ describe('Book model', () => {
     page_scaling: 'lockratio',
     paper_rotation_90: false,
     source_rotation: 'none',
+    pageRange: '',
     print_file: 'both',
     signatureconfig: [],
     sigOrderMarks: false,
@@ -67,6 +71,27 @@ describe('Book model', () => {
     const expected = defaultBook;
     const actual = new Book(defaultConfiguration);
     expect(actual).toEqual(expected);
+  });
+
+  it('creates a pagelist from the selected page range before flyleaf and padding', async () => {
+    const configuration = schema.parse({
+      pageRange: '2-4',
+      flyleafs: 1,
+    });
+    const book = new Book(configuration);
+    const pdf = await PDFDocument.create();
+
+    for (let i = 0; i < 8; i++) {
+      pdf.addPage([100, 100]);
+    }
+
+    book.currentdoc = pdf;
+    book.createpagelist();
+
+    expect(book.sourcePageCount).toBe(8);
+    expect(book.selectedPages).toEqual([1, 2, 3]);
+    expect(book.pagecount).toBe(3);
+    expect(book.orderedpages).toEqual(['b', 'b', 1, 2, 3, 'b', 'b', 'b']);
   });
   // TODO test update
   // TODO test openPDF
