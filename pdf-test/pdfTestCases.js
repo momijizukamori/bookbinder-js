@@ -1,5 +1,5 @@
+/* eslint-disable camelcase */
 export const testCases = {
-  // eslint-disable-next-line camelcase
   basic_duplex_folio: {
     input: 'example_page_numbers.pdf',
     config: {
@@ -106,6 +106,45 @@ export const testCases = {
       sewingMarksTapeWidthPt: 20,
       paperSizeCustomWidth: 0,
       paperSizeCustomHeight: 0,
+    },
+  },
+  duplex_folio_rotate: {
+    input: 'example_page_numbers.pdf',
+    config: {
+      "printFile": "both",
+      "pageRange": "",
+      "sourceRotation": "none",
+      "rotatePage": true,
+      "paperSize": "A4",
+      "paperSizeUnit": "pt",
+      "printerType": "duplex",
+      "paperRotation90": false,
+      "pageLayout": "folio",
+      "cropMarks": false,
+      "cutMarks": false,
+      "pdfEdgeMarks": false,
+      "sigOrderMarks": false,
+      "pageScaling": "lockratio",
+      "pagePositioning": "centered",
+      "mainForeEdgePaddingPt": 0,
+      "bindingEdgePaddingPt": 0,
+      "topEdgePaddingPt": 0,
+      "bottomEdgePaddingPt": 0,
+      "sigFormat": "standardsig",
+      "sigLength": 4,
+      "customSigLength": [
+        0
+      ],
+      "foreEdgePaddingPt": 0,
+      "wackySpacing": "wacky_pack",
+      "flyleafs": 0,
+      "sewingMarksEnabled": false,
+      "sewingMarkLocation": "all",
+      "sewingMarksMarginPt": 72,
+      "sewingMarksAmount": 3,
+      "sewingMarksTapeWidthPt": 36,
+      "paperSizeCustomWidth": 0,
+      "paperSizeCustomHeight": 0
     },
   },
 };
