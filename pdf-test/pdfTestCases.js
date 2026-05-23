@@ -1,4 +1,5 @@
 export const testCases = {
+  // eslint-disable-next-line camelcase
   basic_duplex_folio: {
     input: 'example_page_numbers.pdf',
     config: {
